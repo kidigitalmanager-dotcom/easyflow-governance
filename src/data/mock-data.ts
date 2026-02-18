@@ -1,3 +1,5 @@
+import { REJECTION_REASONS } from "./strings.de";
+
 export interface ReviewItem {
   id: string;
   subject: string;
@@ -25,7 +27,8 @@ export interface AuditEntry {
   decision: string;
   reason: string;
   evidence: string[];
-  userAction: "approved" | "rejected" | "sent" | "pending";
+  userAction: "approved" | "rejected" | "sent" | "pending" | "playbook_switch";
+  actor: string;
 }
 
 export interface PlaybookData {
@@ -43,16 +46,8 @@ export const MAILBOXES = [
   "info@firma.de",
 ];
 
-export const REJECTION_REASONS = [
-  "Nicht relevant",
-  "Kein Handlungsbedarf",
-  "Spam / Werbung",
-  "Doppelt / bereits erledigt",
-  "Falscher Empfänger",
-  "Nicht freigabefähig (Compliance)",
-  "Unklar – Rückfrage nötig",
-  "Bitte manuell prüfen",
-];
+// Re-export from centralized strings
+export { REJECTION_REASONS };
 
 export const PLAYBOOKS: PlaybookData[] = [
   { id: "ecommerce", name: "E-Commerce", category: "E-Commerce", version: "v2.4", useCases: ["Bestellstatus", "Rückgabe", "Adressänderung", "Zahlungsfrage"], priorityExplainer: "P0: Zahlungsbetrug · P1: Rückgabe-Frist · P2: Statusanfrage · P3: Info" },
@@ -77,11 +72,11 @@ export const REVIEW_QUEUE: ReviewItem[] = [
 ];
 
 export const AUDIT_TRAIL: AuditEntry[] = [
-  { id: "a1", timestamp: "18.02.2026, 14:23", mailbox: "support@firma.de", subject: "Rückgabe Bestellung #4712", priority: "P1", category: "Rückgabe", playbook: "E-Commerce", playbookVersion: "v2.4", decision: "Entwurf wurde erstellt und zur Freigabe vorgelegt.", reason: "Rückgabefrist läuft in 24h ab.", evidence: ["Bestellwert 189 €", "Premium-Kunde", "Rückgabefrist 24h"], userAction: "approved" },
-  { id: "a2", timestamp: "18.02.2026, 13:45", mailbox: "info@firma.de", subject: "Bankdaten-Änderung Lieferant Meyer", priority: "P0", category: "Bankdaten", playbook: "Finanzen", playbookVersion: "v2.2", decision: "Eskalation an Compliance-Team ausgelöst.", reason: "Verdächtige Bankdatenänderung erkannt.", evidence: ["Externer Absender", "Betrag > 10.000 €", "Keine Vorankündigung"], userAction: "rejected" },
-  { id: "a3", timestamp: "18.02.2026, 11:30", mailbox: "sales@firma.de", subject: "Nachfass Angebot Q1-2026", priority: "P2", category: "Nachfass", playbook: "B2B Sales", playbookVersion: "v1.8", decision: "Nachfass-Mail Entwurf erstellt.", reason: "Follow-up nach 7 Tagen empfohlen.", evidence: ["Kein Response seit 7 Tagen", "Angebotswert > 5.000 €", "Entscheider-Kontakt"], userAction: "sent" },
-  { id: "a4", timestamp: "17.02.2026, 16:10", mailbox: "support@firma.de", subject: "Lieferstatus Anfrage #9923", priority: "P3", category: "Status", playbook: "Logistics", playbookVersion: "v2.1", decision: "Auto-Antwort mit Tracking-Link gesendet.", reason: "Standard-Statusanfrage, kein Risiko.", evidence: ["Standardanfrage", "Tracking verfügbar", "Lieferung planmäßig"], userAction: "sent" },
-  { id: "a5", timestamp: "17.02.2026, 09:55", mailbox: "support@firma.de", subject: "Qualitätsmangel Charge #B-442", priority: "P0", category: "Qualität", playbook: "Manufacturing", playbookVersion: "v1.2", decision: "Sofort-Eskalation an QM-Leitung.", reason: "Qualitätsmangel mit möglichem Produktionsausfall.", evidence: ["Charge betrifft 500 Einheiten", "Auslieferung gestoppt", "QM-Prüfung erforderlich"], userAction: "approved" },
+  { id: "a1", timestamp: "18.02.2026, 14:23", mailbox: "support@firma.de", subject: "Rückgabe Bestellung #4712", priority: "P1", category: "Rückgabe", playbook: "E-Commerce", playbookVersion: "v2.4", decision: "Entwurf wurde erstellt und zur Freigabe vorgelegt.", reason: "Rückgabefrist läuft in 24h ab.", evidence: ["Bestellwert 189 €", "Premium-Kunde", "Rückgabefrist 24h"], userAction: "approved", actor: "Leon (Admin)" },
+  { id: "a2", timestamp: "18.02.2026, 13:45", mailbox: "info@firma.de", subject: "Bankdaten-Änderung Lieferant Meyer", priority: "P0", category: "Bankdaten", playbook: "Finanzen", playbookVersion: "v2.2", decision: "Eskalation an Compliance-Team ausgelöst.", reason: "Verdächtige Bankdatenänderung erkannt.", evidence: ["Externer Absender", "Betrag > 10.000 €", "Keine Vorankündigung"], userAction: "rejected", actor: "Leon (Admin)" },
+  { id: "a3", timestamp: "18.02.2026, 11:30", mailbox: "sales@firma.de", subject: "Nachfass Angebot Q1-2026", priority: "P2", category: "Nachfass", playbook: "B2B Sales", playbookVersion: "v1.8", decision: "Nachfass-Mail Entwurf erstellt.", reason: "Follow-up nach 7 Tagen empfohlen.", evidence: ["Kein Response seit 7 Tagen", "Angebotswert > 5.000 €", "Entscheider-Kontakt"], userAction: "sent", actor: "UseEasy (Auto)" },
+  { id: "a4", timestamp: "17.02.2026, 16:10", mailbox: "support@firma.de", subject: "Lieferstatus Anfrage #9923", priority: "P3", category: "Status", playbook: "Logistics", playbookVersion: "v2.1", decision: "Auto-Antwort mit Tracking-Link gesendet.", reason: "Standard-Statusanfrage, kein Risiko.", evidence: ["Standardanfrage", "Tracking verfügbar", "Lieferung planmäßig"], userAction: "sent", actor: "UseEasy (Auto)" },
+  { id: "a5", timestamp: "17.02.2026, 09:55", mailbox: "support@firma.de", subject: "Qualitätsmangel Charge #B-442", priority: "P0", category: "Qualität", playbook: "Manufacturing", playbookVersion: "v1.2", decision: "Sofort-Eskalation an QM-Leitung.", reason: "Qualitätsmangel mit möglichem Produktionsausfall.", evidence: ["Charge betrifft 500 Einheiten", "Auslieferung gestoppt", "QM-Prüfung erforderlich"], userAction: "approved", actor: "Leon (Admin)" },
 ];
 
 export const MAILBOX_PLAYBOOK_ASSIGNMENTS: Record<string, string | null> = {
