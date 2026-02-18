@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { PriorityBadge } from "@/components/PriorityBadge";
-import { AUDIT_TRAIL, MAILBOXES, PLAYBOOKS } from "@/data/mock-data";
+import { AUDIT_TRAIL, MAILBOXES } from "@/data/mock-data";
+import { AUDIT_ACTION_LABELS } from "@/data/strings.de";
 import { getCurrentPlan } from "@/data/plan";
-import { Download, X, Check, Send, Clock } from "lucide-react";
+import { Download, X, Check, Send, Clock, ArrowRightLeft, User } from "lucide-react";
 
 const priorities = ["Alle", "P0", "P1", "P2", "P3"] as const;
 
@@ -11,13 +12,7 @@ const actionIcons: Record<string, React.ReactNode> = {
   rejected: <X className="w-3.5 h-3.5 text-destructive" />,
   sent: <Send className="w-3.5 h-3.5 text-p2" />,
   pending: <Clock className="w-3.5 h-3.5 text-muted-foreground" />,
-};
-
-const actionLabels: Record<string, string> = {
-  approved: "Freigegeben",
-  rejected: "Abgelehnt",
-  sent: "Gesendet",
-  pending: "Ausstehend",
+  playbook_switch: <ArrowRightLeft className="w-3.5 h-3.5 text-p1" />,
 };
 
 export default function AuditTrail() {
@@ -87,7 +82,9 @@ export default function AuditTrail() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   {actionIcons[entry.userAction]}
-                  <span className="text-xs text-muted-foreground">{actionLabels[entry.userAction]}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {AUDIT_ACTION_LABELS[entry.userAction] || entry.userAction}
+                  </span>
                 </div>
               </div>
               <p className="text-sm font-medium">{entry.subject}</p>
@@ -107,14 +104,7 @@ export default function AuditTrail() {
             </div>
 
             <div className="space-y-3 text-sm">
-              <div>
-                <span className="text-muted-foreground">Entscheidung:</span>
-                <p className="mt-0.5 font-medium">{detail.decision}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Warum:</span>
-                <p className="mt-0.5">{detail.reason}</p>
-              </div>
+              {/* Playbook + Version */}
               <div className="flex items-center gap-4">
                 <div>
                   <span className="text-muted-foreground">Playbook:</span>
@@ -125,22 +115,55 @@ export default function AuditTrail() {
                   <div className="mt-0.5"><PriorityBadge priority={detail.priority} showLabel /></div>
                 </div>
               </div>
+
+              {/* Evidence (max 3) */}
               <div>
                 <span className="text-muted-foreground">Evidenz:</span>
                 <ul className="mt-1 space-y-1">
-                  {detail.evidence.map((e, i) => (
+                  {detail.evidence.slice(0, 3).map((e, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <span className="text-primary mt-0.5">•</span> {e}
+                      <span className="text-primary mt-0.5">·</span> {e}
                     </li>
                   ))}
                 </ul>
               </div>
+
+              {/* Outcome (decision) */}
+              <div>
+                <span className="text-muted-foreground">Entscheidung:</span>
+                <p className="mt-0.5 font-medium">{detail.decision}</p>
+              </div>
+
+              {/* Reason */}
+              <div>
+                <span className="text-muted-foreground">Warum:</span>
+                <p className="mt-0.5">{detail.reason}</p>
+              </div>
+
+              {/* Actor */}
+              <div>
+                <span className="text-muted-foreground">Akteur:</span>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <User className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="font-medium">{detail.actor}</span>
+                </div>
+              </div>
+
+              {/* Action status */}
               <div>
                 <span className="text-muted-foreground">Aktion:</span>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   {actionIcons[detail.userAction]}
-                  <span className="font-medium">{actionLabels[detail.userAction]}</span>
+                  <span className="font-medium">
+                    {AUDIT_ACTION_LABELS[detail.userAction] || detail.userAction}
+                  </span>
                 </div>
+              </div>
+
+              {/* Timestamp */}
+              <div>
+                <span className="text-muted-foreground">Zeitpunkt:</span>
+                <p className="mt-0.5 font-medium">{detail.timestamp}</p>
               </div>
             </div>
 
