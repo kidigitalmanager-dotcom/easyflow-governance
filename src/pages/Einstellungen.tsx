@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { MAILBOXES } from "@/data/mock-data";
-import { getCurrentPlan } from "@/data/plan";
-import { ExternalLink } from "lucide-react";
+import { getCurrentPlan, USAGE } from "@/data/plan";
+import { ExternalLink, AlertTriangle } from "lucide-react";
+import { ChipDomainInput } from "@/components/ChipDomainInput";
+import { LockedControl } from "@/components/LockedControl";
+import { Progress } from "@/components/ui/progress";
 
 export default function Einstellungen() {
   const plan = getCurrentPlan();
+  const isLocked = plan.id === "starter" || plan.id === "team";
+
   const [mailboxStates, setMailboxStates] = useState<Record<string, boolean>>({
     "support@firma.de": true,
     "sales@firma.de": true,
@@ -20,12 +25,16 @@ export default function Einstellungen() {
     betragThreshold: "500",
   });
 
-  const [allowList, setAllowList] = useState("firma.de, partner.de");
-  const [blockList, setBlockList] = useState("spam.com");
+  const [allowDomains, setAllowDomains] = useState(["firma.de", "partner.de"]);
+  const [blockDomains, setBlockDomains] = useState(["spam.com"]);
   const [businessHours, setBusinessHours] = useState({ start: "08:00", end: "18:00" });
   const [slaTarget, setSlaTarget] = useState("95");
 
+  const activeMailboxes = Object.values(mailboxStates).filter(Boolean).length;
+
   const toggleMailbox = (mb: string) => {
+    const isActive = mailboxStates[mb];
+    if (!isActive && activeMailboxes >= plan.mailboxLimit) return;
     setMailboxStates(prev => ({ ...prev, [mb]: !prev[mb] }));
   };
 
@@ -47,7 +56,18 @@ export default function Einstellungen() {
 
       {/* Mailbox toggles */}
       <div className="glass-card p-6 space-y-4">
-        <h2 className="text-base font-semibold">UseEasy pro Mailbox</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">UseEasy pro Mailbox</h2>
+          <span className="text-xs text-muted-foreground">
+            {activeMailboxes} / {plan.mailboxLimit} genutzt
+          </span>
+        </div>
+        {activeMailboxes >= plan.mailboxLimit && (
+          <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-md px-3 py-2">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            Mailbox-Limit erreicht. Plan upgraden für mehr Mailboxen.
+          </div>
+        )}
         {MAILBOXES.map((mb) => (
           <div key={mb} className="flex items-center justify-between py-2">
             <div>
@@ -101,27 +121,42 @@ export default function Einstellungen() {
         </div>
       </div>
 
-      {/* Allow/Block Lists */}
+      {/* Domain Lists */}
       <div className="glass-card p-6 space-y-4">
         <h2 className="text-base font-semibold">Domain-Listen</h2>
-        <div>
-          <label className="text-sm font-medium">Erlaubte Domains</label>
-          <input
-            value={allowList}
-            onChange={(e) => setAllowList(e.target.value)}
-            className="w-full mt-1 bg-muted/50 border border-border rounded-md px-3 py-2 text-sm text-foreground"
-            placeholder="domain1.de, domain2.de"
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium">Blockierte Domains</label>
-          <input
-            value={blockList}
-            onChange={(e) => setBlockList(e.target.value)}
-            className="w-full mt-1 bg-muted/50 border border-border rounded-md px-3 py-2 text-sm text-foreground"
-            placeholder="spam.com"
-          />
-        </div>
+        {isLocked ? (
+          <LockedControl category="Domains">
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Erlaubte Domains</label>
+                <div className="mt-1">
+                  <ChipDomainInput domains={allowDomains} onChange={setAllowDomains} disabled />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Blockierte Domains</label>
+                <div className="mt-1">
+                  <ChipDomainInput domains={blockDomains} onChange={setBlockDomains} disabled />
+                </div>
+              </div>
+            </div>
+          </LockedControl>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Erlaubte Domains</label>
+              <div className="mt-1">
+                <ChipDomainInput domains={allowDomains} onChange={setAllowDomains} />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Blockierte Domains</label>
+              <div className="mt-1">
+                <ChipDomainInput domains={blockDomains} onChange={setBlockDomains} />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Business hours */}
@@ -161,26 +196,29 @@ export default function Einstellungen() {
         </div>
       </div>
 
-      {/* Plan & Limits (read only) */}
+      {/* Plan & Limits with progress bars */}
       <div className="glass-card p-6 space-y-4">
         <h2 className="text-base font-semibold">Plan & Limits</h2>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">Plan:</span>
-            <p className="font-medium mt-0.5">{plan.name}</p>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Inkl. Playbooks:</span>
-            <p className="font-medium mt-0.5">{plan.includedPlaybooks}</p>
-          </div>
-          <div>
-            <span className="text-muted-foreground">E-Mail-Limit:</span>
-            <p className="font-medium mt-0.5">{plan.emailLimit}</p>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Entwurf-Limit:</span>
-            <p className="font-medium mt-0.5">{plan.draftLimit}</p>
-          </div>
+        <div className="space-y-3">
+          {[
+            { label: "Mailboxen", used: USAGE.mailboxesUsed, limit: plan.mailboxLimit },
+            { label: "Playbooks", used: USAGE.activePlaybooks, limit: plan.includedPlaybooks },
+            { label: "Verarbeitete E-Mails", used: USAGE.processedEmails, limit: plan.processedEmails },
+            { label: "Entwurf-Credits", used: USAGE.draftCreditsUsed, limit: plan.draftCredits },
+          ].map((item) => {
+            const pct = Math.min(100, Math.round((item.used / item.limit) * 100));
+            return (
+              <div key={item.label} className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{item.label}</span>
+                  <span className="font-medium">
+                    {item.used >= 99999 ? "∞" : item.used} / {item.limit >= 99999 ? "∞" : item.limit}
+                  </span>
+                </div>
+                <Progress value={pct} className="h-2" />
+              </div>
+            );
+          })}
         </div>
         <button className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
           <ExternalLink className="w-3.5 h-3.5" /> Plan upgraden

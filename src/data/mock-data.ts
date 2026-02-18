@@ -45,11 +45,13 @@ export const MAILBOXES = [
 
 export const REJECTION_REASONS = [
   "Nicht relevant",
-  "Falscher Kontext",
-  "Zu riskant",
-  "Duplikat / bereits erledigt",
-  "Unklare Anfrage",
-  "Soll manuell beantwortet werden",
+  "Kein Handlungsbedarf",
+  "Spam / Werbung",
+  "Doppelt / bereits erledigt",
+  "Falscher Empfänger",
+  "Nicht freigabefähig (Compliance)",
+  "Unklar – Rückfrage nötig",
+  "Bitte manuell prüfen",
 ];
 
 export const PLAYBOOKS: PlaybookData[] = [

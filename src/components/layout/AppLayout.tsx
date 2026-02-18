@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { LayoutDashboard, ListChecks, History, BookOpen, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PlanLimitsBar } from "@/components/PlanLimitsBar";
 import logo from "@/assets/useeasy-logo.jpg";
 import { getCurrentPlan } from "@/data/plan";
 
@@ -64,11 +65,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto px-8 py-8">
-          {children}
-        </div>
-      </main>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <PlanLimitsBar />
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-6xl mx-auto px-8 py-8">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
