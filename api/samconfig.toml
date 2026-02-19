@@ -1,0 +1,13 @@
+# UseEasy API – SAM deployment config
+# Run: sam deploy --guided (first time) or sam deploy (subsequent)
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "useeasy-api"
+resolve_s3 = true
+s3_prefix = "useeasy-api"
+region = "eu-central-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "ApiKeyParam=\"CHANGE_ME_BEFORE_DEPLOY\" StageName=\"v1\""
