@@ -1,0 +1,158 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  UseEasy API Layer – Lambda + API Gateway (eu-central-1).
+  Endpoints: POST /ai/ask, GET /limits, POST /drafts/gmail, POST /drafts/outlook.
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 256
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        LOG_LEVEL: info
+        API_KEY: !Ref ApiKeyParam
+        BEDROCK_MODEL_ID: anthropic.claude-sonnet-4-20250514
+        AWS_LWA_INVOKE_MODE: response_stream
+
+Parameters:
+  ApiKeyParam:
+    Type: String
+    Description: Shared API key for X-Api-Key header authentication
+    NoEcho: true
+  StageName:
+    Type: String
+    Default: v1
+    AllowedValues: [v1, staging, dev]
+    Description: API Gateway stage name
+
+Resources:
+
+  # ─── API Gateway ───
+  UseEasyApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref StageName
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,X-Api-Key,X-Tenant-Id,X-User-Id,X-Plan'"
+        AllowOrigin: "'*'"
+      # Throttling
+      MethodSettings:
+        - HttpMethod: "*"
+          ResourcePath: "/*"
+          ThrottlingBurstLimit: 50
+          ThrottlingRateLimit: 100
+
+  # ─── POST /ai/ask ───
+  AskAiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: useeasy-ask-ai
+      Handler: ask-ai.handler
+      CodeUri: dist/
+      Description: AI email analysis via Bedrock Claude Sonnet
+      Timeout: 60
+      MemorySize: 512
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource:
+                - !Sub "arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-sonnet-4-20250514"
+      Events:
+        AskAi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UseEasyApi
+            Path: /ai/ask
+            Method: POST
+        AskAiOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UseEasyApi
+            Path: /ai/ask
+            Method: OPTIONS
+
+  # ─── GET /limits ───
+  LimitsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: useeasy-limits
+      Handler: limits.handler
+      CodeUri: dist/
+      Description: Plan entitlements & usage counters
+      Events:
+        Limits:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UseEasyApi
+            Path: /limits
+            Method: GET
+        LimitsOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UseEasyApi
+            Path: /limits
+            Method: OPTIONS
+
+  # ─── POST /drafts/gmail ───
+  DraftsGmailFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: useeasy-drafts-gmail
+      Handler: create-draft.handler
+      CodeUri: dist/
+      Description: Create Gmail draft (mock → live OAuth later)
+      Events:
+        DraftsGmail:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UseEasyApi
+            Path: /drafts/gmail
+            Method: POST
+        DraftsGmailOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UseEasyApi
+            Path: /drafts/gmail
+            Method: OPTIONS
+
+  # ─── POST /drafts/outlook ───
+  DraftsOutlookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: useeasy-drafts-outlook
+      Handler: create-draft.handler
+      CodeUri: dist/
+      Description: Create Outlook draft (mock → live Graph API later)
+      Events:
+        DraftsOutlook:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UseEasyApi
+            Path: /drafts/outlook
+            Method: POST
+        DraftsOutlookOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UseEasyApi
+            Path: /drafts/outlook
+            Method: OPTIONS
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway base URL
+    Value: !Sub "https://${UseEasyApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}"
+  AskAiFunctionArn:
+    Value: !GetAtt AskAiFunction.Arn
+  LimitsFunctionArn:
+    Value: !GetAtt LimitsFunction.Arn
+  DraftsGmailFunctionArn:
+    Value: !GetAtt DraftsGmailFunction.Arn
+  DraftsOutlookFunctionArn:
+    Value: !GetAtt DraftsOutlookFunction.Arn
