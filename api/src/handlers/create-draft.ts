@@ -112,25 +112,92 @@ async function createGmailDraft(req: CreateDraftRequest): Promise<CreateDraftRes
   };
 }
 
-// ─── Outlook Draft (mock → live later) ───
+// ─── Outlook Draft (LIVE via Microsoft Graph) ───
 
 async function createOutlookDraft(req: CreateDraftRequest): Promise<CreateDraftResponse> {
-  // TODO: Replace with real Microsoft Graph call:
-  // POST https://graph.microsoft.com/v1.0/me/messages
-  // Headers: Authorization: Bearer <req.accessToken>
-  // Body: { subject, body: { contentType: "HTML", content }, toRecipients, isDraft: true }
+  // If no access token, fall back to mock
+  if (!req.accessToken) {
+    logger.warn("No access token provided, returning mock Outlook draft");
+    return {
+      draftId: `outlook-mock-${Date.now()}`,
+      provider: "outlook",
+      status: "created",
+      message: "Mock draft (no accessToken). Verbinde Microsoft OAuth für echte Entwürfe.",
+    };
+  }
 
-  logger.info("Creating Outlook draft (mock)", {
+  logger.info("Creating Outlook draft (live)", {
     to: req.to,
     subject: req.subject,
     hasInReplyTo: !!req.inReplyTo,
   });
 
+  // Microsoft Graph: POST /me/messages creates a draft (isDraft defaults to true)
+  const graphBody: Record<string, unknown> = {
+    subject: req.subject,
+    body: {
+      contentType: "Text",
+      content: req.body,
+    },
+    toRecipients: [
+      {
+        emailAddress: {
+          address: req.to,
+        },
+      },
+    ],
+  };
+
+  // If replying, set conversationId
+  if (req.inReplyTo) {
+    graphBody.conversationId = req.inReplyTo;
+  }
+
+  const response = await fetch("https://graph.microsoft.com/v1.0/me/messages", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${req.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(graphBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    logger.error("Microsoft Graph API error", {
+      status: response.status,
+      body: errorText.slice(0, 500),
+    });
+
+    if (response.status === 401) {
+      return {
+        draftId: "",
+        provider: "outlook",
+        status: "error",
+        message: "Microsoft OAuth Token abgelaufen. Bitte neu anmelden.",
+      };
+    }
+
+    return {
+      draftId: "",
+      provider: "outlook",
+      status: "error",
+      message: `Graph API Fehler: ${response.status}`,
+    };
+  }
+
+  const data = await response.json() as { id: string; conversationId?: string };
+
+  logger.info("Outlook draft created successfully", {
+    draftId: data.id,
+    conversationId: data.conversationId,
+  });
+
   return {
-    draftId: `outlook-draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    draftId: data.id,
     provider: "outlook",
     status: "created",
-    message: "Mock draft created. Live Outlook/Graph API integration pending.",
+    message: "Entwurf in Outlook gespeichert.",
   };
 }
 
