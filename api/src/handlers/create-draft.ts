@@ -11,25 +11,104 @@ import { created, badRequest, cors, serverError } from "../lib/response.js";
 import { logger, setContext } from "../lib/logger.js";
 import type { CreateDraftRequest, CreateDraftResponse } from "../types/index.js";
 
-// ─── Gmail Draft (mock → live later) ───
+// ─── RFC 2822 Message Builder ───
+
+function buildRfc2822Message(to: string, subject: string, body: string, inReplyTo?: string): string {
+  const lines: string[] = [
+    `To: ${to}`,
+    `Subject: =?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`,
+    `Content-Type: text/plain; charset="UTF-8"`,
+    `Content-Transfer-Encoding: base64`,
+    `MIME-Version: 1.0`,
+  ];
+  if (inReplyTo) {
+    lines.push(`In-Reply-To: ${inReplyTo}`);
+    lines.push(`References: ${inReplyTo}`);
+  }
+  lines.push(""); // blank line separating headers from body
+  lines.push(Buffer.from(body).toString("base64"));
+  return lines.join("\r\n");
+}
+
+function toUrlSafeBase64(raw: string): string {
+  return Buffer.from(raw)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+// ─── Gmail Draft (LIVE via Google API) ───
 
 async function createGmailDraft(req: CreateDraftRequest): Promise<CreateDraftResponse> {
-  // TODO: Replace with real Gmail API call:
-  // POST https://gmail.googleapis.com/gmail/v1/users/me/drafts
-  // Headers: Authorization: Bearer <req.accessToken>
-  // Body: { message: { raw: base64(RFC 2822 message) } }
+  // If no access token, fall back to mock
+  if (!req.accessToken) {
+    logger.warn("No access token provided, returning mock draft");
+    return {
+      draftId: `gmail-mock-${Date.now()}`,
+      provider: "gmail",
+      status: "created",
+      message: "Mock draft (no accessToken). Verbinde Google OAuth für echte Entwürfe.",
+    };
+  }
 
-  logger.info("Creating Gmail draft (mock)", {
+  logger.info("Creating Gmail draft (live)", {
     to: req.to,
     subject: req.subject,
     hasInReplyTo: !!req.inReplyTo,
   });
 
+  const rawMessage = buildRfc2822Message(req.to, req.subject, req.body, req.inReplyTo);
+  const encodedMessage = toUrlSafeBase64(rawMessage);
+
+  const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/drafts", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${req.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message: { raw: encodedMessage },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    logger.error("Gmail API error", {
+      status: response.status,
+      body: errorText.slice(0, 500),
+    });
+
+    // 401 = token expired/revoked
+    if (response.status === 401) {
+      return {
+        draftId: "",
+        provider: "gmail",
+        status: "error",
+        message: "Google OAuth Token abgelaufen. Bitte neu anmelden.",
+      };
+    }
+
+    return {
+      draftId: "",
+      provider: "gmail",
+      status: "error",
+      message: `Gmail API Fehler: ${response.status}`,
+    };
+  }
+
+  const data = await response.json() as { id: string; message?: { id: string } };
+
+  logger.info("Gmail draft created successfully", {
+    draftId: data.id,
+    messageId: data.message?.id,
+  });
+
   return {
-    draftId: `gmail-draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    draftId: data.id,
     provider: "gmail",
     status: "created",
-    message: "Mock draft created. Live Gmail API integration pending.",
+    message: "Entwurf in Gmail gespeichert.",
   };
 }
 
