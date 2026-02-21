@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchMe, fetchStats, fetchRecentEmails, fetchAuditLog } from "@/lib/api-client";
+import { fetchMe, fetchStats, fetchRecentEmails, fetchAuditLog, fetchPlaybooks } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useMe() {
@@ -38,5 +38,15 @@ export function useAuditLog() {
     queryKey: ["audit-log"],
     queryFn: fetchAuditLog,
     enabled: !!session,
+  });
+}
+
+export function usePlaybooks() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["playbooks"],
+    queryFn: fetchPlaybooks,
+    enabled: !!session,
+    staleTime: 5 * 60 * 1000,
   });
 }

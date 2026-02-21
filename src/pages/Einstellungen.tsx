@@ -26,6 +26,7 @@ export default function Einstellungen() {
   const { data: me, isLoading } = useMe();
 
   const tenant = me?.tenant;
+  const plan = me?.plan;
   const isActive = tenant && tenant.status !== "not_onboarded";
 
   const userEmail = user?.email ?? "";
@@ -56,7 +57,7 @@ export default function Einstellungen() {
 
   const mailboxList = Object.keys(mailboxStates);
   const activeMailboxes = Object.values(mailboxStates).filter(Boolean).length;
-  const mailboxLimit = isActive ? (tenant.mailbox_limit ?? 0) : 0;
+  const mailboxLimit = plan?.mailbox_limit ?? 0;
 
   const toggleMailbox = (mb: string) => {
     const isOn = mailboxStates[mb];
@@ -74,10 +75,7 @@ export default function Einstellungen() {
   );
 
   const limitItems = [
-    { label: "Mailboxen", used: isActive ? (tenant.mailboxes_used ?? 0) : 0, limit: isActive ? (tenant.mailbox_limit ?? 0) : 0 },
-    { label: "Playbooks", used: isActive ? (tenant.playbooks_used ?? 0) : 0, limit: isActive ? (tenant.playbook_limit ?? 0) : 0 },
-    { label: "Verarbeitete E-Mails", used: isActive ? (tenant.emails_used ?? 0) : 0, limit: isActive ? (tenant.email_limit ?? 0) : 0 },
-    { label: "Entwurf-Credits", used: isActive ? (tenant.drafts_used ?? 0) : 0, limit: isActive ? (tenant.draft_limit ?? 0) : 0 },
+    { label: "Mailboxen", used: plan?.active_mailboxes ?? 0, limit: plan?.mailbox_limit ?? 0 },
   ];
 
   return (

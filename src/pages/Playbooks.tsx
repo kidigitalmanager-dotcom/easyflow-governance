@@ -1,11 +1,6 @@
-import { useState } from "react";
-import { PLAYBOOKS } from "@/data/mock-data";
-import { PLAYBOOK_SWITCH_WARNING, PLAYBOOKS_PAGE, BUTTONS } from "@/data/strings.de";
-import { useMe } from "@/hooks/use-api";
-import { PriorityBadge } from "@/components/PriorityBadge";
-import { Lock, Check, ArrowRightLeft, ExternalLink } from "lucide-react";
+import { useMe, usePlaybooks } from "@/hooks/use-api";
+import { Check, Lock, ExternalLink, BookOpen } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
 import {
   Tooltip,
   TooltipContent,
@@ -13,73 +8,30 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-type PlaybookStatus = "aktiv" | "verfügbar" | "gesperrt";
+const PACK_LABELS: Record<string, string> = {
+  ecom_core: "E-Commerce Pack",
+  b2b_sales: "B2B Sales Pack",
+  logistics: "Logistics Pack",
+  hotel: "Hotel Pack",
+  education: "Education Pack",
+  real_estate: "Real Estate Pack",
+};
 
 export default function Playbooks() {
-  const { data: me, isLoading } = useMe();
+  const { data: me, isLoading: meLoading } = useMe();
+  const { data: pbData, isLoading: pbLoading } = usePlaybooks();
+
   const tenant = me?.tenant;
+  const plan = me?.plan;
   const isActive = tenant && tenant.status !== "not_onboarded";
-  const playbookLimit = isActive ? (tenant.playbook_limit ?? 0) : 0;
-  const playbooksUsed = isActive ? (tenant.playbooks_used ?? 0) : 0;
+  const hasNoPlan = !isActive || !plan;
 
-  // Derive mailboxes from tenant or empty
-  const mailboxes: string[] = []; // No mock mailboxes; will come from API when available
-  const [selectedMailbox, setSelectedMailbox] = useState<string | null>(null);
-  const [assignments, setAssignments] = useState<Record<string, string | null>>({});
-  const [switchModal, setSwitchModal] = useState<{ playbookId: string } | null>(null);
+  const isLoading = meLoading || pbLoading;
 
-  const activePlaybookIds = new Set(Object.values(assignments).filter(Boolean));
-  const activeCount = activePlaybookIds.size;
-
-  const hasNoPlan = !isActive || playbookLimit === 0;
-
-  const getStatus = (playbookId: string): PlaybookStatus => {
-    if (!selectedMailbox) return hasNoPlan ? "gesperrt" : "verfügbar";
-    if (assignments[selectedMailbox] === playbookId) return "aktiv";
-    const wouldBeNew = !activePlaybookIds.has(playbookId);
-    if (wouldBeNew && activeCount >= playbookLimit) return "gesperrt";
-    return "verfügbar";
-  };
-
-  const handleSwitch = (playbookId: string) => {
-    const status = getStatus(playbookId);
-    if (status === "gesperrt" || status === "aktiv") return;
-    setSwitchModal({ playbookId });
-  };
-
-  const confirmSwitch = () => {
-    if (!switchModal || !selectedMailbox) return;
-    const prevPlaybook = assignments[selectedMailbox];
-    const newPlaybook = switchModal.playbookId;
-    const pbData = PLAYBOOKS.find(p => p.id === newPlaybook);
-
-    setAssignments(prev => ({ ...prev, [selectedMailbox]: newPlaybook }));
-    setSwitchModal(null);
-
-    console.info("[Audit]", {
-      action: "playbook_switch",
-      mailbox: selectedMailbox,
-      from: prevPlaybook,
-      to: newPlaybook,
-      version: pbData?.version,
-      actor: me?.user?.email ?? "unknown",
-      timestamp: new Date().toISOString(),
-    });
-    toast.success("Playbook gewechselt", {
-      description: `${pbData?.name} ${pbData?.version} für ${selectedMailbox}`,
-    });
-  };
-
-  const statusBadge = (status: PlaybookStatus) => {
-    switch (status) {
-      case "aktiv":
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/15 text-primary border border-primary/30"><Check className="w-3 h-3" /> {PLAYBOOKS_PAGE.statusLabels.aktiv}</span>;
-      case "verfügbar":
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-muted/50 text-muted-foreground border border-border">{PLAYBOOKS_PAGE.statusLabels.verfügbar}</span>;
-      case "gesperrt":
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20"><Lock className="w-3 h-3" /> {PLAYBOOKS_PAGE.statusLabels.gesperrt}</span>;
-    }
-  };
+  const packLabel = pbData?.pack_key ? (PACK_LABELS[pbData.pack_key] ?? pbData.pack_key) : null;
+  const playbooks = pbData?.playbooks ?? [];
+  const totalRules = pbData?.total_rules ?? 0;
+  const activeRules = pbData?.active_rules ?? 0;
 
   if (isLoading) {
     return (
@@ -87,7 +39,7 @@ export default function Playbooks() {
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-48 w-full" />)}
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-48 w-full" />)}
         </div>
       </div>
     );
@@ -97,77 +49,91 @@ export default function Playbooks() {
     <TooltipProvider>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{PLAYBOOKS_PAGE.title}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {hasNoPlan
-              ? "Noch keine Playbooks aktiviert."
-              : PLAYBOOKS_PAGE.subtitle(playbooksUsed, playbookLimit)}
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">Playbooks</h1>
+          {playbooks.length > 0 ? (
+            <div className="flex items-center gap-3 mt-1">
+              {packLabel && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/15 text-primary border border-primary/30">
+                  <BookOpen className="w-3 h-3" /> {packLabel}
+                </span>
+              )}
+              <p className="text-sm text-muted-foreground">
+                {activeRules} aktive Regeln in {playbooks.length} Playbooks
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-1">
+              {hasNoPlan ? "Noch keine Playbooks aktiviert." : "Kein Playbook-Pack konfiguriert."}
+            </p>
+          )}
         </div>
 
-        {hasNoPlan && (
+        {/* Empty / no-plan state */}
+        {(hasNoPlan || playbooks.length === 0) && (
           <div className="glass-card p-8 flex flex-col items-center gap-4 text-center">
             <Lock className="w-10 h-10 text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground">Aktiviere einen Plan, um Playbooks zu nutzen und Mailboxen zuzuweisen.</p>
-            <a
-              href="https://useeasy.ai/pricing"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <ExternalLink className="w-3.5 h-3.5" /> Plan aktivieren
-            </a>
+            <p className="text-sm text-muted-foreground">
+              {hasNoPlan
+                ? "Aktiviere einen Plan, um Playbooks zu nutzen."
+                : "Kein Playbook-Pack konfiguriert. Kontaktiere deinen Admin."}
+            </p>
+            {hasNoPlan && (
+              <a
+                href="https://useeasy.ai/pricing"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Plan aktivieren
+              </a>
+            )}
           </div>
         )}
 
-        {/* Mailbox selector — only if plan is active and mailboxes exist */}
-        {!hasNoPlan && mailboxes.length > 0 && (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">Mailbox:</span>
-            <div className="flex gap-2">
-              {mailboxes.map((mb) => (
-                <button
-                  key={mb}
-                  onClick={() => setSelectedMailbox(mb)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    selectedMailbox === mb
-                      ? "bg-primary/15 text-primary border border-primary/30"
-                      : "text-muted-foreground border border-border hover:bg-muted/30"
-                  }`}
-                >
-                  {mb}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Playbook grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {PLAYBOOKS.map((pb) => {
-            const status = hasNoPlan ? "verfügbar" as PlaybookStatus : getStatus(pb.id);
-            return (
+        {/* Playbook cards from API */}
+        {playbooks.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {playbooks.map((pb) => (
               <div
-                key={pb.id}
+                key={pb.name}
                 className={`glass-card p-5 transition-all duration-200 ${
-                  status === "gesperrt" ? "opacity-50" : ""
-                } ${status === "aktiv" ? "border-primary/30" : ""}`}
+                  pb.active ? "border-primary/30" : ""
+                }`}
               >
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-base font-semibold">{pb.name}</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted/50 border border-border">{pb.version}</span>
-                    {statusBadge(hasNoPlan ? "verfügbar" : status)}
-                  </div>
+                  {pb.active ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/15 text-primary border border-primary/30">
+                      <Check className="w-3 h-3" /> Aktiv
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-muted/50 text-muted-foreground border border-border">
+                      Inaktiv
+                    </span>
+                  )}
                 </div>
 
-                <ul className="space-y-1 mb-3">
-                  {pb.useCases.map((uc, i) => (
-                    <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                      <span className="text-primary mt-0.5">·</span> {uc}
+                <p className="text-sm text-muted-foreground mb-3">
+                  {pb.rules_active} / {pb.rules_total} Regeln aktiv
+                </p>
+
+                {/* Rules list */}
+                <ul className="space-y-1 mb-4">
+                  {pb.rules.slice(0, 4).map((rule) => (
+                    <li key={rule.name} className="text-xs text-muted-foreground flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${rule.active ? "bg-primary" : "bg-muted-foreground/30"}`} />
+                        {rule.name}
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/50 border border-border">
+                        {rule.priority}
+                      </span>
                     </li>
                   ))}
+                  {pb.rules.length > 4 && (
+                    <li className="text-xs text-muted-foreground/60">
+                      +{pb.rules.length - 4} weitere Regeln
+                    </li>
+                  )}
                 </ul>
-
-                <p className="text-xs text-muted-foreground mb-4">{pb.priorityExplainer}</p>
 
                 {hasNoPlan ? (
                   <Tooltip>
@@ -176,60 +142,18 @@ export default function Playbooks() {
                         disabled
                         className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium border border-border text-muted-foreground opacity-50 cursor-not-allowed"
                       >
-                        <ArrowRightLeft className="w-3.5 h-3.5" /> {BUTTONS.activate}
+                        Aktivieren
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>Plan erforderlich</TooltipContent>
                   </Tooltip>
-                ) : status === "gesperrt" ? (
-                  <a
-                    href="https://useeasy.ai/pricing"
-                    className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" /> {PLAYBOOKS_PAGE.upgradeCta}
-                  </a>
-                ) : status === "verfügbar" ? (
-                  <button
-                    onClick={() => handleSwitch(pb.id)}
-                    className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                  >
-                    <ArrowRightLeft className="w-3.5 h-3.5" /> {BUTTONS.activate}
-                  </button>
                 ) : (
-                  <div className="text-center text-xs text-primary font-medium py-2">
-                    {selectedMailbox ? PLAYBOOKS_PAGE.activeFor(selectedMailbox) : "Aktiv"}
+                  <div className="text-center text-xs text-muted-foreground font-medium py-2">
+                    {pb.active ? "Aktiv" : "Deaktiviert"}
                   </div>
                 )}
               </div>
-            );
-          })}
-        </div>
-
-        {/* Switch Modal */}
-        {switchModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <div className="glass-card p-6 max-w-md w-full mx-4 space-y-4">
-              <h2 className="text-lg font-semibold">{PLAYBOOK_SWITCH_WARNING.title}</h2>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                {PLAYBOOK_SWITCH_WARNING.body.map((line, i) => (
-                  <p key={i}>{line}</p>
-                ))}
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setSwitchModal(null)}
-                  className="flex-1 px-4 py-2 rounded-md text-sm font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
-                >
-                  {PLAYBOOK_SWITCH_WARNING.cancel}
-                </button>
-                <button
-                  onClick={confirmSwitch}
-                  className="flex-1 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                >
-                  {PLAYBOOK_SWITCH_WARNING.confirm}
-                </button>
-              </div>
-            </div>
+            ))}
           </div>
         )}
       </div>

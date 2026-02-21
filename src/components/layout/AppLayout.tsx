@@ -21,8 +21,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const tenant = me?.tenant;
   const isActive = tenant && tenant.status !== "not_onboarded";
-  const planName = isActive ? (tenant.plan ?? "Team") : "–";
-  const tenantLabel = isActive ? (tenant.name ?? tenant.tenant_id ?? "Setup ausstehend") : "Setup ausstehend";
+  const planName = me?.plan?.name ?? (isActive ? "Team" : "–");
+  const tenantLabel = isActive
+    ? (tenant.status === "active" ? (tenant.tenant_name ?? tenant.tenant_id ?? "Setup abgeschlossen") : (tenant.tenant_name ?? tenant.tenant_id ?? "Setup ausstehend"))
+    : "Setup ausstehend";
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
