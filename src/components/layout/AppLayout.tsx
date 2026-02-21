@@ -1,9 +1,10 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, ListChecks, History, BookOpen, Settings } from "lucide-react";
+import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlanLimitsBar } from "@/components/PlanLimitsBar";
 import logo from "@/assets/useeasy-logo.jpg";
 import { getCurrentPlan } from "@/data/plan";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { to: "/", label: "Übersicht", icon: LayoutDashboard },
@@ -16,6 +17,7 @@ const navItems = [
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const plan = getCurrentPlan();
+  const { user, signOut } = useAuth();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -57,7 +59,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Footer */}
-        <div className="px-4 py-4 border-t border-sidebar-border">
+        <div className="px-4 py-4 border-t border-sidebar-border space-y-3">
+          {user && (
+            <button
+              onClick={signOut}
+              className="flex items-center gap-2 w-full px-4 py-2 rounded-md text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Abmelden
+            </button>
+          )}
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             UseEasy erstellt nur Entwürfe.<br />Senden erfolgt immer durch dich.
           </p>
