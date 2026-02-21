@@ -3,7 +3,7 @@ import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut } from
 import { cn } from "@/lib/utils";
 import { PlanLimitsBar } from "@/components/PlanLimitsBar";
 import logo from "@/assets/useeasy-logo.jpg";
-import { getCurrentPlan } from "@/data/plan";
+import { useMe } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
@@ -16,8 +16,10 @@ const navItems = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const plan = getCurrentPlan();
   const { user, signOut } = useAuth();
+  const { data: me } = useMe();
+
+  const planName = me?.plan ?? "Team";
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -31,10 +33,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               Use<span className="text-primary">Easy</span>
             </span>
             <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/20">
-              {plan.name}
+              {planName}
             </span>
           </div>
         </div>
+
+        {/* Tenant info */}
+        {me?.tenant_name && (
+          <div className="px-6 py-3 border-b border-sidebar-border">
+            <p className="text-xs text-muted-foreground truncate">{me.tenant_name}</p>
+          </div>
+        )}
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1">
