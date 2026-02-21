@@ -63,6 +63,11 @@ export interface UserInfo {
   };
   tenant?: TenantInfo;
   plan?: PlanInfo;
+  playbooks?: {
+    pack_key?: string;
+    active_rules_count?: number;
+    rules?: Array<Record<string, unknown>>;
+  };
   [key: string]: unknown;
 }
 
@@ -137,3 +142,16 @@ export const fetchStats = () => apiFetch<DashboardStats>("/stats");
 export const fetchRecentEmails = () => apiFetch<RecentEmail[]>("/emails/recent");
 export const fetchAuditLog = () => apiFetch<AuditLogEntry[]>("/audit");
 export const fetchPlaybooks = () => apiFetch<PlaybooksResponse>("/playbooks");
+
+export async function createStripePortalSession(): Promise<{ url: string }> {
+  const token = await getToken();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+
+  const res = await fetch("https://api.useeasy.ai/v1/stripe/create-portal-session", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) throw new ApiError(res.status, `Stripe Portal Fehler ${res.status}`);
+  return res.json();
+}
