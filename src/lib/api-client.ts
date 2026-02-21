@@ -37,12 +37,34 @@ async function apiFetch<T>(path: string): Promise<T> {
 
 // ── Types ──────────────────────────────────────────────
 
-export interface UserInfo {
-  email: string;
+export interface TenantInfo {
   tenant_id: string;
-  tenant_name: string;
-  plan: string;
-  role: string;
+  status: string;
+  mailbox_profile?: string;
+  gmail_enabled?: boolean;
+  outlook_enabled?: boolean;
+  name?: string;
+  plan?: string;
+  mailbox_limit?: number;
+  playbook_limit?: number;
+  email_limit?: number;
+  draft_limit?: number;
+  mailboxes_used?: number;
+  playbooks_used?: number;
+  emails_used?: number;
+  drafts_used?: number;
+  [key: string]: unknown;
+}
+
+export interface UserInfo {
+  user: {
+    email: string;
+    domain?: string;
+    tenant_id?: string;
+    role?: string;
+    [key: string]: unknown;
+  };
+  tenant?: TenantInfo;
   [key: string]: unknown;
 }
 

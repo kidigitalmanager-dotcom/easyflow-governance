@@ -1,40 +1,66 @@
-import { useState } from "react";
-import { MAILBOXES } from "@/data/mock-data";
-import { getCurrentPlan, USAGE } from "@/data/plan";
-import { ExternalLink, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useMe } from "@/hooks/use-api";
+import { useAuth } from "@/contexts/AuthContext";
+import { ExternalLink, AlertTriangle, Mail } from "lucide-react";
 import { ChipDomainInput } from "@/components/ChipDomainInput";
-import { LockedControl } from "@/components/LockedControl";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [state, setState] = useState<T>(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  });
+  useEffect(() => {
+    localStorage.setItem(key, JSON.stringify(state));
+  }, [key, state]);
+  return [state, setState];
+}
 
 export default function Einstellungen() {
-  const plan = getCurrentPlan();
-  const isLocked = plan.id === "starter" || plan.id === "team";
+  const { user } = useAuth();
+  const { data: me, isLoading } = useMe();
 
-  const [mailboxStates, setMailboxStates] = useState<Record<string, boolean>>({
-    "support@firma.de": true,
-    "sales@firma.de": true,
-    "info@firma.de": false,
-  });
+  const tenant = me?.tenant;
+  const isActive = tenant && tenant.status !== "not_onboarded";
 
-  const [approvalRules, setApprovalRules] = useState({
-    legalDsgvo: true,
-    bankdaten: true,
-    mahnung: false,
-    externeEmpfaenger: true,
-    anhaenge: false,
-    betragThreshold: "500",
-  });
+  const userEmail = user?.email ?? "";
+  const userId = user?.id ?? "anon";
 
-  const [allowDomains, setAllowDomains] = useState(["firma.de", "partner.de"]);
-  const [blockDomains, setBlockDomains] = useState(["spam.com"]);
-  const [businessHours, setBusinessHours] = useState({ start: "08:00", end: "18:00" });
-  const [slaTarget, setSlaTarget] = useState("95");
+  // Mailbox state: keyed per user, defaults to empty
+  const [mailboxStates, setMailboxStates] = useLocalState<Record<string, boolean>>(
+    `ue_mailboxes_${userId}`,
+    {}
+  );
 
+  const [approvalRules, setApprovalRules] = useLocalState(
+    `ue_approval_${userId}`,
+    {
+      legalDsgvo: false,
+      bankdaten: false,
+      mahnung: false,
+      externeEmpfaenger: false,
+      anhaenge: false,
+      betragThreshold: "500",
+    }
+  );
+
+  const [allowDomains, setAllowDomains] = useLocalState<string[]>(`ue_allow_domains_${userId}`, []);
+  const [blockDomains, setBlockDomains] = useLocalState<string[]>(`ue_block_domains_${userId}`, []);
+  const [businessHours, setBusinessHours] = useLocalState(`ue_hours_${userId}`, { start: "08:00", end: "18:00" });
+  const [slaTarget, setSlaTarget] = useLocalState(`ue_sla_${userId}`, "95");
+
+  const mailboxList = Object.keys(mailboxStates);
   const activeMailboxes = Object.values(mailboxStates).filter(Boolean).length;
+  const mailboxLimit = isActive ? (tenant.mailbox_limit ?? 0) : 0;
 
   const toggleMailbox = (mb: string) => {
-    const isActive = mailboxStates[mb];
-    if (!isActive && activeMailboxes >= plan.mailboxLimit) return;
+    const isOn = mailboxStates[mb];
+    if (!isOn && mailboxLimit > 0 && activeMailboxes >= mailboxLimit) return;
     setMailboxStates(prev => ({ ...prev, [mb]: !prev[mb] }));
   };
 
@@ -46,6 +72,13 @@ export default function Einstellungen() {
       <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-foreground transition-transform ${checked ? "translate-x-5" : ""}`} />
     </button>
   );
+
+  const limitItems = [
+    { label: "Mailboxen", used: isActive ? (tenant.mailboxes_used ?? 0) : 0, limit: isActive ? (tenant.mailbox_limit ?? 0) : 0 },
+    { label: "Playbooks", used: isActive ? (tenant.playbooks_used ?? 0) : 0, limit: isActive ? (tenant.playbook_limit ?? 0) : 0 },
+    { label: "Verarbeitete E-Mails", used: isActive ? (tenant.emails_used ?? 0) : 0, limit: isActive ? (tenant.email_limit ?? 0) : 0 },
+    { label: "Entwurf-Credits", used: isActive ? (tenant.drafts_used ?? 0) : 0, limit: isActive ? (tenant.draft_limit ?? 0) : 0 },
+  ];
 
   return (
     <div className="space-y-8 max-w-3xl">
@@ -59,24 +92,44 @@ export default function Einstellungen() {
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">UseEasy pro Mailbox</h2>
           <span className="text-xs text-muted-foreground">
-            {activeMailboxes} / {plan.mailboxLimit} genutzt
+            {activeMailboxes} / {mailboxLimit} genutzt
           </span>
         </div>
-        {activeMailboxes >= plan.mailboxLimit && (
+        {mailboxLimit > 0 && activeMailboxes >= mailboxLimit && (
           <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-md px-3 py-2">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             Mailbox-Limit erreicht. Plan upgraden für mehr Mailboxen.
           </div>
         )}
-        {MAILBOXES.map((mb) => (
-          <div key={mb} className="flex items-center justify-between py-2">
-            <div>
-              <p className="text-sm font-medium">{mb}</p>
-              <p className="text-xs text-muted-foreground">{mailboxStates[mb] ? "Aktiv" : "Inaktiv"}</p>
-            </div>
-            <Toggle checked={mailboxStates[mb] || false} onChange={() => toggleMailbox(mb)} />
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2].map(i => <Skeleton key={i} className="h-12 w-full" />)}
           </div>
-        ))}
+        ) : mailboxList.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <Mail className="w-8 h-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">Noch keine Mailbox verbunden</p>
+            {userEmail && (
+              <p className="text-xs text-muted-foreground/70">Angemeldet als {userEmail}</p>
+            )}
+            <button
+              onClick={() => setMailboxStates(prev => ({ ...prev, [userEmail]: false }))}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Mailbox verbinden
+            </button>
+          </div>
+        ) : (
+          mailboxList.map((mb) => (
+            <div key={mb} className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium">{mb}</p>
+                <p className="text-xs text-muted-foreground">{mailboxStates[mb] ? "Aktiv" : "Inaktiv"}</p>
+              </div>
+              <Toggle checked={mailboxStates[mb] || false} onChange={() => toggleMailbox(mb)} />
+            </div>
+          ))
+        )}
       </div>
 
       {/* Approval Rules */}
@@ -124,39 +177,20 @@ export default function Einstellungen() {
       {/* Domain Lists */}
       <div className="glass-card p-6 space-y-4">
         <h2 className="text-base font-semibold">Domain-Listen</h2>
-        {isLocked ? (
-          <LockedControl category="Domains">
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Erlaubte Domains</label>
-                <div className="mt-1">
-                  <ChipDomainInput domains={allowDomains} onChange={setAllowDomains} disabled />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Blockierte Domains</label>
-                <div className="mt-1">
-                  <ChipDomainInput domains={blockDomains} onChange={setBlockDomains} disabled />
-                </div>
-              </div>
-            </div>
-          </LockedControl>
-        ) : (
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Erlaubte Domains</label>
-              <div className="mt-1">
-                <ChipDomainInput domains={allowDomains} onChange={setAllowDomains} />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Blockierte Domains</label>
-              <div className="mt-1">
-                <ChipDomainInput domains={blockDomains} onChange={setBlockDomains} />
-              </div>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Erlaubte Domains</label>
+            <div className="mt-1">
+              <ChipDomainInput domains={allowDomains} onChange={setAllowDomains} />
             </div>
           </div>
-        )}
+          <div>
+            <label className="text-sm font-medium">Blockierte Domains</label>
+            <div className="mt-1">
+              <ChipDomainInput domains={blockDomains} onChange={setBlockDomains} />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Business hours */}
@@ -196,33 +230,37 @@ export default function Einstellungen() {
         </div>
       </div>
 
-      {/* Plan & Limits with progress bars */}
+      {/* Plan & Limits */}
       <div className="glass-card p-6 space-y-4">
         <h2 className="text-base font-semibold">Plan & Limits</h2>
-        <div className="space-y-3">
-          {[
-            { label: "Mailboxen", used: USAGE.mailboxesUsed, limit: plan.mailboxLimit },
-            { label: "Playbooks", used: USAGE.activePlaybooks, limit: plan.includedPlaybooks },
-            { label: "Verarbeitete E-Mails", used: USAGE.processedEmails, limit: plan.processedEmails },
-            { label: "Entwurf-Credits", used: USAGE.draftCreditsUsed, limit: plan.draftCredits },
-          ].map((item) => {
-            const pct = Math.min(100, Math.round((item.used / item.limit) * 100));
-            return (
-              <div key={item.label} className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{item.label}</span>
-                  <span className="font-medium">
-                    {item.used >= 99999 ? "∞" : item.used} / {item.limit >= 99999 ? "∞" : item.limit}
-                  </span>
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-8 w-full" />)}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {limitItems.map((item) => {
+              const pct = item.limit > 0 ? Math.min(100, Math.round((item.used / item.limit) * 100)) : 0;
+              return (
+                <div key={item.label} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{item.label}</span>
+                    <span className="font-medium">
+                      {item.used >= 99999 ? "∞" : item.used} / {item.limit >= 99999 ? "∞" : (item.limit || 0)}
+                    </span>
+                  </div>
+                  <Progress value={pct} className="h-2" />
                 </div>
-                <Progress value={pct} className="h-2" />
-              </div>
-            );
-          })}
-        </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-          <ExternalLink className="w-3.5 h-3.5" /> Plan upgraden
-        </button>
+              );
+            })}
+          </div>
+        )}
+        <a
+          href={isActive ? "#" : "/checkout/onboarding"}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          <ExternalLink className="w-3.5 h-3.5" /> {isActive ? "Plan upgraden" : "Plan aktivieren"}
+        </a>
       </div>
     </div>
   );
