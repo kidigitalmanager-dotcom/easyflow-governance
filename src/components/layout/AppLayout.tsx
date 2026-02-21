@@ -19,7 +19,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useAuth();
   const { data: me } = useMe();
 
-  const planName = me?.plan ?? "Team";
+  const tenant = me?.tenant;
+  const isActive = tenant && tenant.status !== "not_onboarded";
+  const planName = isActive ? (tenant.plan ?? "Team") : "–";
+  const tenantLabel = isActive ? (tenant.name ?? tenant.tenant_id ?? "Setup ausstehend") : "Setup ausstehend";
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -39,9 +42,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Tenant info */}
-        {me?.tenant_name && (
+        {(
           <div className="px-6 py-3 border-b border-sidebar-border">
-            <p className="text-xs text-muted-foreground truncate">{me.tenant_name}</p>
+            <p className="text-xs text-muted-foreground truncate">{tenantLabel}</p>
+            {user?.email && <p className="text-[10px] text-muted-foreground/60 truncate">{user.email}</p>}
           </div>
         )}
 
