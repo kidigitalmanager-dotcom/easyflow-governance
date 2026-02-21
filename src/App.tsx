@@ -4,6 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Login from "./pages/Login";
 import Uebersicht from "./pages/Uebersicht";
 import ReviewQueue from "./pages/ReviewQueue";
 import AuditTrail from "./pages/AuditTrail";
@@ -19,16 +22,28 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppLayout>
+        <AuthProvider>
           <Routes>
-            <Route path="/" element={<Uebersicht />} />
-            <Route path="/review" element={<ReviewQueue />} />
-            <Route path="/audit" element={<AuditTrail />} />
-            <Route path="/playbooks" element={<Playbooks />} />
-            <Route path="/einstellungen" element={<Einstellungen />} />
-            <Route path="*" element={<NotFound />} />
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Routes>
+                      <Route path="/" element={<Uebersicht />} />
+                      <Route path="/review" element={<ReviewQueue />} />
+                      <Route path="/audit" element={<AuditTrail />} />
+                      <Route path="/playbooks" element={<Playbooks />} />
+                      <Route path="/einstellungen" element={<Einstellungen />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
           </Routes>
-        </AppLayout>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
