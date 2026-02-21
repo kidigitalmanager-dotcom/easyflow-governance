@@ -20,11 +20,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: me } = useMe();
 
   const tenant = me?.tenant;
-  const isActive = tenant && tenant.status !== "not_onboarded";
-  const planName = me?.plan?.name ?? (isActive ? "Team" : "–");
-  const tenantLabel = isActive
-    ? (tenant.status === "active" ? (tenant.tenant_name ?? tenant.tenant_id ?? "Setup abgeschlossen") : (tenant.tenant_name ?? tenant.tenant_id ?? "Setup ausstehend"))
-    : "Setup ausstehend";
+  const setup = me?.setup;
+  const setupComplete = setup?.complete === true;
+  const setupStatus = setup?.status ?? (tenant?.status === "active" ? "ready" : "not_onboarded");
+  const isSetupReady = setupComplete || setupStatus === "ready";
+  const planName = me?.plan?.name ?? (isSetupReady ? "Team" : "–");
+  const tenantLabel = isSetupReady
+    ? (tenant?.tenant_name ?? tenant?.tenant_id ?? "Setup abgeschlossen")
+    : (setupStatus === "needs_mailbox" ? "Mailbox verbinden"
+      : setupStatus === "needs_pack" ? "Pack zuweisen"
+      : "Setup ausstehend");
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

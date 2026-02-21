@@ -42,18 +42,27 @@ export default function Uebersicht() {
           Fehler beim Laden der Statistiken. Bitte versuche es erneut.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {kpis.map((kpi) => (
-            <div key={kpi.label} className="glass-card p-5">
-              <div className="flex items-center justify-between mb-3">
-                <kpi.icon className="w-4 h-4 text-muted-foreground" />
-                {kpi.trend && <span className="text-xs font-medium text-primary">{kpi.trend}</span>}
-              </div>
-              <p className="text-2xl font-semibold tracking-tight">{kpi.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{kpi.label}</p>
+        <>
+          {kpis.every(k => k.value === "0") ? (
+            <div className="glass-card p-6 text-center">
+              <Inbox className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Noch keine E-Mails verarbeitet. Verbinde deine Mailbox, um loszulegen.</p>
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {kpis.map((kpi) => (
+                <div key={kpi.label} className="glass-card p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <kpi.icon className="w-4 h-4 text-muted-foreground" />
+                    {kpi.trend && <span className="text-xs font-medium text-primary">{kpi.trend}</span>}
+                  </div>
+                  <p className="text-2xl font-semibold tracking-tight">{kpi.value}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{kpi.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

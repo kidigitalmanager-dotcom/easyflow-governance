@@ -37,6 +37,7 @@ export function DashboardTopBar() {
   const email = user?.email ?? me?.user?.email ?? "";
   const plan = me?.plan;
   const tenant = me?.tenant;
+  const setup = me?.setup;
   const activeRules = playbooksData?.active_rules ?? me?.playbooks?.active_rules_count ?? 0;
 
   const planName = plan?.name ? capitalize(plan.name) : null;
@@ -45,8 +46,19 @@ export function DashboardTopBar() {
   const mailboxPct = mailboxLimit > 0 ? mailboxUsed / mailboxLimit : 0;
   const mailboxWarn = mailboxPct >= 0.8;
 
-  const tenantStatus = tenant?.status;
-  const isActive = tenantStatus === "active";
+  // Setup status logic: prefer setup.complete / setup.status over tenant.status
+  const setupComplete = setup?.complete === true;
+  const setupStatus = setup?.status ?? (tenant?.status === "active" ? "ready" : "not_onboarded");
+  const isActive = setupComplete || setupStatus === "ready";
+
+  const statusConfig: Record<string, { color: string; label: string }> = {
+    ready: { color: "bg-green-400", label: "Aktiv" },
+    needs_mailbox: { color: "bg-yellow-400", label: "Mailbox verbinden" },
+    needs_pack: { color: "bg-yellow-400", label: "Pack zuweisen" },
+    not_onboarded: { color: "bg-red-400", label: "Setup nötig" },
+    inactive: { color: "bg-gray-400", label: "Inaktiv" },
+  };
+  const currentStatus = statusConfig[setupStatus] ?? statusConfig.not_onboarded;
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -62,10 +74,17 @@ export function DashboardTopBar() {
   const handlePortal = async () => {
     setPortalLoading(true);
     try {
-      const { url } = await createStripePortalSession();
-      window.location.href = url;
+      const result = await createStripePortalSession();
+      if (result.ok && result.url && !result.fallback) {
+        window.location.href = result.url;
+      } else {
+        // Fallback: Stripe Portal not connected yet
+        const { toast } = await import("@/hooks/use-toast");
+        toast({ title: "Hinweis", description: "Stripe Billing Portal wird noch eingerichtet. Kontaktiere support@useeasy.ai für Änderungen am Abo." });
+      }
     } catch {
-      // Graceful fail — user stays on page
+      const { toast } = await import("@/hooks/use-toast");
+      toast({ title: "Fehler", description: "Fehler beim Laden des Billing Portals", variant: "destructive" });
     } finally {
       setPortalLoading(false);
       setOpen(false);
@@ -128,15 +147,13 @@ export function DashboardTopBar() {
             </span>
 
             {/* Status chip */}
-            {tenantStatus && (
-              <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground whitespace-nowrap">
-                <span className={cn(
-                  "w-2 h-2 rounded-full",
-                  isActive ? "bg-green-400" : "bg-yellow-400"
-                )} />
-                {isActive ? "Aktiv" : "Setup nötig"}
-              </span>
-            )}
+            <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground whitespace-nowrap">
+              <span className={cn(
+                "w-2 h-2 rounded-full",
+                currentStatus.color
+              )} />
+              {currentStatus.label}
+            </span>
           </>
         )}
       </div>
