@@ -256,7 +256,7 @@ export default function Einstellungen() {
           </div>
         )}
         <a
-          href={isActive ? "#" : "/checkout/onboarding"}
+          href="https://useeasy.ai/pricing"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <ExternalLink className="w-3.5 h-3.5" /> {isActive ? "Plan upgraden" : "Plan aktivieren"}

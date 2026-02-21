@@ -52,7 +52,7 @@ export function PlanLimitsBar() {
         );
       })}
       <a
-        href={isActive ? "#" : "/checkout/onboarding"}
+        href="https://useeasy.ai/pricing"
         className="ml-auto inline-flex items-center gap-1 text-primary hover:text-primary/80 font-medium shrink-0 transition-colors"
       >
         <ExternalLink className="w-3 h-3" /> {isActive ? "Plan upgraden" : "Plan aktivieren"}
