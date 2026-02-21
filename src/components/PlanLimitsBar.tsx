@@ -7,22 +7,17 @@ export function PlanLimitsBar() {
   const { data: me, isLoading } = useMe();
 
   const tenant = me?.tenant;
+  const plan = me?.plan;
   const isActive = tenant && tenant.status !== "not_onboarded";
 
-  const planName = isActive ? (tenant.plan ?? "Team") : "Kein Plan aktiv";
+  const planName = plan?.name ?? (isActive ? "Team" : "Kein Plan aktiv");
 
-  const items = isActive
+  const items = isActive && plan
     ? [
-        { label: "Mailboxen", used: tenant.mailboxes_used ?? 0, limit: tenant.mailbox_limit ?? 0 },
-        { label: "Playbooks", used: tenant.playbooks_used ?? 0, limit: tenant.playbook_limit ?? 0 },
-        { label: "E-Mails", used: tenant.emails_used ?? 0, limit: tenant.email_limit ?? 0 },
-        { label: "Entwürfe", used: tenant.drafts_used ?? 0, limit: tenant.draft_limit ?? 0 },
+        { label: "Mailboxen", used: plan.active_mailboxes ?? 0, limit: plan.mailbox_limit ?? 0 },
       ]
     : [
         { label: "Mailboxen", used: 0, limit: 0 },
-        { label: "Playbooks", used: 0, limit: 0 },
-        { label: "E-Mails", used: 0, limit: 0 },
-        { label: "Entwürfe", used: 0, limit: 0 },
       ];
 
   if (isLoading) {

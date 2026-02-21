@@ -39,21 +39,18 @@ async function apiFetch<T>(path: string): Promise<T> {
 
 export interface TenantInfo {
   tenant_id: string;
+  tenant_name?: string;
   status: string;
   mailbox_profile?: string;
   gmail_enabled?: boolean;
   outlook_enabled?: boolean;
-  name?: string;
-  plan?: string;
-  mailbox_limit?: number;
-  playbook_limit?: number;
-  email_limit?: number;
-  draft_limit?: number;
-  mailboxes_used?: number;
-  playbooks_used?: number;
-  emails_used?: number;
-  drafts_used?: number;
   [key: string]: unknown;
+}
+
+export interface PlanInfo {
+  name: string;
+  mailbox_limit: number;
+  active_mailboxes: number;
 }
 
 export interface UserInfo {
@@ -65,7 +62,32 @@ export interface UserInfo {
     [key: string]: unknown;
   };
   tenant?: TenantInfo;
+  plan?: PlanInfo;
   [key: string]: unknown;
+}
+
+export interface PlaybookRule {
+  name: string;
+  priority: string;
+  action: string;
+  active: boolean;
+  confidence_threshold: number;
+}
+
+export interface Playbook {
+  name: string;
+  active: boolean;
+  rules_total: number;
+  rules_active: number;
+  rules: PlaybookRule[];
+}
+
+export interface PlaybooksResponse {
+  ok: boolean;
+  pack_key: string;
+  playbooks: Playbook[];
+  total_rules: number;
+  active_rules: number;
 }
 
 export interface DashboardStats {
@@ -114,3 +136,4 @@ export const fetchMe = () => apiFetch<UserInfo>("/me");
 export const fetchStats = () => apiFetch<DashboardStats>("/stats");
 export const fetchRecentEmails = () => apiFetch<RecentEmail[]>("/emails/recent");
 export const fetchAuditLog = () => apiFetch<AuditLogEntry[]>("/audit");
+export const fetchPlaybooks = () => apiFetch<PlaybooksResponse>("/playbooks");
