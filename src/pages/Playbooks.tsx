@@ -9,7 +9,10 @@ import {
 } from "@/components/ui/tooltip";
 
 const PACK_LABELS: Record<string, string> = {
-  ecom_core: "E-Commerce Pack",
+  ecom_core: "E-Commerce Core",
+  logistics_core: "Logistik Core",
+  b2b_sales_core: "B2B Sales Core",
+  coach_core: "Coaching Core",
   b2b_sales: "B2B Sales Pack",
   logistics: "Logistics Pack",
   hotel: "Hotel Pack",
@@ -23,7 +26,8 @@ export default function Playbooks() {
 
   const tenant = me?.tenant;
   const plan = me?.plan;
-  const isActive = tenant && tenant.status !== "not_onboarded";
+  const setup = me?.setup;
+  const isActive = setup?.complete === true || setup?.status === "ready" || (tenant && tenant.status !== "not_onboarded");
   const hasNoPlan = !isActive || !plan;
 
   const isLoading = meLoading || pbLoading;

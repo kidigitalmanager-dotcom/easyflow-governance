@@ -44,7 +44,20 @@ export interface TenantInfo {
   mailbox_profile?: string;
   gmail_enabled?: boolean;
   outlook_enabled?: boolean;
+  plan?: string;
   [key: string]: unknown;
+}
+
+export interface SetupInfo {
+  status: "ready" | "needs_mailbox" | "needs_pack" | "not_onboarded" | "inactive";
+  complete: boolean;
+  checks?: {
+    tenant_exists?: boolean;
+    tenant_active?: boolean;
+    mailbox_connected?: boolean;
+    pack_assigned?: boolean;
+    rules_loaded?: boolean;
+  };
 }
 
 export interface PlanInfo {
@@ -68,6 +81,7 @@ export interface UserInfo {
     active_rules_count?: number;
     rules?: Array<Record<string, unknown>>;
   };
+  setup?: SetupInfo;
   [key: string]: unknown;
 }
 
@@ -95,13 +109,26 @@ export interface PlaybooksResponse {
   active_rules: number;
 }
 
+export interface DashboardStatsResponse {
+  ok?: boolean;
+  tenant_id?: string;
+  stats?: DashboardStats;
+  // Also support flat format
+  emails_today?: number;
+  emails_week?: number;
+  priority_breakdown?: Record<string, number>;
+  drafts_created_week?: number;
+  resolved_week?: number;
+  [key: string]: unknown;
+}
+
 export interface DashboardStats {
   emails_today: number;
   emails_week: number;
+  emails_total?: number;
   priority_breakdown: Record<string, number>;
   drafts_created_week: number;
   resolved_week: number;
-  [key: string]: unknown;
 }
 
 export interface RecentEmail {
@@ -138,20 +165,31 @@ export interface AuditLogEntry {
 // ── Fetchers ───────────────────────────────────────────
 
 export const fetchMe = () => apiFetch<UserInfo>("/me");
-export const fetchStats = () => apiFetch<DashboardStats>("/stats");
+export const fetchStats = async (): Promise<DashboardStats> => {
+  const raw = await apiFetch<DashboardStatsResponse>("/stats");
+  const s = raw.stats;
+  return {
+    emails_today: s?.emails_today ?? raw.emails_today ?? 0,
+    emails_week: s?.emails_week ?? raw.emails_week ?? 0,
+    emails_total: s?.emails_total ?? 0,
+    priority_breakdown: s?.priority_breakdown ?? raw.priority_breakdown ?? {},
+    drafts_created_week: s?.drafts_created_week ?? raw.drafts_created_week ?? 0,
+    resolved_week: s?.resolved_week ?? raw.resolved_week ?? 0,
+  };
+};
 export const fetchRecentEmails = () => apiFetch<RecentEmail[]>("/emails/recent");
 export const fetchAuditLog = () => apiFetch<AuditLogEntry[]>("/audit");
 export const fetchPlaybooks = () => apiFetch<PlaybooksResponse>("/playbooks");
 
-export async function createStripePortalSession(): Promise<{ url: string }> {
+export async function createStripePortalSession(): Promise<{ ok?: boolean; url?: string; fallback?: boolean; error?: string }> {
   const token = await getToken();
   if (!token) throw new ApiError(401, "Nicht authentifiziert");
 
-  const res = await fetch("https://api.useeasy.ai/v1/stripe/create-portal-session", {
+  const res = await fetch(`${API_BASE.replace("/dashboard", "")}/stripe/create-portal-session`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({}),
   });
 
-  if (!res.ok) throw new ApiError(res.status, `Stripe Portal Fehler ${res.status}`);
   return res.json();
 }
