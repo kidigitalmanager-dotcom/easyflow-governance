@@ -76,6 +76,8 @@ export default function Einstellungen() {
 
   const limitItems = [
     { label: "Mailboxen", used: plan?.active_mailboxes ?? 0, limit: plan?.mailbox_limit ?? 0 },
+    { label: "E-Mails / Monat", used: plan?.emails_used ?? 0, limit: plan?.email_limit ?? 0 },
+    { label: "Entwürfe / Monat", used: plan?.drafts_used ?? 0, limit: plan?.draft_limit ?? 0 },
   ];
 
   return (
