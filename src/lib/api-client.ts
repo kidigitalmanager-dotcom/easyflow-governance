@@ -64,6 +64,10 @@ export interface PlanInfo {
   name: string;
   mailbox_limit: number;
   active_mailboxes: number;
+  email_limit: number;
+  emails_used: number;
+  draft_limit: number;
+  drafts_used: number;
 }
 
 export interface UserInfo {
