@@ -246,7 +246,7 @@ export default function Einstellungen() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{item.label}</span>
                     <span className="font-medium">
-                      {item.used >= 99999 ? "∞" : item.used} / {item.limit >= 99999 ? "∞" : (item.limit || 0)}
+                      {item.limit === -1 ? "Unlimited" : `${item.used} / ${item.limit >= 99999 ? "∞" : (item.limit || 0)}`}
                     </span>
                   </div>
                   <Progress value={pct} className="h-2" />
