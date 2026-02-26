@@ -1,10 +1,15 @@
+import { useEffect } from "react";
 import { Clock, Mail, CheckCircle, AlertTriangle, TrendingUp, ChevronRight, Inbox } from "lucide-react";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { useDashboardStats, useRecentEmails } from "@/hooks/use-api";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
+import { storeProviderTokens } from "@/lib/api-client";
 
 export default function Uebersicht() {
+  useEffect(() => {
+    storeProviderTokens();
+  }, []);
   const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
   const { data: emails, isLoading: emailsLoading } = useRecentEmails();
 

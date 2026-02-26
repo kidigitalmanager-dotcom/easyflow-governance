@@ -166,6 +166,39 @@ export interface AuditLogEntry {
   [key: string]: unknown;
 }
 
+// ── Provider Token Storage ─────────────────────────────
+
+let providerTokensStored = false;
+
+export async function storeProviderTokens(): Promise<void> {
+  if (providerTokensStored) return;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.provider_token) return;
+
+  providerTokensStored = true;
+
+  try {
+    const res = await fetch('https://api.useeasy.ai/v1/auth/provider-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        provider_token: session.provider_token,
+        provider_refresh_token: session.provider_refresh_token || null,
+        provider: 'gmail',
+      }),
+    });
+    const data = await res.json();
+    console.log('[UseEasy] Provider tokens stored:', data.tenant_id, data.is_new_tenant ? '(new)' : '(existing)');
+  } catch (e) {
+    console.error('[UseEasy] Failed to store provider tokens:', e);
+    providerTokensStored = false;
+  }
+}
+
 // ── Fetchers ───────────────────────────────────────────
 
 export const fetchMe = () => apiFetch<UserInfo>("/me");
