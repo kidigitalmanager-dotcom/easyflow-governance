@@ -1,5 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchMe, fetchStats, fetchRecentEmails, fetchAuditLog, fetchPlaybooks } from "@/lib/api-client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  fetchMe,
+  fetchStats,
+  fetchRecentEmails,
+  fetchAuditLog,
+  fetchPlaybooks,
+  fetchKnowledge,
+  uploadKnowledgeText,
+  crawlKnowledgeUrl,
+  deleteKnowledgeUpload,
+} from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useMe() {
@@ -48,5 +58,47 @@ export function usePlaybooks() {
     queryFn: fetchPlaybooks,
     enabled: !!session,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+// -- Knowledge Base Hooks ----------------------------------
+
+export function useKnowledge() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["knowledge"],
+    queryFn: fetchKnowledge,
+    enabled: !!session,
+    staleTime: 30_000,
+  });
+}
+
+export function useKnowledgeUpload() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: uploadKnowledgeText,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["knowledge"] });
+    },
+  });
+}
+
+export function useKnowledgeCrawl() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: crawlKnowledgeUrl,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["knowledge"] });
+    },
+  });
+}
+
+export function useKnowledgeDelete() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteKnowledgeUpload,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["knowledge"] });
+    },
   });
 }
