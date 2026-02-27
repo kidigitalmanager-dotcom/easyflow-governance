@@ -23,7 +23,6 @@ async function apiFetch<T>(path: string): Promise<T> {
   });
 
   if (res.status === 401) {
-    // Force sign-out so ProtectedRoute redirects to /login
     await supabase.auth.signOut();
     throw new ApiError(401, "Sitzung abgelaufen");
   }
@@ -35,7 +34,61 @@ async function apiFetch<T>(path: string): Promise<T> {
   return res.json();
 }
 
-// ── Types ──────────────────────────────────────────────
+// -- NEW: POST / DELETE helpers ----------------------------
+
+async function apiPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const token = await getToken();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+
+  const baseUrl = path.startsWith("/v1/knowledge")
+    ? "https://api.useeasy.ai"   // knowledge endpoints sit outside /dashboard
+    : API_BASE.replace("/dashboard", "");
+
+  const url = path.startsWith("/v1/") ? `${baseUrl}${path}` : `${API_BASE}${path}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (res.status === 401) {
+    await supabase.auth.signOut();
+    throw new ApiError(401, "Sitzung abgelaufen");
+  }
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`);
+  }
+  return data;
+}
+
+async function apiDelete<T>(path: string): Promise<T> {
+  const token = await getToken();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.status === 401) {
+    await supabase.auth.signOut();
+    throw new ApiError(401, "Sitzung abgelaufen");
+  }
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`);
+  }
+  return data;
+}
+
+// -- Types ------------------------------------------------
 
 export interface TenantInfo {
   tenant_id: string;
@@ -117,7 +170,6 @@ export interface DashboardStatsResponse {
   ok?: boolean;
   tenant_id?: string;
   stats?: DashboardStats;
-  // Also support flat format
   emails_today?: number;
   emails_week?: number;
   priority_breakdown?: Record<string, number>;
@@ -166,7 +218,47 @@ export interface AuditLogEntry {
   [key: string]: unknown;
 }
 
-// ── Provider Token Storage ─────────────────────────────
+// -- NEW: Knowledge Base Types -----------------------------
+
+export interface KnowledgeUpload {
+  upload_id: string;
+  source_type: "website" | "legal" | "document";
+  title: string;
+  source_url: string | null;
+  status: "processing" | "done" | "failed";
+  chunks_created: number;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface KnowledgeListResponse {
+  ok: boolean;
+  uploads: KnowledgeUpload[];
+  total_chunks: number;
+  total_chars: number;
+}
+
+export interface KnowledgeUploadResponse {
+  ok: boolean;
+  upload_id: string;
+  chunks_created: number;
+}
+
+export interface KnowledgeCrawlResponse {
+  ok: boolean;
+  upload_id: string;
+  pages_crawled: number;
+  chunks_created: number;
+  status: string;
+}
+
+export interface KnowledgeDeleteResponse {
+  ok: boolean;
+  deleted_chunks: number;
+}
+
+// -- Provider Token Storage --------------------------------
 
 let providerTokensStored = false;
 
@@ -199,7 +291,7 @@ export async function storeProviderTokens(): Promise<void> {
   }
 }
 
-// ── Fetchers ───────────────────────────────────────────
+// -- Fetchers ---------------------------------------------
 
 export const fetchMe = () => apiFetch<UserInfo>("/me");
 export const fetchStats = async (): Promise<DashboardStats> => {
@@ -217,6 +309,29 @@ export const fetchStats = async (): Promise<DashboardStats> => {
 export const fetchRecentEmails = () => apiFetch<RecentEmail[]>("/emails/recent");
 export const fetchAuditLog = () => apiFetch<AuditLogEntry[]>("/audit");
 export const fetchPlaybooks = () => apiFetch<PlaybooksResponse>("/playbooks");
+
+// -- NEW: Knowledge Base Fetchers --------------------------
+
+export const fetchKnowledge = () => apiFetch<KnowledgeListResponse>("/knowledge");
+
+export const uploadKnowledgeText = (payload: {
+  source_type: "legal" | "document";
+  title: string;
+  content_text: string;
+}) => apiPost<KnowledgeUploadResponse>("/v1/knowledge/upload", payload);
+
+export const crawlKnowledgeUrl = (payload: {
+  source_url: string;
+  max_pages?: number;
+}) => apiPost<KnowledgeCrawlResponse>("/v1/knowledge/crawl", {
+  source_type: "website",
+  ...payload,
+});
+
+export const deleteKnowledgeUpload = (uploadId: string) =>
+  apiDelete<KnowledgeDeleteResponse>(`/knowledge/${uploadId}`);
+
+// -- Stripe -----------------------------------------------
 
 export async function createStripePortalSession(): Promise<{ ok?: boolean; url?: string; fallback?: boolean; error?: string }> {
   const token = await getToken();
