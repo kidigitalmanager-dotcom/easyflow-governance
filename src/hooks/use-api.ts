@@ -9,6 +9,13 @@ import {
   uploadKnowledgeText,
   crawlKnowledgeUrl,
   deleteKnowledgeUpload,
+  fetchSpreadsheets,
+  fetchSpreadsheetMappings,
+  fetchSpreadsheetAudit,
+  uploadSpreadsheetFile,
+  revertSpreadsheetAction,
+  deleteSpreadsheet,
+  toggleSpreadsheet,
 } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -61,7 +68,7 @@ export function usePlaybooks() {
   });
 }
 
-// -- Knowledge Base Hooks ----------------------------------
+// ── Knowledge Base Hooks ──────────────────────────────────
 
 export function useKnowledge() {
   const { session } = useAuth();
@@ -99,6 +106,83 @@ export function useKnowledgeDelete() {
     mutationFn: deleteKnowledgeUpload,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["knowledge"] });
+    },
+  });
+}
+
+// ── Spreadsheet / Excel Live-Sync Hooks (v4.4.1) ─────────
+
+export function useSpreadsheets() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["spreadsheets"],
+    queryFn: fetchSpreadsheets,
+    enabled: !!session,
+    staleTime: 30_000,
+  });
+}
+
+export function useSpreadsheetMappings(spreadsheetId: number | null) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["spreadsheet-mappings", spreadsheetId],
+    queryFn: () => fetchSpreadsheetMappings(spreadsheetId!),
+    enabled: !!session && spreadsheetId !== null,
+  });
+}
+
+export function useSpreadsheetAudit(params?: {
+  spreadsheet_id?: number;
+  page?: number;
+  per_page?: number;
+}) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["spreadsheet-audit", params],
+    queryFn: () => fetchSpreadsheetAudit(params),
+    enabled: !!session,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useSpreadsheetUpload() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: uploadSpreadsheetFile,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["spreadsheets"] });
+      qc.invalidateQueries({ queryKey: ["me"] }); // spreadsheet_enabled may change
+    },
+  });
+}
+
+export function useSpreadsheetRevert() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: revertSpreadsheetAction,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["spreadsheet-audit"] });
+    },
+  });
+}
+
+export function useSpreadsheetDelete() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteSpreadsheet,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["spreadsheets"] });
+    },
+  });
+}
+
+export function useSpreadsheetToggle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ spreadsheetId, isActive }: { spreadsheetId: number; isActive: boolean }) =>
+      toggleSpreadsheet(spreadsheetId, isActive),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["spreadsheets"] });
     },
   });
 }
