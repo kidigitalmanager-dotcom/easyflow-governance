@@ -23,6 +23,7 @@ async function apiFetch<T>(path: string): Promise<T> {
   });
 
   if (res.status === 401) {
+    // Force sign-out so ProtectedRoute redirects to /login
     await supabase.auth.signOut();
     throw new ApiError(401, "Sitzung abgelaufen");
   }
@@ -34,14 +35,14 @@ async function apiFetch<T>(path: string): Promise<T> {
   return res.json();
 }
 
-// -- NEW: POST / DELETE helpers ----------------------------
+// ── POST / DELETE helpers ────────────────────────────
 
 async function apiPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const token = await getToken();
   if (!token) throw new ApiError(401, "Nicht authentifiziert");
 
-  const baseUrl = path.startsWith("/v1/knowledge")
-    ? "https://api.useeasy.ai"   // knowledge endpoints sit outside /dashboard
+  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet")
+    ? "https://api.useeasy.ai"   // knowledge + spreadsheet endpoints sit outside /dashboard
     : API_BASE.replace("/dashboard", "");
 
   const url = path.startsWith("/v1/") ? `${baseUrl}${path}` : `${API_BASE}${path}`;
@@ -88,7 +89,7 @@ async function apiDelete<T>(path: string): Promise<T> {
   return data;
 }
 
-// -- Types ------------------------------------------------
+// ── Types ──────────────────────────────────────────────
 
 export interface TenantInfo {
   tenant_id: string;
@@ -97,6 +98,7 @@ export interface TenantInfo {
   mailbox_profile?: string;
   gmail_enabled?: boolean;
   outlook_enabled?: boolean;
+  spreadsheet_enabled?: boolean;
   plan?: string;
   [key: string]: unknown;
 }
@@ -170,6 +172,7 @@ export interface DashboardStatsResponse {
   ok?: boolean;
   tenant_id?: string;
   stats?: DashboardStats;
+  // Also support flat format
   emails_today?: number;
   emails_week?: number;
   priority_breakdown?: Record<string, number>;
@@ -218,7 +221,7 @@ export interface AuditLogEntry {
   [key: string]: unknown;
 }
 
-// -- NEW: Knowledge Base Types -----------------------------
+// ── Knowledge Base Types ─────────────────────────────
 
 export interface KnowledgeUpload {
   upload_id: string;
@@ -258,7 +261,91 @@ export interface KnowledgeDeleteResponse {
   deleted_chunks: number;
 }
 
-// -- Provider Token Storage --------------------------------
+// ── Spreadsheet / Excel Live-Sync Types (v4.4.1) ────
+
+export interface SpreadsheetConnection {
+  id: number;
+  sheet_name: string;
+  provider: "google_sheets" | "microsoft_graph" | "local";
+  tab_name: string;
+  purpose: "general" | "appointments" | "tenants" | "maintenance";
+  purpose_keywords: string[];
+  is_active: boolean;
+  allow_row_insert: boolean;
+  auto_provisioned: boolean;
+  created_at: string;
+  updated_at: string;
+  mappings_count?: number;
+}
+
+export interface SpreadsheetColumnMapping {
+  id: number;
+  spreadsheet_id: number;
+  semantic_field: string;
+  column_ref: string;
+  match_type: "exact" | "contains" | "regex";
+  is_search_key: boolean;
+  is_updatable: boolean;
+}
+
+export interface SpreadsheetAuditEntry {
+  id: number;
+  spreadsheet_id: number;
+  sheet_name?: string;
+  event_id: string | null;
+  action: string;
+  row_index: number | null;
+  column_ref: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  performed_by: string;
+  bulk_id: string | null;
+  row_snapshot: Record<string, unknown> | null;
+  source_email_subject: string | null;
+  source_email_from: string | null;
+  created_at: string;
+}
+
+export interface SpreadsheetListResponse {
+  ok: boolean;
+  spreadsheets: SpreadsheetConnection[];
+  total: number;
+}
+
+export interface SpreadsheetMappingsResponse {
+  ok: boolean;
+  mappings: SpreadsheetColumnMapping[];
+}
+
+export interface SpreadsheetAuditResponse {
+  ok: boolean;
+  entries: SpreadsheetAuditEntry[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface SpreadsheetUploadResponse {
+  ok: boolean;
+  spreadsheet_id: number;
+  sheet_name: string;
+  detected_headers: string[];
+  auto_mapped: number;
+  purpose: string;
+}
+
+export interface SpreadsheetRevertResponse {
+  ok: boolean;
+  reverted: number;
+  bulk_id: string;
+}
+
+export interface SpreadsheetDeleteResponse {
+  ok: boolean;
+  deleted: boolean;
+}
+
+// ── Provider Token Storage ─────────────────────────────
 
 let providerTokensStored = false;
 
@@ -291,7 +378,7 @@ export async function storeProviderTokens(): Promise<void> {
   }
 }
 
-// -- Fetchers ---------------------------------------------
+// ── Fetchers ───────────────────────────────────────────
 
 export const fetchMe = () => apiFetch<UserInfo>("/me");
 export const fetchStats = async (): Promise<DashboardStats> => {
@@ -310,7 +397,7 @@ export const fetchRecentEmails = () => apiFetch<RecentEmail[]>("/emails/recent")
 export const fetchAuditLog = () => apiFetch<AuditLogEntry[]>("/audit");
 export const fetchPlaybooks = () => apiFetch<PlaybooksResponse>("/playbooks");
 
-// -- NEW: Knowledge Base Fetchers --------------------------
+// ── Knowledge Base Fetchers ──────────────────────────
 
 export const fetchKnowledge = () => apiFetch<KnowledgeListResponse>("/knowledge");
 
@@ -331,7 +418,45 @@ export const crawlKnowledgeUrl = (payload: {
 export const deleteKnowledgeUpload = (uploadId: string) =>
   apiDelete<KnowledgeDeleteResponse>(`/knowledge/${uploadId}`);
 
-// -- Stripe -----------------------------------------------
+// ── Spreadsheet / Excel Live-Sync Fetchers (v4.4.1) ──
+
+export const fetchSpreadsheets = () =>
+  apiFetch<SpreadsheetListResponse>("/spreadsheets");
+
+export const fetchSpreadsheetMappings = (spreadsheetId: number) =>
+  apiFetch<SpreadsheetMappingsResponse>(`/spreadsheets/${spreadsheetId}/mappings`);
+
+export const fetchSpreadsheetAudit = (params?: {
+  spreadsheet_id?: number;
+  page?: number;
+  per_page?: number;
+}) => {
+  const qs = new URLSearchParams();
+  if (params?.spreadsheet_id) qs.set("spreadsheet_id", String(params.spreadsheet_id));
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.per_page) qs.set("per_page", String(params.per_page));
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return apiFetch<SpreadsheetAuditResponse>(`/spreadsheets/audit${suffix}`);
+};
+
+export const uploadSpreadsheetFile = (payload: {
+  file_name: string;
+  file_content_base64: string;
+}) => apiPost<SpreadsheetUploadResponse>("/v1/spreadsheet/upload", payload);
+
+export const revertSpreadsheetAction = (bulkId: string) =>
+  apiPost<SpreadsheetRevertResponse>("/v1/spreadsheet/revert", { bulk_id: bulkId });
+
+export const deleteSpreadsheet = (spreadsheetId: number) =>
+  apiDelete<SpreadsheetDeleteResponse>(`/spreadsheets/${spreadsheetId}`);
+
+export const toggleSpreadsheet = (spreadsheetId: number, isActive: boolean) =>
+  apiPost<{ ok: boolean }>(`/v1/spreadsheet/toggle`, {
+    spreadsheet_id: spreadsheetId,
+    is_active: isActive,
+  });
+
+// ── Stripe ────────────────────────────────────────────
 
 export async function createStripePortalSession(): Promise<{ ok?: boolean; url?: string; fallback?: boolean; error?: string }> {
   const token = await getToken();
