@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useMe } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
-import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen } from "lucide-react";
+import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug } from "lucide-react";
 import { ChipDomainInput } from "@/components/ChipDomainInput";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import KnowledgeBaseTab from "@/components/KnowledgeBaseTab";
+import HubSpotIntegration from "@/components/HubSpotIntegration";
 
 function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [state, setState] = useState<T>(() => {
