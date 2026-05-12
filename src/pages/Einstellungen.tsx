@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useMe } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
-import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen } from "lucide-react";
+import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug } from "lucide-react";
 import { ChipDomainInput } from "@/components/ChipDomainInput";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import KnowledgeBaseTab from "@/components/KnowledgeBaseTab";
+import HubSpotIntegration from "@/components/HubSpotIntegration";
 
 function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [state, setState] = useState<T>(() => {
@@ -81,6 +82,12 @@ export default function Einstellungen() {
     { label: "Entwürfe / Monat", used: plan?.drafts_used ?? 0, limit: plan?.draft_limit ?? 0 },
   ];
 
+  const initialTab = (() => {
+    if (typeof window === "undefined") return "general";
+    const t = new URLSearchParams(window.location.search).get("tab");
+    return t === "knowledge" || t === "integrations" ? t : "general";
+  })();
+
   return (
     <div className="space-y-8 max-w-3xl">
       <div>
@@ -88,7 +95,7 @@ export default function Einstellungen() {
         <p className="text-sm text-muted-foreground mt-1">UseEasy-Konfiguration für deine Mailboxen.</p>
       </div>
 
-      <Tabs defaultValue="general" className="w-full">
+      <Tabs defaultValue={initialTab} className="w-full">
         <TabsList className="w-full justify-start">
           <TabsTrigger value="general" className="gap-1.5">
             <Settings className="w-3.5 h-3.5" />
@@ -97,6 +104,10 @@ export default function Einstellungen() {
           <TabsTrigger value="knowledge" className="gap-1.5">
             <BookOpen className="w-3.5 h-3.5" />
             Unternehmenswissen
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="gap-1.5">
+            <Plug className="w-3.5 h-3.5" />
+            Integrationen
           </TabsTrigger>
         </TabsList>
 
@@ -273,6 +284,10 @@ export default function Einstellungen() {
 
         <TabsContent value="knowledge" className="mt-6">
           <KnowledgeBaseTab />
+        </TabsContent>
+
+        <TabsContent value="integrations" className="mt-6 space-y-6">
+          <HubSpotIntegration />
         </TabsContent>
       </Tabs>
     </div>
