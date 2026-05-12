@@ -82,6 +82,12 @@ export default function Einstellungen() {
     { label: "Entwürfe / Monat", used: plan?.drafts_used ?? 0, limit: plan?.draft_limit ?? 0 },
   ];
 
+  const initialTab = (() => {
+    if (typeof window === "undefined") return "general";
+    const t = new URLSearchParams(window.location.search).get("tab");
+    return t === "knowledge" || t === "integrations" ? t : "general";
+  })();
+
   return (
     <div className="space-y-8 max-w-3xl">
       <div>
@@ -89,7 +95,7 @@ export default function Einstellungen() {
         <p className="text-sm text-muted-foreground mt-1">UseEasy-Konfiguration für deine Mailboxen.</p>
       </div>
 
-      <Tabs defaultValue="general" className="w-full">
+      <Tabs defaultValue={initialTab} className="w-full">
         <TabsList className="w-full justify-start">
           <TabsTrigger value="general" className="gap-1.5">
             <Settings className="w-3.5 h-3.5" />
@@ -98,6 +104,10 @@ export default function Einstellungen() {
           <TabsTrigger value="knowledge" className="gap-1.5">
             <BookOpen className="w-3.5 h-3.5" />
             Unternehmenswissen
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="gap-1.5">
+            <Plug className="w-3.5 h-3.5" />
+            Integrationen
           </TabsTrigger>
         </TabsList>
 
