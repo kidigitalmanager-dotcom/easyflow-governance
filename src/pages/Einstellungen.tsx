@@ -285,6 +285,10 @@ export default function Einstellungen() {
         <TabsContent value="knowledge" className="mt-6">
           <KnowledgeBaseTab />
         </TabsContent>
+
+        <TabsContent value="integrations" className="mt-6 space-y-6">
+          <HubSpotIntegration />
+        </TabsContent>
       </Tabs>
     </div>
   );
