@@ -14,20 +14,27 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CheckCircle2, Link as LinkIcon, Loader2 } from "lucide-react";
+import { CheckCircle2, Link as LinkIcon, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const API_ROOT = "https://api.useeasy.ai";
 
+// Backend /v1/tenant/integrations liefert state = connected | reauth_required | disconnected
+type HubSpotConnectState = "connected" | "reauth_required" | "disconnected";
+
 interface HubSpotStatus {
   connected: boolean;
-  portalId?: string;
-  connectedBy?: string;
-  connectedAt?: string;
-  expiresAt?: string;
+  state?: HubSpotConnectState;
+  reauth_reason?: "token_expired" | "scopes_outdated" | string;
+  portal_id?: string | null;
+  connected_by?: string | null;
+  connected_at?: string | null;
+  expires_at?: string | null;
+  expires_in_seconds?: number | null;
+  has_refresh_token?: boolean;
 }
 
-function formatTimeUntil(iso?: string): string {
+function formatTimeUntil(iso?: string | null): string {
   if (!iso) return "—";
   const ms = new Date(iso).getTime() - Date.now();
   if (Number.isNaN(ms)) return "—";
@@ -39,6 +46,13 @@ function formatTimeUntil(iso?: string): string {
   if (h > 0) return `${h} Std.`;
   return `${mins} Min.`;
 }
+
+const REAUTH_REASON_TEXT: Record<string, string> = {
+  token_expired: "Das Zugriffs-Token ist abgelaufen und konnte nicht automatisch erneuert werden.",
+  scopes_outdated:
+    "Die Verbindung wurde vor dem Call-Logging-Update hergestellt. Für Anruf-Protokollierung "
+    + "in HubSpot ist eine erneute Autorisierung mit den neuen Berechtigungen nötig.",
+};
 
 async function authHeader() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -64,9 +78,9 @@ export default function HubSpotIntegration() {
       );
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
-      setStatus(data.hubspot ?? { connected: false });
+      setStatus(data.hubspot ?? { connected: false, state: "disconnected" });
     } catch {
-      setStatus({ connected: false });
+      setStatus({ connected: false, state: "disconnected" });
     } finally {
       setLoading(false);
     }
@@ -76,7 +90,7 @@ export default function HubSpotIntegration() {
     if (tenantId) loadStatus();
   }, [tenantId]);
 
-  // Handle redirect query params
+  // Handle redirect query params (?hubspot=connected|error)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const hs = params.get("hubspot");
@@ -123,13 +137,18 @@ export default function HubSpotIntegration() {
       });
       if (!res.ok) throw new Error(String(res.status));
       toast.success("HubSpot getrennt");
-      setStatus({ connected: false });
+      setStatus({ connected: false, state: "disconnected" });
     } catch {
       toast.error("Trennen fehlgeschlagen");
     } finally {
       setDisconnecting(false);
     }
   };
+
+  // Abgeleiteter State — fällt auf connected/disconnected zurück falls Backend
+  // (noch) kein `state`-Feld liefert.
+  const derivedState: HubSpotConnectState =
+    status?.state ?? (status?.connected ? "connected" : "disconnected");
 
   return (
     <div className="glass-card p-6 space-y-4">
@@ -143,27 +162,31 @@ export default function HubSpotIntegration() {
         <div>
           <h2 className="text-base font-semibold">HubSpot CRM</h2>
           <p className="text-xs text-muted-foreground">
-            Verbinde dein HubSpot-Portal für CRM-Sync und Kontakt-Anreicherung.
+            Verbinde dein HubSpot-Portal für CRM-Sync, Kontakt-Anreicherung und Anruf-Protokollierung.
           </p>
         </div>
       </div>
 
       {loading ? (
         <Skeleton className="h-16 w-full" />
-      ) : status?.connected ? (
+      ) : derivedState === "connected" ? (
+        /* ── Zustand: VERBUNDEN ── */
         <div className="space-y-3">
           <div className="flex items-start gap-2 text-sm">
             <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
             <div className="space-y-0.5">
-              <p className="font-medium">Verbunden mit HubSpot Portal {status.portalId ?? "—"}</p>
-              {(status.connectedBy || status.connectedAt) && (
+              <p className="font-medium">
+                Verbunden mit HubSpot Portal {status?.portal_id ?? "—"}
+              </p>
+              {(status?.connected_by || status?.connected_at) && (
                 <p className="text-xs text-muted-foreground">
-                  Connected by {status.connectedBy ?? "—"}
-                  {status.connectedAt && ` am ${new Date(status.connectedAt).toLocaleString("de-DE")}`}
+                  Verbunden von {status?.connected_by ?? "—"}
+                  {status?.connected_at &&
+                    ` am ${new Date(status.connected_at).toLocaleString("de-DE")}`}
                 </p>
               )}
               <p className="text-xs text-muted-foreground">
-                Token expires in {formatTimeUntil(status.expiresAt)}
+                Token läuft ab in {formatTimeUntil(status?.expires_at)}
               </p>
             </div>
           </div>
@@ -172,14 +195,15 @@ export default function HubSpotIntegration() {
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm" disabled={disconnecting}>
                 {disconnecting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Disconnect
+                Verbindung trennen
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>HubSpot trennen?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Die Verbindung zu HubSpot Portal {status.portalId} wird entfernt. CRM-Sync wird gestoppt.
+                  Die Verbindung zu HubSpot Portal {status?.portal_id} wird entfernt. CRM-Sync und
+                  Anruf-Protokollierung werden gestoppt.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -189,14 +213,63 @@ export default function HubSpotIntegration() {
             </AlertDialogContent>
           </AlertDialog>
         </div>
+      ) : derivedState === "reauth_required" ? (
+        /* ── Zustand: RE-AUTH NÖTIG ── */
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 text-sm rounded-md border border-amber-400/30 bg-amber-400/10 px-3 py-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+            <div className="space-y-0.5">
+              <p className="font-medium text-amber-300">
+                Erneute Autorisierung erforderlich
+                {status?.portal_id ? ` (Portal ${status.portal_id})` : ""}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {REAUTH_REASON_TEXT[status?.reauth_reason ?? ""] ??
+                  "Die HubSpot-Verbindung muss erneuert werden."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleConnect}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: "#FF7A59" }}
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Erneut verbinden
+            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm" disabled={disconnecting}>
+                  {disconnecting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Trennen
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>HubSpot trennen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Die bestehende (abgelaufene) Verbindung wird entfernt.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDisconnect}>Trennen</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
       ) : (
+        /* ── Zustand: NICHT VERBUNDEN ── */
         <button
           onClick={handleConnect}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white hover:opacity-90 transition-opacity"
           style={{ backgroundColor: "#FF7A59" }}
         >
           <LinkIcon className="w-3.5 h-3.5" />
-          Connect HubSpot
+          HubSpot verbinden
         </button>
       )}
     </div>
