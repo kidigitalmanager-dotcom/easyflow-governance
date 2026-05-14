@@ -12,6 +12,7 @@ import ReviewQueue from "./pages/ReviewQueue";
 import AuditTrail from "./pages/AuditTrail";
 import Playbooks from "./pages/Playbooks";
 import Einstellungen from "./pages/Einstellungen";
+import VoiceCalls from "./pages/VoiceCalls";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
                       <Route path="/review" element={<ReviewQueue />} />
                       <Route path="/audit" element={<AuditTrail />} />
                       <Route path="/playbooks" element={<Playbooks />} />
+                      <Route path="/voice" element={<VoiceCalls />} />
                       <Route path="/einstellungen" element={<Einstellungen />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

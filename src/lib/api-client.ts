@@ -470,3 +470,187 @@ export async function createStripePortalSession(): Promise<{ ok?: boolean; url?:
 
   return res.json();
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// Voice & Sales-Calls — Customer Console v4.9.0 (Blöcke 2/3/4/6)
+// Backend: useeasy-api-router /v1/dashboard/voice/* (JWT-authed)
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── PATCH / PUT helper (gleiche Auth-Mechanik wie apiPost) ───────────
+
+async function apiSend<T>(method: "PATCH" | "PUT", path: string, body: Record<string, unknown>): Promise<T> {
+  const token = await getToken();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+
+  const url = path.startsWith("/v1/") ? `https://api.useeasy.ai${path}` : `${API_BASE}${path}`;
+
+  const res = await fetch(url, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (res.status === 401) {
+    await supabase.auth.signOut();
+    throw new ApiError(401, "Sitzung abgelaufen");
+  }
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`);
+  }
+  return data;
+}
+
+// ── Types ────────────────────────────────────────────────────────────
+
+export type CallerIdStatus = "validated" | "pending" | "unverified";
+
+export interface VoiceRep {
+  rep_id: string;
+  name: string;
+  email: string | null;
+  twilio_number: string | null;
+  caller_id_status: CallerIdStatus;
+  hubspot_user_id: string | null;
+  active: boolean;
+  vertriebler_id: string | null;
+  client_id: string;
+  deployed_url: string | null;
+  call_count: number;
+  last_call_at: string | null;
+  created_at: string | null;
+}
+
+export interface VoiceRepsResponse {
+  ok: boolean;
+  tenant_id: string;
+  copilot_tenant_id: string;
+  reps: VoiceRep[];
+  total: number;
+  note?: string;
+}
+
+export interface VoiceRepMutationResponse {
+  ok: boolean;
+  rep?: Partial<VoiceRep>;
+  vertriebler?: Record<string, unknown> | null;
+  provisioning_hint?: string;
+  rep_id?: string;
+  deactivated?: boolean;
+}
+
+export interface SalesCall {
+  call_id: string;
+  rep_id: string;
+  rep_name: string;
+  direction: string | null;
+  twilio_call_sid: string | null;
+  lead_number: string | null;
+  lead_id: string | null;
+  to_number: string | null;
+  from_number: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  duration_seconds: number | null;
+  outcome: string | null;
+  recording_url: string | null;
+  recording_sid: string | null;
+  hubspot_activity_id: string | null;
+  hubspot_url: string | null;
+  notes: string | null;
+  created_at: string | null;
+}
+
+export interface SalesCallsResponse {
+  ok: boolean;
+  tenant_id: string;
+  copilot_tenant_id: string;
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+  calls: SalesCall[];
+  note?: string;
+}
+
+export interface RecordingConsentAuditEntry {
+  id: string;
+  action: "enabled" | "disabled" | "banner_updated";
+  old_value: { enabled?: boolean; banner_text?: string | null } | null;
+  new_value: { enabled?: boolean; banner_text?: string | null } | null;
+  changed_by: string | null;
+  created_at: string | null;
+}
+
+export interface RecordingConsentResponse {
+  ok: boolean;
+  tenant_id: string;
+  recording_consent_enabled: boolean;
+  recording_consent_banner_text: string | null;
+  default_banner_text: string;
+  updated_at: string | null;
+  updated_by: string | null;
+  config_row_exists: boolean;
+  audit: RecordingConsentAuditEntry[];
+  note?: string;
+}
+
+// ── Fetchers: Voice Reps (Block 2 + 4) ───────────────────────────────
+
+export const fetchVoiceReps = () => apiFetch<VoiceRepsResponse>("/voice/reps");
+
+export const createVoiceRep = (payload: {
+  rep_id: string;
+  name: string;
+  email?: string;
+  twilio_number?: string;
+  caller_id_status?: CallerIdStatus;
+}) => apiPost<VoiceRepMutationResponse>("/voice/reps", payload);
+
+export const updateVoiceRep = (repId: string, payload: {
+  name?: string;
+  email?: string | null;
+  twilio_number?: string | null;
+  caller_id_status?: CallerIdStatus;
+  active?: boolean;
+}) => apiSend<VoiceRepMutationResponse>("PATCH", `/voice/reps/${encodeURIComponent(repId)}`, payload);
+
+export const deleteVoiceRep = (repId: string) =>
+  apiDelete<VoiceRepMutationResponse>(`/voice/reps/${encodeURIComponent(repId)}`);
+
+// ── Fetchers: Sales Calls (Block 3) ──────────────────────────────────
+
+export const fetchSalesCalls = (params?: {
+  rep_id?: string;
+  outcome?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}) => {
+  const qs = new URLSearchParams();
+  if (params?.rep_id) qs.set("rep_id", params.rep_id);
+  if (params?.outcome) qs.set("outcome", params.outcome);
+  if (params?.from) qs.set("from", params.from);
+  if (params?.to) qs.set("to", params.to);
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.offset) qs.set("offset", String(params.offset));
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return apiFetch<SalesCallsResponse>(`/voice/calls${suffix}`);
+};
+
+// ── Fetchers: Recording Consent (Block 6) ────────────────────────────
+
+export const fetchRecordingConsent = () =>
+  apiFetch<RecordingConsentResponse>("/voice/consent");
+
+export const updateRecordingConsent = (payload: {
+  recording_consent_enabled?: boolean;
+  recording_consent_banner_text?: string | null;
+}) => apiSend<{
+  ok: boolean;
+  action: string;
+  recording_consent_enabled: boolean;
+  recording_consent_banner_text: string | null;
+}>("PUT", "/voice/consent", payload);

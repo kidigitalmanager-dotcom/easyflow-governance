@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
 import logo from "@/assets/useeasy-logo.jpg";
@@ -11,6 +11,7 @@ const navItems = [
   { to: "/review", label: "Review Queue", icon: ListChecks },
   { to: "/audit", label: "Audit Trail", icon: History },
   { to: "/playbooks", label: "Playbooks", icon: BookOpen },
+  { to: "/voice", label: "Voice & Calls", icon: PhoneCall },
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
 ];
 

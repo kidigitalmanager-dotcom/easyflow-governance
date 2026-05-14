@@ -16,6 +16,13 @@ import {
   revertSpreadsheetAction,
   deleteSpreadsheet,
   toggleSpreadsheet,
+  fetchVoiceReps,
+  createVoiceRep,
+  updateVoiceRep,
+  deleteVoiceRep,
+  fetchSalesCalls,
+  fetchRecordingConsent,
+  updateRecordingConsent,
 } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -184,5 +191,79 @@ export function useSpreadsheetToggle() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["spreadsheets"] });
     },
+  });
+}
+
+// ── Voice / Sales-Calls / Consent Hooks (v4.9.0 — Blöcke 2/3/4/6) ─────────
+
+export function useVoiceReps() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["voice-reps"],
+    queryFn: fetchVoiceReps,
+    enabled: !!session,
+    staleTime: 30_000,
+  });
+}
+
+export function useVoiceRepCreate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createVoiceRep,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["voice-reps"] }),
+  });
+}
+
+export function useVoiceRepUpdate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ repId, payload }: {
+      repId: string;
+      payload: Parameters<typeof updateVoiceRep>[1];
+    }) => updateVoiceRep(repId, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["voice-reps"] }),
+  });
+}
+
+export function useVoiceRepDelete() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteVoiceRep,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["voice-reps"] }),
+  });
+}
+
+export function useSalesCalls(params?: {
+  rep_id?: string;
+  outcome?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["sales-calls", params],
+    queryFn: () => fetchSalesCalls(params),
+    enabled: !!session,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useRecordingConsent() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["recording-consent"],
+    queryFn: fetchRecordingConsent,
+    enabled: !!session,
+    staleTime: 30_000,
+  });
+}
+
+export function useRecordingConsentUpdate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: updateRecordingConsent,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["recording-consent"] }),
   });
 }
