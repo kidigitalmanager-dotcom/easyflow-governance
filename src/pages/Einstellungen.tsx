@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import { useMe } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
-import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug } from "lucide-react";
+import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug, FileSpreadsheet } from "lucide-react";
 import { ChipDomainInput } from "@/components/ChipDomainInput";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import KnowledgeBaseTab from "@/components/KnowledgeBaseTab";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
+import SpreadsheetConfigTab from "@/components/SpreadsheetConfigTab";
+import SpreadsheetAuditTab from "@/components/SpreadsheetAuditTab";
 
 function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [state, setState] = useState<T>(() => {
@@ -85,7 +87,8 @@ export default function Einstellungen() {
   const initialTab = (() => {
     if (typeof window === "undefined") return "general";
     const t = new URLSearchParams(window.location.search).get("tab");
-    return t === "knowledge" || t === "integrations" ? t : "general";
+    if (t === "excel") return "spreadsheet"; // Chrome-Extension Deep-Link Alias (?tab=excel)
+    return t === "knowledge" || t === "integrations" || t === "spreadsheet" ? t : "general";
   })();
 
   return (
@@ -104,6 +107,10 @@ export default function Einstellungen() {
           <TabsTrigger value="knowledge" className="gap-1.5">
             <BookOpen className="w-3.5 h-3.5" />
             Unternehmenswissen
+          </TabsTrigger>
+          <TabsTrigger value="spreadsheet" className="gap-1.5">
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            Excel Live-Sync
           </TabsTrigger>
           <TabsTrigger value="integrations" className="gap-1.5">
             <Plug className="w-3.5 h-3.5" />
@@ -284,6 +291,13 @@ export default function Einstellungen() {
 
         <TabsContent value="knowledge" className="mt-6">
           <KnowledgeBaseTab />
+        </TabsContent>
+
+        <TabsContent value="spreadsheet" className="mt-6 space-y-8">
+          <SpreadsheetConfigTab />
+          <div className="border-t border-border pt-6">
+            <SpreadsheetAuditTab />
+          </div>
         </TabsContent>
 
         <TabsContent value="integrations" className="mt-6 space-y-6">
