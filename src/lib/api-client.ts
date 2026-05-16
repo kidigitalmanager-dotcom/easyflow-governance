@@ -654,3 +654,102 @@ export const updateRecordingConsent = (payload: {
   recording_consent_enabled: boolean;
   recording_consent_banner_text: string | null;
 }>("PUT", "/voice/consent", payload);
+// ════════════════════════════════════════════════════════════════════════════
+// Jana-Autopilot — Customer Console v4.12.0 (Phase 3C, Block C)
+// Backend: useeasy-api-router /v1/dashboard/autonomy-policy* (JWT-authed)
+// ════════════════════════════════════════════════════════════════════════════
+
+export type AutopilotChannel = "voice" | "email";
+
+export interface AutonomyPolicy {
+  tenant_id: string;
+  channel: AutopilotChannel;
+  enabled: boolean;
+  allowed_intents: string[];
+  confidence_threshold: number;
+  trigger_on_inbound: boolean;
+  trigger_on_stalled: boolean;
+  stalled_days_threshold: number;
+  active_hours_start: string;   // HH:MM
+  active_hours_end: string;     // HH:MM
+  active_days: number[];        // 1..7 (Mo..So)
+  timezone: string;
+  daily_cap: number;
+  per_contact_cooldown_days: number;
+  test_mode_enabled: boolean;
+  test_phone_whitelist: string[];
+  email_cta_enabled: boolean;
+  hard_blocked_intents: string[];
+  known_intents: string[];
+  updated_at: string | null;
+}
+
+export interface AutonomyPolicyPayload {
+  channel?: AutopilotChannel;
+  enabled?: boolean;
+  allowed_intents?: string[];
+  confidence_threshold?: number;
+  trigger_on_inbound?: boolean;
+  trigger_on_stalled?: boolean;
+  stalled_days_threshold?: number;
+  active_hours_start?: string;
+  active_hours_end?: string;
+  active_days?: number[];
+  timezone?: string;
+  daily_cap?: number;
+  per_contact_cooldown_days?: number;
+  test_mode_enabled?: boolean;
+  test_phone_whitelist?: string[];
+  email_cta_enabled?: boolean;
+}
+
+export interface AutonomyPolicyResponse {
+  ok: boolean;
+  policy: AutonomyPolicy;
+  warnings?: string[];
+  filtered_hard_blocked?: string[];
+}
+
+export interface AutonomyPolicyNotFoundResponse {
+  ok: false;
+  error: "policy_not_found" | "autonomy_policy_table_missing";
+  tenant_id?: string;
+  channel?: AutopilotChannel;
+  hard_blocked_intents?: string[];
+  known_intents?: string[];
+}
+
+export interface AutonomyTestCallPayload {
+  intent: string;
+  confidence: number;
+  phone?: string;
+  subject?: string;
+  risk_flags?: string[];
+  channel?: AutopilotChannel;
+}
+
+export interface AutonomyTestCallGate {
+  name: string;
+  pass: boolean;
+  reason?: string;
+  detail?: unknown;
+}
+
+export interface AutonomyTestCallResponse {
+  ok: boolean;
+  overall_pass: boolean;
+  gates: AutonomyTestCallGate[];
+  input?: AutonomyTestCallPayload;
+  note?: string;
+}
+
+export const fetchAutonomyPolicy = (channel: AutopilotChannel = "voice") =>
+  apiFetch<AutonomyPolicyResponse | AutonomyPolicyNotFoundResponse>(
+    `/autonomy-policy?channel=${encodeURIComponent(channel)}`,
+  );
+
+export const saveAutonomyPolicy = (payload: AutonomyPolicyPayload) =>
+  apiSend<AutonomyPolicyResponse>("PUT", "/autonomy-policy", payload as Record<string, unknown>);
+
+export const testAutonomyPolicy = (payload: AutonomyTestCallPayload) =>
+  apiPost<AutonomyTestCallResponse>("/autonomy-policy/test-call", payload as unknown as Record<string, unknown>);

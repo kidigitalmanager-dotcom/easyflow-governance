@@ -23,7 +23,11 @@ import {
   fetchSalesCalls,
   fetchRecordingConsent,
   updateRecordingConsent,
+  fetchAutonomyPolicy,
+  saveAutonomyPolicy,
+  testAutonomyPolicy,
 } from "@/lib/api-client";
+import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useMe() {
@@ -265,5 +269,33 @@ export function useRecordingConsentUpdate() {
   return useMutation({
     mutationFn: updateRecordingConsent,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["recording-consent"] }),
+  });
+}
+// ── Hooks: Jana-Autopilot (Phase 3C) ─────────────────────────────────
+
+export function useAutonomyPolicy(channel: AutopilotChannel = "voice") {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["autonomy-policy", channel],
+    queryFn: () => fetchAutonomyPolicy(channel),
+    enabled: !!session,
+    staleTime: 30_000,
+    // 404 (policy_not_found) ist ein erwarteter Zustand — fangen wir im Tab ab,
+    // nicht hier. apiFetch wirft bei !ok eine ApiError; wir lassen die durch.
+    retry: false,
+  });
+}
+
+export function useSaveAutonomyPolicy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: AutonomyPolicyPayload) => saveAutonomyPolicy(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["autonomy-policy"] }),
+  });
+}
+
+export function useTestAutonomyPolicy() {
+  return useMutation({
+    mutationFn: (payload: AutonomyTestCallPayload) => testAutonomyPolicy(payload),
   });
 }

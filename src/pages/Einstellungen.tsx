@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMe } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
-import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug, FileSpreadsheet } from "lucide-react";
+import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug, FileSpreadsheet, Phone } from "lucide-react";
 import { ChipDomainInput } from "@/components/ChipDomainInput";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +10,7 @@ import KnowledgeBaseTab from "@/components/KnowledgeBaseTab";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
 import SpreadsheetConfigTab from "@/components/SpreadsheetConfigTab";
 import SpreadsheetAuditTab from "@/components/SpreadsheetAuditTab";
+import JanaAutopilotTab from "@/components/JanaAutopilotTab";
 
 function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [state, setState] = useState<T>(() => {
@@ -88,7 +89,8 @@ export default function Einstellungen() {
     if (typeof window === "undefined") return "general";
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "excel") return "spreadsheet"; // Chrome-Extension Deep-Link Alias (?tab=excel)
-    return t === "knowledge" || t === "integrations" || t === "spreadsheet" ? t : "general";
+    if (t === "jana" || t === "autopilot") return "autopilot"; // Phase 3C alias
+    return t === "knowledge" || t === "integrations" || t === "spreadsheet" || t === "autopilot" ? t : "general";
   })();
 
   return (
@@ -115,6 +117,10 @@ export default function Einstellungen() {
           <TabsTrigger value="integrations" className="gap-1.5">
             <Plug className="w-3.5 h-3.5" />
             Integrationen
+          </TabsTrigger>
+          <TabsTrigger value="autopilot" className="gap-1.5">
+            <Phone className="w-3.5 h-3.5" />
+            Jana-Autopilot
           </TabsTrigger>
         </TabsList>
 
@@ -302,6 +308,10 @@ export default function Einstellungen() {
 
         <TabsContent value="integrations" className="mt-6 space-y-6">
           <HubSpotIntegration />
+        </TabsContent>
+
+        <TabsContent value="autopilot" className="mt-6 space-y-6">
+          <JanaAutopilotTab />
         </TabsContent>
       </Tabs>
     </div>
