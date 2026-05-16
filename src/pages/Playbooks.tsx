@@ -193,7 +193,6 @@ export default function Playbooks() {
           {userPacks.map((pack) => {
             const checked = draftActive.has(pack.key);
             const cantActivate = !checked && draftCount >= planLimit;
-            const isEmpty = pack.rules_count === 0;
             return (
               <Tooltip key={pack.key}>
                 <TooltipTrigger asChild>
@@ -229,18 +228,9 @@ export default function Playbooks() {
                         {pack.description}
                       </p>
                     )}
-                    <div className="flex items-center justify-between gap-2 mt-auto pt-2">
-                      <span
-                        className={`text-xs ${
-                          isEmpty ? "text-amber-400" : "text-muted-foreground"
-                        }`}
-                      >
-                        {pack.rules_count} {pack.rules_count === 1 ? "Regel" : "Regeln"}
-                      </span>
+                    <div className="flex items-center justify-end gap-2 mt-auto pt-2">
                       {checked ? (
                         <span className="text-xs text-primary font-medium">Aktiv</span>
-                      ) : isEmpty ? (
-                        <span className="text-xs text-amber-400">noch ohne Regeln</span>
                       ) : (
                         <span className="text-xs text-muted-foreground">Nicht aktiv</span>
                       )}
@@ -252,15 +242,6 @@ export default function Playbooks() {
                     <p className="max-w-xs text-xs">
                       Plan-Limit erreicht ({planLimit} Pack{planLimit !== 1 ? "s" : ""}).
                       Deaktiviere einen anderen Pack oder upgrade.
-                    </p>
-                  </TooltipContent>
-                )}
-                {!cantActivate && isEmpty && (
-                  <TooltipContent>
-                    <p className="max-w-xs text-xs">
-                      Dieser Pack existiert, hat aber noch keine aktiven Regeln in deiner
-                      Umgebung. Aktivieren laesst sich er trotzdem — bewirkt aber keine
-                      zusaetzliche Klassifikation.
                     </p>
                   </TooltipContent>
                 )}
