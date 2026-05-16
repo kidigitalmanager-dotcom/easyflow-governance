@@ -667,18 +667,6 @@ export default function JanaAutopilotTab() {
           )}
         </div>
 
-        {/* VAPI-Hinweis */}
-        <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-3 text-xs flex items-start gap-2">
-          <Info className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
-          <div className="text-muted-foreground">
-            <strong className="text-foreground">Setup-Hinweis (einmalig pro Tenant):</strong>{" "}
-            In VAPI muessen die Tool-Wartemeldungen am <code>load_context</code>-Tool
-            sowie die <code>endCallMessage</code> der beiden Assistants natuerlich gesetzt
-            sein, damit Jana nicht „es dauert nur 1 Sekunde" sagt. Pinklightstudios-Setup
-            ist bereits angepasst.
-          </div>
-        </div>
-
         {/* Save-Bar */}
         <div className="flex items-center justify-between gap-3 sticky bottom-4">
           <div className="text-xs text-muted-foreground">
