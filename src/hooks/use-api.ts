@@ -26,8 +26,10 @@ import {
   fetchAutonomyPolicy,
   saveAutonomyPolicy,
   testAutonomyPolicy,
+  fetchPlaybookCatalog,
+  savePlaybookActive,
 } from "@/lib/api-client";
-import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload } from "@/lib/api-client";
+import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload, PlaybookActivePayload } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useMe() {
@@ -297,5 +299,28 @@ export function useSaveAutonomyPolicy() {
 export function useTestAutonomyPolicy() {
   return useMutation({
     mutationFn: (payload: AutonomyTestCallPayload) => testAutonomyPolicy(payload),
+  });
+}
+
+// ── Hooks: Playbook-Picker (Phase 3D) ────────────────────────────────
+
+export function usePlaybookCatalog() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["playbook-catalog"],
+    queryFn: fetchPlaybookCatalog,
+    enabled: !!session,
+    staleTime: 30_000,
+  });
+}
+
+export function useSavePlaybookActive() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: PlaybookActivePayload) => savePlaybookActive(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["playbook-catalog"] });
+      qc.invalidateQueries({ queryKey: ["me"] });
+    },
   });
 }

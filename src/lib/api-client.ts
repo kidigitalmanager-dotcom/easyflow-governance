@@ -395,7 +395,7 @@ export const fetchStats = async (): Promise<DashboardStats> => {
 };
 export const fetchRecentEmails = () => apiFetch<RecentEmail[]>("/emails/recent");
 export const fetchAuditLog = () => apiFetch<AuditLogEntry[]>("/audit");
-export const fetchPlaybooks = () => apiFetch<PlaybooksResponse>("/playbooks");
+export const fetchPlaybooks = () => apiFetch<PlaybooksResponse>("/playbooks?legacy=1");
 
 // ── Knowledge Base Fetchers ──────────────────────────
 
@@ -753,3 +753,52 @@ export const saveAutonomyPolicy = (payload: AutonomyPolicyPayload) =>
 
 export const testAutonomyPolicy = (payload: AutonomyTestCallPayload) =>
   apiPost<AutonomyTestCallResponse>("/autonomy-policy/test-call", payload as unknown as Record<string, unknown>);
+
+// ════════════════════════════════════════════════════════════════════════════
+// Playbook-Picker — Customer Console v4.13.0 (Phase 3D)
+// Backend: useeasy-api-router /v1/dashboard/playbooks{,/active} (JWT-authed)
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface PlaybookPack {
+  key: string;
+  name: string;
+  display_name: string;
+  description: string | null;
+  domain: string | null;
+  is_system: boolean;
+  is_pack_active: boolean;            // Pack auf System-Ebene aktiv (hat Rules)?
+  is_active_for_tenant: boolean;      // Dieser Tenant nutzt ihn (im active_pack_keys)?
+  rules_count: number;
+  sort_order: number;
+}
+
+export interface PlaybookCatalogResponse {
+  ok: boolean;
+  tenant_id: string;
+  plan: string;
+  plan_pack_limit: number;
+  active_pack_count: number;
+  slots_remaining: number;
+  packs: PlaybookPack[];
+}
+
+export interface PlaybookActivePayload {
+  pack_keys: string[];
+}
+
+export interface PlaybookActiveResponse {
+  ok: boolean;
+  tenant_id: string;
+  plan: string;
+  plan_pack_limit: number;
+  active_pack_keys: string[];
+  primary_pack: string | null;
+  rejected_unknown: string[];
+  rejected_system: string[];
+}
+
+export const fetchPlaybookCatalog = () =>
+  apiFetch<PlaybookCatalogResponse>("/playbooks");
+
+export const savePlaybookActive = (payload: PlaybookActivePayload) =>
+  apiSend<PlaybookActiveResponse>("PUT", "/playbooks/active", payload as unknown as Record<string, unknown>);
