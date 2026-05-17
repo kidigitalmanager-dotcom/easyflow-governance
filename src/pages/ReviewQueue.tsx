@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { useRecentEmails } from "@/hooks/use-api";
+import ReviewVerdictButtons from "@/components/ReviewVerdictButtons";
 import type { RecentEmail } from "@/lib/api-client";
 import { REVIEW } from "@/data/strings.de";
 import { Check, X, Eye, Inbox } from "lucide-react";
@@ -62,6 +63,11 @@ export default function ReviewQueue() {
                 </div>
 
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  {item.has_draft && item.status !== "resolved" && (
+                    <ReviewVerdictButtons
+                      draftId={`${item.id}:draft:1`}
+                    />
+                  )}
                   <span className={`text-xs px-2 py-1 rounded-md border ${
                     item.status === "resolved"
                       ? "border-primary/30 text-primary bg-primary/10"

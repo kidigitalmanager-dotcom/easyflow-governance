@@ -14,6 +14,7 @@ import Playbooks from "./pages/Playbooks";
 import Einstellungen from "./pages/Einstellungen";
 import VoiceCalls from "./pages/VoiceCalls";
 import NotFound from "./pages/NotFound";
+import AdminPromotion from "./pages/AdminPromotion";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
                       <Route path="/playbooks" element={<Playbooks />} />
                       <Route path="/voice" element={<VoiceCalls />} />
                       <Route path="/einstellungen" element={<Einstellungen />} />
+                      <Route path="/admin/autopilot/promotion" element={<AdminPromotion />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppLayout>

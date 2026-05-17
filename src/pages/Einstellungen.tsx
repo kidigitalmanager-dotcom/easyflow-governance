@@ -11,6 +11,10 @@ import HubSpotIntegration from "@/components/HubSpotIntegration";
 import SpreadsheetConfigTab from "@/components/SpreadsheetConfigTab";
 import SpreadsheetAuditTab from "@/components/SpreadsheetAuditTab";
 import JanaAutopilotTab from "@/components/JanaAutopilotTab";
+import EmailAutopilotTab from "@/components/EmailAutopilotTab";
+import EmailAutopilotAuditView from "@/components/EmailAutopilotAuditView";
+import StichprobenAuditTab from "@/components/StichprobenAuditTab";
+import { Mail } from "lucide-react";
 
 function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [state, setState] = useState<T>(() => {
@@ -117,6 +121,18 @@ export default function Einstellungen() {
           <TabsTrigger value="integrations" className="gap-1.5">
             <Plug className="w-3.5 h-3.5" />
             Integrationen
+          </TabsTrigger>
+          <TabsTrigger value="email-autopilot" className="gap-1.5">
+            <Mail className="w-3.5 h-3.5" />
+            Email-Autopilot
+          </TabsTrigger>
+          <TabsTrigger value="email-autopilot-audit" className="gap-1.5">
+            <Mail className="w-3.5 h-3.5" />
+            Autopilot Audit
+          </TabsTrigger>
+          <TabsTrigger value="email-autopilot-samples" className="gap-1.5">
+            <Mail className="w-3.5 h-3.5" />
+            Nachträglich prüfen
           </TabsTrigger>
           <TabsTrigger value="autopilot" className="gap-1.5">
             <Phone className="w-3.5 h-3.5" />
@@ -308,6 +324,18 @@ export default function Einstellungen() {
 
         <TabsContent value="integrations" className="mt-6 space-y-6">
           <HubSpotIntegration />
+        </TabsContent>
+
+        <TabsContent value="email-autopilot" className="mt-6 space-y-6">
+          <EmailAutopilotTab />
+        </TabsContent>
+
+        <TabsContent value="email-autopilot-audit" className="mt-6 space-y-6">
+          <EmailAutopilotAuditView />
+        </TabsContent>
+
+        <TabsContent value="email-autopilot-samples" className="mt-6 space-y-6">
+          <StichprobenAuditTab />
         </TabsContent>
 
         <TabsContent value="autopilot" className="mt-6 space-y-6">

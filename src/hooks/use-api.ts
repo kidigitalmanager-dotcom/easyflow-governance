@@ -28,8 +28,18 @@ import {
   testAutonomyPolicy,
   fetchPlaybookCatalog,
   savePlaybookActive,
+  // Autopilot Email (Chat B + C)
+  submitAutopilotFeedback,
+  requestAutopilotPromotion,
+  fetchAutopilotFewShot,
+  fetchAutopilotLog,
+  fetchAutopilotAuditSamples,
+  fetchAutopilotPolicy,
+  saveAutopilotPolicy,
+  fetchAutopilotPromotionPendingAdmin,
+  promoteAutopilot,
 } from "@/lib/api-client";
-import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload, PlaybookActivePayload } from "@/lib/api-client";
+import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload, PlaybookActivePayload, AutopilotFeedbackInput, AutopilotPromoteRequestInput, AutopilotPolicyPutInput, AutopilotCoreKey, AutopilotPromoteInput } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useMe() {
@@ -321,6 +331,116 @@ export function useSavePlaybookActive() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["playbook-catalog"] });
       qc.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Autopilot Email (Chat B + C, v4.16.0 + v4.17.x)
+// ════════════════════════════════════════════════════════════════════════════
+
+// Approve/Edit/Reject — Feedback-Capture
+export function useSubmitAutopilotFeedback() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AutopilotFeedbackInput) => submitAutopilotFeedback(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["recent-emails"] });
+      qc.invalidateQueries({ queryKey: ["audit-log"] });
+      qc.invalidateQueries({ queryKey: ["autopilot-log"] });
+    },
+  });
+}
+
+// Tenant-Admin Promotion-Anfrage
+export function useRequestAutopilotPromotion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AutopilotPromoteRequestInput) => requestAutopilotPromotion(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["autopilot-policy"] });
+    },
+  });
+}
+
+// Few-Shot anzeige pro Core-Key
+export function useAutopilotFewShot(coreKey: AutopilotCoreKey | null) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["autopilot-few-shot", coreKey],
+    queryFn: () => fetchAutopilotFewShot(coreKey as AutopilotCoreKey),
+    enabled: !!session && !!coreKey,
+    staleTime: 60_000,
+  });
+}
+
+// Audit-Log
+export function useAutopilotLog(params: { decision?: string; action_type?: string; limit?: number; offset?: number } = {}) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["autopilot-log", params],
+    queryFn: () => fetchAutopilotLog(params),
+    enabled: !!session,
+    staleTime: 30_000,
+  });
+}
+
+// Stichproben-Audit-Samples
+export function useAutopilotAuditSamples(params: { limit?: number; offset?: number } = {}) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["autopilot-audit-samples", params],
+    queryFn: () => fetchAutopilotAuditSamples(params),
+    enabled: !!session,
+    staleTime: 30_000,
+  });
+}
+
+// Policy GET (404 wenn noch nicht init)
+export function useAutopilotPolicy() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["autopilot-policy"],
+    queryFn: () => fetchAutopilotPolicy().catch((err) => {
+      if (err && err.status === 404) return null;
+      throw err;
+    }),
+    enabled: !!session,
+    staleTime: 30_000,
+  });
+}
+
+// Policy PUT
+export function useSaveAutopilotPolicy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AutopilotPolicyPutInput) => saveAutopilotPolicy(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["autopilot-policy"] });
+    },
+  });
+}
+
+// Super-Admin: Promotion-Pending-Liste
+export function useAutopilotPromotionPending() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["autopilot-promotion-pending"],
+    queryFn: () => fetchAutopilotPromotionPendingAdmin(),
+    enabled: !!session,
+    staleTime: 30_000,
+    retry: false, // 403 sofort surface
+  });
+}
+
+// Super-Admin: 1-Klick Promote
+export function usePromoteAutopilot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AutopilotPromoteInput) => promoteAutopilot(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["autopilot-promotion-pending"] });
+      qc.invalidateQueries({ queryKey: ["autopilot-policy"] });
     },
   });
 }

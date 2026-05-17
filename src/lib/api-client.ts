@@ -802,3 +802,247 @@ export const fetchPlaybookCatalog = () =>
 
 export const savePlaybookActive = (payload: PlaybookActivePayload) =>
   apiSend<PlaybookActiveResponse>("PUT", "/playbooks/active", payload as unknown as Record<string, unknown>);
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// Autopilot Email (Chat B + C, v4.16.0 + v4.17.x)
+// Backend: useeasy-api-router /v1/dashboard/autopilot/* (JWT-authed)
+//          + /v1/admin/ops/autopilot/* (Super-Admin)
+// ════════════════════════════════════════════════════════════════════════════
+
+export type AutopilotCoreKey = "status_fulfillment" | "request_order" | "returns_refund";
+export type AutopilotHumanVerdict = "approve" | "edit" | "reject";
+export type AutopilotMode = "shadow" | "assisted" | "autonomous";
+
+// -- Feedback (Approve/Edit/Reject) -----------------------------------------
+export interface AutopilotFeedbackInput {
+  draft_id: string;
+  human_verdict: AutopilotHumanVerdict;
+  draft_body_final?: string;
+}
+export interface AutopilotFeedbackResponse {
+  ok: boolean;
+  draft_id: string;
+  human_verdict: AutopilotHumanVerdict;
+  autopilot_verdict: string | null;
+  is_mismatch: boolean;
+  edit_distance: number;
+  new_status: "approved" | "rejected";
+  created_by: string;
+}
+export const submitAutopilotFeedback = (input: AutopilotFeedbackInput) =>
+  apiPost<AutopilotFeedbackResponse>("/autopilot/feedback", input as unknown as Record<string, unknown>);
+
+// -- Promotion (Tenant-Anfrage) ---------------------------------------------
+export interface AutopilotPromoteRequestInput {
+  core_key: AutopilotCoreKey;
+  target_mode: AutopilotMode;
+}
+export const requestAutopilotPromotion = (input: AutopilotPromoteRequestInput) =>
+  apiPost<{ ok: boolean; request: Record<string, unknown> }>("/autopilot/promote-request", input as unknown as Record<string, unknown>);
+
+// -- Few-Shot (Console-Anzeige) ----------------------------------------------
+export interface AutopilotFewShotExample {
+  draft_body_final: string | null;
+  draft_body_original: string | null;
+  human_verdict: "approve" | "edit";
+  edit_distance: number;
+  core_key: string | null;
+  created_at: string;
+}
+export interface AutopilotFewShotResponse {
+  ok: boolean;
+  tenant_id: string;
+  core_key: string | null;
+  scope?: "per_core_key" | "tenant_wide";
+  count: number;
+  examples: AutopilotFewShotExample[];
+  prompt_block: string;
+}
+export const fetchAutopilotFewShot = (coreKey: AutopilotCoreKey, n = 5) =>
+  apiFetch<AutopilotFewShotResponse>(`/autopilot/few-shot?core_key=${encodeURIComponent(coreKey)}&n=${n}`);
+
+// -- Audit-Log ---------------------------------------------------------------
+export interface AutopilotLogRow {
+  id: string;
+  tenant_id: string;
+  draft_id: string;
+  event_id: string | null;
+  core_key: string | null;
+  confidence: number | null;
+  action_type: string;
+  decision: string;
+  reasons: unknown;
+  cooldown_until: string | null;
+  sent_at: string | null;
+  created_at: string;
+}
+export interface AutopilotLogResponse {
+  ok: boolean;
+  tenant_id: string;
+  filters: { decision: string | null; action_type: string | null; since: string | null };
+  pagination: { limit: number; offset: number; total: number; has_more: boolean };
+  rows: AutopilotLogRow[];
+}
+export const fetchAutopilotLog = (params: { limit?: number; offset?: number; decision?: string; action_type?: string; since?: string } = {}) => {
+  const qs = new URLSearchParams();
+  if (params.limit != null)        qs.set("limit", String(params.limit));
+  if (params.offset != null)       qs.set("offset", String(params.offset));
+  if (params.decision)             qs.set("decision", params.decision);
+  if (params.action_type)          qs.set("action_type", params.action_type);
+  if (params.since)                qs.set("since", params.since);
+  const q = qs.toString();
+  return apiFetch<AutopilotLogResponse>(`/autopilot/log${q ? "?" + q : ""}`);
+};
+
+// -- Audit-Samples (Stichproben "nachträglich prüfen") -----------------------
+export interface AutopilotAuditSampleRow {
+  id: string;
+  tenant_id: string;
+  draft_id: string;
+  event_id: string | null;
+  core_key: string | null;
+  confidence: number | null;
+  autopilot_verdict: string | null;
+  human_verdict: string | null;
+  draft_body_original: string | null;
+  draft_body_final: string | null;
+  edit_distance: number;
+  is_mismatch: boolean;
+  created_by: string;
+  created_at: string;
+}
+export interface AutopilotAuditSamplesResponse {
+  ok: boolean;
+  tenant_id: string;
+  pagination: { limit: number; offset: number; total: number; has_more: boolean };
+  rows: AutopilotAuditSampleRow[];
+}
+export const fetchAutopilotAuditSamples = (params: { limit?: number; offset?: number } = {}) => {
+  const qs = new URLSearchParams();
+  if (params.limit != null)  qs.set("limit", String(params.limit));
+  if (params.offset != null) qs.set("offset", String(params.offset));
+  const q = qs.toString();
+  return apiFetch<AutopilotAuditSamplesResponse>(`/autopilot/audit-samples${q ? "?" + q : ""}`);
+};
+
+// -- Policy GET + PUT --------------------------------------------------------
+export interface AutopilotPolicy {
+  tenant_id: string;
+  enabled: boolean;
+  kill_switch: boolean;
+  global_mode: AutopilotMode;
+  intent_whitelist: AutopilotCoreKey[];
+  thresholds: Partial<Record<AutopilotCoreKey, number>>;
+  cooldown_minutes: number;
+  daily_cap: number;
+  audit_sample_rate: number;
+  legal_basis_ack: boolean;
+  legal_basis_ack_at: string | null;
+  legal_basis_ack_by: string | null;
+  footer_enabled: boolean;
+  footer_text: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export interface AutopilotMaturityRow {
+  core_key: string;
+  mode: AutopilotMode;
+  sample_count: number;
+  shadow_mismatch_rate: number | null;
+  edit_rate: number | null;
+  reject_rate: number | null;
+  audit_complaint_rate: number | null;
+  promotion_ready: boolean;
+  promotion_requested: boolean;
+  promotion_requested_at: string | null;
+  last_promoted_at: string | null;
+  last_promoted_by: string | null;
+  updated_at: string;
+}
+export interface AutopilotPolicyResponse {
+  ok: boolean;
+  policy: AutopilotPolicy;
+  maturity: AutopilotMaturityRow[];
+  hard_ceiling: { intents: string[]; intent_modes: Record<string, string> };
+}
+export const fetchAutopilotPolicy = () =>
+  apiFetch<AutopilotPolicyResponse>("/autopilot/policy");
+
+export interface AutopilotPolicyPutInput {
+  enabled?: boolean;
+  kill_switch?: boolean;
+  global_mode?: AutopilotMode;
+  intent_whitelist?: AutopilotCoreKey[];
+  thresholds?: Partial<Record<AutopilotCoreKey, number>>;
+  cooldown_minutes?: number;
+  daily_cap?: number;
+  audit_sample_rate?: number;
+  footer_enabled?: boolean;
+  footer_text?: string | null;
+  legal_basis_ack?: boolean;
+}
+export const saveAutopilotPolicy = (input: AutopilotPolicyPutInput) =>
+  apiSend<AutopilotPolicyResponse>("PUT", "/autopilot/policy", input as unknown as Record<string, unknown>);
+
+// -- Super-Admin Promotion ---------------------------------------------------
+export interface AutopilotPromotionPending {
+  tenant_id: string;
+  core_key: string;
+  current_mode: AutopilotMode;
+  sample_count: number;
+  shadow_mismatch_rate: number | null;
+  edit_rate: number | null;
+  reject_rate: number | null;
+  promotion_ready: boolean;
+  promotion_requested: boolean;
+  promotion_requested_at: string | null;
+  promotion_requested_by: string | null;
+  legal_basis_ack: boolean;
+  legal_basis_ack_at: string | null;
+}
+export interface AutopilotPromotionPendingResponse {
+  ok: boolean;
+  count: number;
+  pending: AutopilotPromotionPending[];
+}
+export const fetchAutopilotPromotionPending = () =>
+  apiFetch<AutopilotPromotionPendingResponse>("/admin/ops/autopilot/promotion-pending".replace("/dashboard", ""));
+// Hinweis: apiFetch nutzt API_BASE = /v1/dashboard. Wir trick'sen via path-replace
+// auf /v1/admin/ops/... — apiFetch checkt path.startsWith("/v1/") nicht spezial,
+// also explizit absoluten URL bauen:
+
+export const fetchAutopilotPromotionPendingAdmin = async (): Promise<AutopilotPromotionPendingResponse> => {
+  const token = await (async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  })();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+  const res = await fetch("https://api.useeasy.ai/v1/admin/ops/autopilot/promotion-pending", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 403) throw new ApiError(403, "super_admin_required");
+  if (!res.ok) throw new ApiError(res.status, `promotion_pending_failed_${res.status}`);
+  return res.json();
+};
+
+export interface AutopilotPromoteInput {
+  tenant_id: string;
+  core_key: string;
+  target_mode: AutopilotMode;
+}
+export const promoteAutopilot = async (input: AutopilotPromoteInput) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? null;
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+  const res = await fetch("https://api.useeasy.ai/v1/admin/ops/autopilot/promote", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, err.error || `promote_failed_${res.status}`);
+  }
+  return res.json() as Promise<{ ok: boolean; promoted: Record<string, unknown>; promoted_by: string }>;
+};
