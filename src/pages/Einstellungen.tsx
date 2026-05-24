@@ -105,7 +105,7 @@ export default function Einstellungen() {
       </div>
 
       <Tabs defaultValue={initialTab} className="w-full">
-        <TabsList className="w-full justify-start">
+        <TabsList className="w-full !grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 !h-auto gap-1">
           <TabsTrigger value="general" className="gap-1.5">
             <Settings className="w-3.5 h-3.5" />
             Allgemein
