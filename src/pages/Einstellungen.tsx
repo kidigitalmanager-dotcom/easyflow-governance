@@ -8,13 +8,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import KnowledgeBaseTab from "@/components/KnowledgeBaseTab";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
+import TelegramIntegration from "@/components/TelegramIntegration";
 import SpreadsheetConfigTab from "@/components/SpreadsheetConfigTab";
 import SpreadsheetAuditTab from "@/components/SpreadsheetAuditTab";
 import JanaAutopilotTab from "@/components/JanaAutopilotTab";
 import EmailAutopilotTab from "@/components/EmailAutopilotTab";
 import EmailAutopilotAuditView from "@/components/EmailAutopilotAuditView";
 import StichprobenAuditTab from "@/components/StichprobenAuditTab";
-import { Mail } from "lucide-react";
 
 function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [state, setState] = useState<T>(() => {
@@ -324,6 +324,7 @@ export default function Einstellungen() {
 
         <TabsContent value="integrations" className="mt-6 space-y-6">
           <HubSpotIntegration />
+          <TelegramIntegration />
         </TabsContent>
 
         <TabsContent value="email-autopilot" className="mt-6 space-y-6">
