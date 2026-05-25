@@ -220,6 +220,8 @@ export interface AuditLogEntry {
   policy_hits: string[];
   user_action: string;
   actor: string;
+  shadow_decision?: string | null;   // v4.18.4: was der Autopilot autonom getan hätte
+  shadow_reasons?: unknown;
   [key: string]: unknown;
 }
 

@@ -194,3 +194,27 @@ export function decisionTakeaway(e: Record<string, unknown>): string {
   if (ua === "rejected" || ua === "dismissed") return "Wurde verworfen – keine weitere Aktion nötig.";
   return "Automatisch eingeordnet – keine Aktion von dir nötig.";
 }
+
+
+// ── v4.18.4: Shadow-Transparenz (autopilot_log.decision → Deutsch) ──────────
+const SHADOW_LABELS: Record<string, string> = {
+  shadow_would_send: "Hätte automatisch geantwortet",
+  shadow_would_hold: "Hätte zurückgehalten (zur Prüfung)",
+  queued_for_send: "Hätte automatisch versendet",
+  sent: "Automatisch versendet",
+  held_low_conf: "Zurückgehalten: Konfidenz zu niedrig",
+  held_risk_flag: "Zurückgehalten: Risiko-Markierung",
+  held_not_whitelisted: "Zurückgehalten: Kategorie nicht für Autopilot freigegeben",
+  held_no_maturity: "Zurückgehalten: noch nicht genug gelernt",
+  held_disabled: "Autopilot ist aus",
+  held_kill_switch: "Not-Aus aktiv",
+  held_daily_cap: "Tageslimit erreicht",
+  not_implemented_yet: "Aktion im Autopilot noch nicht aktiv",
+  killed: "Abgebrochen",
+  send_failed_fallback_human: "Auto-Versand fehlgeschlagen → an Mensch übergeben",
+};
+export function humanizeShadow(decision?: string | null): string {
+  const k = String(decision || "").trim();
+  if (!k) return "";
+  return SHADOW_LABELS[k] || prettify(k);
+}

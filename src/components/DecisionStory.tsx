@@ -4,11 +4,11 @@
  * Klartext-Takeaway. Speist sich rein aus den vorhandenen Audit-Feldern.
  */
 import {
-  Mail, Tag, Check, X, Send, Clock, User, AlertTriangle, Ban, GitBranch,
+  Mail, Tag, Check, X, Send, Clock, User, AlertTriangle, Ban, GitBranch, Bot,
 } from "lucide-react";
 import {
   buildDecisionSteps, decisionTakeaway, confidenceTone, confidenceWord,
-  humanizeConfidence, type DecisionStep,
+  humanizeConfidence, humanizeShadow, type DecisionStep,
 } from "@/data/humanize";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -90,6 +90,17 @@ export default function DecisionStory({ entry }: Props) {
           </div>
         </div>
       )}
+
+      {/* Shadow-Transparenz: was der Autopilot autonom getan hätte */}
+      {entry?.shadow_decision ? (
+        <div className="rounded-md bg-muted/40 border border-border p-3">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Bot className="w-3.5 h-3.5" /> Im Autopilot-Modus hätte UseEasy:
+          </div>
+          <p className="text-sm font-medium mt-0.5">{humanizeShadow(entry.shadow_decision as string)}</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Aktuell nur Entwurf — du entscheidest.</p>
+        </div>
+      ) : null}
 
       {/* Takeaway */}
       <div className="rounded-md bg-primary/5 border border-primary/15 p-3">
