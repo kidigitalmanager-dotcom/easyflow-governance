@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall } from "lucide-react";
+import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
 import logo from "@/assets/useeasy-logo.jpg";
@@ -77,6 +77,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </NavLink>
             );
           })}
+          {/* v4.23.0 (3B-0): Admin nur fuer Super-Admins — Kunden sehen den Eintrag nie */}
+          {me?.user?.is_super_admin && (
+            <NavLink
+              to="/admin"
+              className={cn(
+                "flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150",
+                location.pathname.startsWith("/admin")
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
+              )}
+            >
+              <Shield className="w-[18px] h-[18px]" />
+              Admin
+            </NavLink>
+          )}
         </nav>
 
         {/* Footer */}

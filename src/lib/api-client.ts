@@ -131,6 +131,7 @@ export interface UserInfo {
     domain?: string;
     tenant_id?: string;
     role?: string;
+    is_super_admin?: boolean;   // v4.23.0 (3B-0): Super-Admin-Gate (Backend /me)
     [key: string]: unknown;
   };
   tenant?: TenantInfo;
