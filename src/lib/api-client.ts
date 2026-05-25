@@ -141,6 +141,9 @@ export interface UserInfo {
     rules?: Array<Record<string, unknown>>;
   };
   setup?: SetupInfo;
+  // v4.19.0 (Stufe 1): 7 Core-Keys mit DOMAIN-korrekten Anzeigenamen fuer den
+  // "Richtiges Label setzen"-Picker (ecom-Default vs. real_estate/HV vs. ...).
+  core_labels?: Array<{ core_key: string; display: string }>;
   [key: string]: unknown;
 }
 
@@ -902,6 +905,21 @@ export interface RemoveLabelResponse {
 }
 export const removeLabel = (eventId: string) =>
   apiPost<RemoveLabelResponse>("/label/remove", { event_id: eventId });
+
+// v4.19.0 (Stufe 1): "Richtiges Label setzen" — UE-Label EINER Mail durch die korrekte
+// Kategorie ersetzen (to_core_key = 7 Core-Keys | 'noise' = nur entfernen) und die
+// Korrektur als Lern-Signal protokollieren.
+export interface CorrectLabelResponse {
+  ok: boolean;
+  provider?: string;
+  removed?: string[];
+  applied?: string | null;
+  from_core_key?: string | null;
+  to_core_key?: string;
+  target_id?: string | null;
+}
+export const correctLabel = (eventId: string, toCoreKey: string) =>
+  apiPost<CorrectLabelResponse>("/label/correct", { event_id: eventId, to_core_key: toCoreKey });
 
 // -- Promotion (Tenant-Anfrage) ---------------------------------------------
 export interface AutopilotPromoteRequestInput {

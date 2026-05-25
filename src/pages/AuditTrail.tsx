@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { ResponseTypeBadge } from "@/components/ResponseTypeBadge";
-import { useAuditLog, useUndoAction, useRemoveLabel } from "@/hooks/use-api";
+import { useAuditLog, useUndoAction, useCorrectLabel, useMe } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getCurrentPlan } from "@/data/plan";
@@ -32,7 +32,9 @@ export default function AuditTrail() {
   const plan = getCurrentPlan();
   const { data: auditData, isLoading, error } = useAuditLog();
   const undo = useUndoAction();
-  const removeLabel = useRemoveLabel();
+  const correctLabel = useCorrectLabel();
+  const { data: me } = useMe();
+  const [correctKey, setCorrectKey] = useState<string>("");
   const [selectedPriority, setSelectedPriority] = useState<string>("Alle");
   const [selectedEntry, setSelectedEntry] = useState<string | null>(null);
 
@@ -233,17 +235,36 @@ export default function AuditTrail() {
               )}
 
               <div className="pt-3 border-t border-border space-y-2">
-                <p className="text-xs text-muted-foreground">Postfach-Label</p>
-                <Button size="sm" variant="outline" className="w-full justify-center" disabled={removeLabel.isPending}
+                <p className="text-xs text-muted-foreground">Postfach-Label korrigieren</p>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Falsch einsortiert? Wähle die richtige Kategorie — UseEasy ersetzt das Label im Postfach in einem Klick und lernt aus der Korrektur.
+                </p>
+                <select
+                  className="w-full text-sm rounded-md border border-border bg-background text-foreground px-2 py-1.5 disabled:opacity-60"
+                  value={correctKey}
+                  onChange={(e) => setCorrectKey(e.target.value)}
+                  disabled={correctLabel.isPending}
+                >
+                  <option value="">Kategorie wählen …</option>
+                  {(me?.core_labels ?? []).map((c) => (
+                    <option key={c.core_key} value={c.core_key}>{c.display}</option>
+                  ))}
+                  <option value="noise">Kein passendes Label (nur entfernen)</option>
+                </select>
+                <Button size="sm" variant="outline" className="w-full justify-center"
+                  disabled={correctLabel.isPending || !correctKey}
                   onClick={() => {
-                    if (!window.confirm("UseEasy-Labels (UE/…) dieser E-Mail im Postfach entfernen? Deine eigenen Labels bleiben unberührt.")) return;
-                    removeLabel.mutate({ event_id: detail.id }, {
-                      onSuccess: (r) => toast.success(r.removed && r.removed.length ? `Entfernt: ${r.removed.join(", ")}` : "Keine UseEasy-Labels an dieser Mail."),
+                    const isNoise = correctKey === "noise";
+                    const chosen = (me?.core_labels ?? []).find((c) => c.core_key === correctKey);
+                    const label = isNoise ? "kein UseEasy-Label (entfernen)" : (chosen?.display ?? correctKey);
+                    if (!window.confirm(`Label dieser E-Mail auf „${label}“ korrigieren? Das aktuelle UseEasy-Label wird ersetzt; deine eigenen Labels bleiben unberührt.`)) return;
+                    correctLabel.mutate({ event_id: detail.id, to_core_key: correctKey }, {
+                      onSuccess: (r) => { toast.success(isNoise ? "UseEasy-Label entfernt." : `Label gesetzt: ${r.applied ?? label}`); setCorrectKey(""); },
                       onError: (e) => toast.error("Fehler: " + (e instanceof Error ? e.message : String(e))),
                     });
                   }}>
-                  {removeLabel.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Tag className="w-3.5 h-3.5 mr-1" />}
-                  UseEasy-Label entfernen
+                  {correctLabel.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Tag className="w-3.5 h-3.5 mr-1" />}
+                  Richtiges Label setzen
                 </Button>
               </div>
 

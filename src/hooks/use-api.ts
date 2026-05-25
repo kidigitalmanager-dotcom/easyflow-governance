@@ -36,6 +36,7 @@ import {
   dismissReview,
   undoAuditAction,
   removeLabel,
+  correctLabel,
   requestAutopilotPromotion,
   fetchAutopilotFewShot,
   fetchAutopilotLog,
@@ -409,6 +410,19 @@ export function useRemoveLabel() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: { event_id: string }) => removeLabel(input.event_id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["audit-log"] });
+      qc.invalidateQueries({ queryKey: ["recent-emails"] });
+    },
+  });
+}
+
+// v4.19.0: "Richtiges Label setzen" — ersetzt das UE-Label durch die korrekte
+// Kategorie im Postfach + protokolliert die Korrektur (Lern-Korpus fuer Stufe 2/3).
+export function useCorrectLabel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { event_id: string; to_core_key: string }) => correctLabel(input.event_id, input.to_core_key),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["audit-log"] });
       qc.invalidateQueries({ queryKey: ["recent-emails"] });
