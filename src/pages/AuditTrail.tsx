@@ -205,10 +205,10 @@ export default function AuditTrail() {
               </div>
               </details>
 
-              {(detail.user_action === "dismissed" || detail.user_action === "autopilot_approved") && (
+              {(detail.user_action === "dismissed" || detail.user_action === "rejected" || detail.user_action === "autopilot_approved") && (
                 <div className="pt-3 border-t border-border space-y-2">
                   <p className="text-xs text-muted-foreground">Rückgängig</p>
-                  {detail.user_action === "dismissed" && (
+                  {(detail.user_action === "dismissed" || detail.user_action === "rejected") && (
                     <Button size="sm" variant="outline" className="w-full justify-center" disabled={undo.isPending}
                       onClick={() => undo.mutate({ event_id: detail.id, undo_type: "reopen" }, {
                         onSuccess: () => toast.success("Wieder in die Queue geholt."),
