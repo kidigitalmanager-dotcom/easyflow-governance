@@ -24,9 +24,13 @@ export default function Uebersicht() {
 
   const priorityBreakdown = stats?.priority_breakdown ?? {};
 
+  // Spiegelt die Review-Queue-Logik (has_draft || pending), damit Uebersicht und
+  // Review Queue NICHT widersprechen. Sortiert nach Prioritaet (P0 zuerst).
+  const PRIO_RANK: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
   const pendingEmails = (emails ?? [])
-    .filter((e) => e.priority === "P0" || e.priority === "P1")
-    .slice(0, 3);
+    .filter((e) => e.has_draft || e.status === "pending" || e.status === "needs_review" || e.status === "pending_review")
+    .sort((a, b) => (PRIO_RANK[a.priority] ?? 9) - (PRIO_RANK[b.priority] ?? 9))
+    .slice(0, 5);
 
   return (
     <div className="space-y-8">
@@ -88,7 +92,7 @@ export default function Uebersicht() {
           ) : pendingEmails.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <Inbox className="w-8 h-8 mb-2" />
-              <p className="text-sm">Noch keine E-Mails analysiert.</p>
+              <p className="text-sm">Aktuell nichts zur Freigabe.</p>
             </div>
           ) : (
             <div className="space-y-3">

@@ -4,6 +4,7 @@ import { useAuditLog } from "@/hooks/use-api";
 import { getCurrentPlan } from "@/data/plan";
 import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence } from "@/data/humanize";
 
 const priorities = ["Alle", "P0", "P1", "P2", "P3"] as const;
 
@@ -95,7 +96,7 @@ export default function AuditTrail() {
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
                     <PriorityBadge priority={entry.priority} />
-                    <span className="text-xs text-muted-foreground">{entry.category}</span>
+                    <span className="text-xs text-muted-foreground">{humanizeCategory(entry.category)}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     {actionIcons[entry.user_action]}
@@ -124,7 +125,7 @@ export default function AuditTrail() {
                 <div className="flex items-center gap-4">
                   <div>
                     <span className="text-muted-foreground">Playbook:</span>
-                    <p className="mt-0.5 font-medium">{detail.playbook} {detail.playbook_version}</p>
+                    <p className="mt-0.5 font-medium">{humanizePlaybook(detail.playbook, detail.playbook_version)}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Priorität:</span>
@@ -134,11 +135,7 @@ export default function AuditTrail() {
 
                 <div>
                   <span className="text-muted-foreground">Konfidenz:</span>
-                  <p className="mt-0.5 font-medium">
-                    {detail.confidence != null
-                      ? `${(detail.confidence * 100).toFixed(0)}%`
-                      : "—"}
-                  </p>
+                  <p className="mt-0.5 font-medium">{humanizeConfidence(detail.confidence)}</p>
                 </div>
 
                 <div>
@@ -167,19 +164,19 @@ export default function AuditTrail() {
 
                 <div>
                   <span className="text-muted-foreground">Entscheidung:</span>
-                  <p className="mt-0.5 font-medium">{detail.decision}</p>
+                  <p className="mt-0.5 font-medium">{humanizeDecision(detail.decision)}</p>
                 </div>
 
                 <div>
                   <span className="text-muted-foreground">Warum:</span>
-                  <p className="mt-0.5">{detail.reason}</p>
+                  <p className="mt-0.5">{humanizeReason(detail.reason)}</p>
                 </div>
 
                 <div>
                   <span className="text-muted-foreground">Akteur:</span>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <User className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="font-medium">{detail.actor}</span>
+                    <span className="font-medium">{humanizeActor(detail.actor)}</span>
                   </div>
                 </div>
 

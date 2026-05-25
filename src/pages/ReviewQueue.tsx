@@ -7,6 +7,7 @@ import { Eye, Inbox, Sparkles, Loader2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { humanizeCategory } from "@/data/humanize";
 
 // Inline: "Entwurf generieren" für Mails ohne vorbereiteten Draft (on-demand,
 // kontextbasiert — Thread + Excel-Live-Sync + Knowledge → Bedrock).
@@ -39,13 +40,15 @@ export default function ReviewQueue() {
 
   // Vorschläge mit Draft ODER offene (pending) Mails ohne Draft.
   const items = (emails ?? []).filter((e) => e.has_draft || e.status === "pending");
+  const withDraft = items.filter((e) => e.has_draft && !!e.draft_id).length;
+  const awaitingGen = items.length - withDraft;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{REVIEW.title}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {isLoading ? "Lade…" : `${REVIEW.subtitle} ${items.length} offen.`}
+          {isLoading ? "Lade…" : `${items.length} in der Warteschlange · ${withDraft} mit Entwurf, ${awaitingGen} warten auf Generierung.`}
         </p>
       </div>
 
@@ -84,7 +87,7 @@ export default function ReviewQueue() {
                     <div className="flex items-center gap-3 mb-1">
                       <PriorityBadge priority={item.priority} showLabel />
                       <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted/50 border border-border">
-                        {item.action_type}
+                        {humanizeCategory(item.action_type)}
                       </span>
                       {item.has_draft && (
                         <span className="text-xs text-primary px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
