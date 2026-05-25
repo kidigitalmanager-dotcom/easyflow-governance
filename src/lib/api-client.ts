@@ -870,6 +870,16 @@ export interface GenerateDraftResponse {
 export const generateDraft = (eventId: string) =>
   apiPost<GenerateDraftResponse>("/draft/generate", { event_id: eventId });
 
+// v4.18.3: Review-Queue-Items verwerfen/leeren (ohne Draft-Generierung).
+export interface DismissReviewInput {
+  event_id?: string;
+  event_ids?: string[];
+  scope?: "without_subject" | "all";
+}
+export interface DismissReviewResponse { ok: boolean; dismissed: number; by?: string }
+export const dismissReview = (input: DismissReviewInput) =>
+  apiPost<DismissReviewResponse>("/review/dismiss", input as unknown as Record<string, unknown>);
+
 // -- Promotion (Tenant-Anfrage) ---------------------------------------------
 export interface AutopilotPromoteRequestInput {
   core_key: AutopilotCoreKey;

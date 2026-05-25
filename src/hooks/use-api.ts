@@ -33,6 +33,7 @@ import {
   // Console Review-Queue (v4.18.0)
   submitReviewVerdict,
   generateDraft,
+  dismissReview,
   requestAutopilotPromotion,
   fetchAutopilotFewShot,
   fetchAutopilotLog,
@@ -375,6 +376,17 @@ export function useGenerateDraft() {
     mutationFn: (eventId: string) => generateDraft(eventId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["recent-emails"] });
+    },
+  });
+}
+
+export function useDismissReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: import("@/lib/api-client").DismissReviewInput) => dismissReview(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["recent-emails"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
   });
 }
