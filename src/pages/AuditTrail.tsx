@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { PriorityBadge } from "@/components/PriorityBadge";
+import { ResponseTypeBadge } from "@/components/ResponseTypeBadge";
 import { useAuditLog, useUndoAction } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getCurrentPlan } from "@/data/plan";
 import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2, RotateCcw, Ban } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence, responseLabel } from "@/data/humanize";
+import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence, responseLabel, responseType } from "@/data/humanize";
 import DecisionStory from "@/components/DecisionStory";
 
 const priorities = ["Alle", "P0", "P1", "P2", "P3"] as const;
@@ -99,6 +100,7 @@ export default function AuditTrail() {
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
+                    <ResponseTypeBadge type={responseType(entry)} />
                     <PriorityBadge priority={entry.priority} />
                     <span className="text-xs text-muted-foreground">{humanizeCategory(entry.category)}</span>
                   </div>

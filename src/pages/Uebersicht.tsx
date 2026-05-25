@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { Clock, Mail, CheckCircle, AlertTriangle, TrendingUp, ChevronRight, Inbox } from "lucide-react";
 import { PriorityBadge } from "@/components/PriorityBadge";
+import { ResponseTypeBadge } from "@/components/ResponseTypeBadge";
+import { responseType } from "@/data/humanize";
 import { useDashboardStats, useRecentEmails } from "@/hooks/use-api";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -103,7 +105,10 @@ export default function Uebersicht() {
                     <p className="text-sm font-medium truncate">{item.subject}</p>
                     <p className="text-xs text-muted-foreground">{item.sender} · {new Date(item.created_at).toLocaleString("de-DE")}</p>
                   </div>
-                  <PriorityBadge priority={item.priority} />
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <ResponseTypeBadge type={responseType(item)} />
+                    <PriorityBadge priority={item.priority} />
+                  </div>
                 </div>
               ))}
             </div>

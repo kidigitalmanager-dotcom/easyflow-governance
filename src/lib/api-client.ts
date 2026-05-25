@@ -201,6 +201,8 @@ export interface RecentEmail {
   has_draft: boolean;
   draft_id?: string | null;   // v4.18.0: ECHTER draft_queue.draft_id (statt synthetisch)
   draft_body?: string | null; // v4.18.0: Draft-Text für Vorschau + Edit-Vorbefüllung
+  response_type?: "reply" | "action" | "info"; // v4.18.8: empfohlene Reaktion (read-time)
+  response_type_reason?: string;               // v4.18.8: Begründung der Ableitung
   [key: string]: unknown;
 }
 
@@ -222,6 +224,8 @@ export interface AuditLogEntry {
   actor: string;
   shadow_decision?: string | null;   // v4.18.4: was der Autopilot autonom getan hätte
   shadow_reasons?: unknown;
+  response_type?: "reply" | "action" | "info"; // v4.18.8: empfohlene Reaktion (read-time)
+  response_type_reason?: string;               // v4.18.8
   [key: string]: unknown;
 }
 

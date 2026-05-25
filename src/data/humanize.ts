@@ -220,17 +220,38 @@ export function humanizeShadow(decision?: string | null): string {
 }
 
 
-// ── v4.18.7: Antwort vs. keine-Antwort (Frontend-Heuristik über Absender) ───
-// No-Reply-/Benachrichtigungs-Absender sind Mails, auf die man nicht antwortet
-// (Codes, Verifizierungen, System-Benachrichtigungen). Dann ist "Antwort
-// empfohlen" irreführend → "Keine Antwort nötig".
+// ── v4.18.7/v4.18.8: Antwort-Typ (reply | action | info) ────────────────────
+// Primär aus dem Backend-Feld response_type (v4.18.8, read-time abgeleitet).
+// Fallback (Altbestand / fehlendes Feld): No-Reply-/Benachrichtigungs-Absender
+// → info, sonst reply.
+export type ResponseType = "reply" | "action" | "info";
+
 const NOREPLY_RE = /(no-?reply|do-?not-?reply|donotreply|notification|notifications|mailer-daemon|postmaster|automated|^security@|noreply@|no-reply@)/i;
 export function isNoReplySender(addr?: string): boolean {
   const a = String(addr || "");
   return NOREPLY_RE.test(a);
 }
-export function responseLabel(e: Record<string, unknown>): string | undefined {
+
+export function responseType(e: Record<string, unknown>): ResponseType {
+  const rt = String((e?.response_type ?? "") as string).trim();
+  if (rt === "reply" || rt === "action" || rt === "info") return rt;
+  // Fallback für Rows vor v4.18.8 / fehlendes Feld.
   const sender = String((e?.sender ?? e?.mailbox ?? "") as string);
-  if (isNoReplySender(sender)) return "Keine Antwort nötig";
-  return undefined; // -> PriorityBadge nutzt sein Standard-Label
+  return isNoReplySender(sender) ? "info" : "reply";
+}
+
+const RESPONSE_TYPE_LABELS: Record<ResponseType, string> = {
+  reply: "Antwort empfohlen",
+  action: "Aktion empfohlen",
+  info: "Kein Handlungsbedarf",
+};
+export function responseTypeLabel(rt: ResponseType): string {
+  return RESPONSE_TYPE_LABELS[rt] ?? RESPONSE_TYPE_LABELS.reply;
+}
+
+// Rückwärtskompatibel: Label-Override für PriorityBadge. reply → undefined
+// (PriorityBadge nutzt sein Standard-Label), sonst der Antwort-Typ-Text.
+export function responseLabel(e: Record<string, unknown>): string | undefined {
+  const rt = responseType(e);
+  return rt === "reply" ? undefined : responseTypeLabel(rt);
 }

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { PriorityBadge } from "@/components/PriorityBadge";
+import { ResponseTypeBadge } from "@/components/ResponseTypeBadge";
 import { useRecentEmails, useGenerateDraft, useDismissReview } from "@/hooks/use-api";
 import ReviewVerdictButtons from "@/components/ReviewVerdictButtons";
 import { REVIEW } from "@/data/strings.de";
-import { humanizeCategory, responseLabel } from "@/data/humanize";
+import { humanizeCategory, responseType } from "@/data/humanize";
 import { Eye, Inbox, Sparkles, Loader2, Info, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -109,13 +110,15 @@ export default function ReviewQueue() {
           {items.map((item) => {
             const draftId = item.draft_id ?? null;
             const hasRealDraft = item.has_draft && !!draftId;
+            const rt = responseType(item);
             const isOpen = expandedId === item.id;
             return (
               <div key={item.id} className="glass-card-hover">
                 <div className="flex items-center gap-4 p-5">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
-                      <PriorityBadge priority={item.priority} showLabel labelOverride={responseLabel(item)} />
+                      <ResponseTypeBadge type={rt} />
+                      <PriorityBadge priority={item.priority} />
                       <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted/50 border border-border">
                         {humanizeCategory(item.action_type)}
                       </span>
@@ -139,6 +142,11 @@ export default function ReviewQueue() {
                     )}
                     {hasRealDraft ? (
                       <ReviewVerdictButtons draftId={draftId!} originalBody={item.draft_body ?? ""} />
+                    ) : rt === "info" ? (
+                      <>
+                        <span className="text-xs text-muted-foreground px-2">Kein Handlungsbedarf</span>
+                        <DismissButton eventId={item.id} />
+                      </>
                     ) : (
                       <>
                         <GenerateDraftButton eventId={item.id} />
