@@ -27,8 +27,9 @@ export default function Uebersicht() {
   // Spiegelt die Review-Queue-Logik (has_draft || pending), damit Uebersicht und
   // Review Queue NICHT widersprechen. Sortiert nach Prioritaet (P0 zuerst).
   const PRIO_RANK: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
+  const NEEDS_ACTION = new Set(["pending", "needs_review", "pending_review"]);
   const pendingEmails = (emails ?? [])
-    .filter((e) => e.has_draft || e.status === "pending" || e.status === "needs_review" || e.status === "pending_review")
+    .filter((e) => e.has_draft || NEEDS_ACTION.has(e.status))
     .sort((a, b) => (PRIO_RANK[a.priority] ?? 9) - (PRIO_RANK[b.priority] ?? 9))
     .slice(0, 5);
 

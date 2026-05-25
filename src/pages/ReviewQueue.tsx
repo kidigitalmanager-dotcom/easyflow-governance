@@ -47,7 +47,10 @@ export default function ReviewQueue() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const dismissBulk = useDismissReview();
 
-  const items = (emails ?? []).filter((e) => e.has_draft || e.status === "pending");
+  // Identische Logik wie die Übersicht ("Wartet auf Freigabe"), damit beide Ansichten
+  // NICHT auseinanderlaufen: needs_review + pending_review gehören ebenfalls in die Queue.
+  const NEEDS_ACTION = new Set(["pending", "needs_review", "pending_review"]);
+  const items = (emails ?? []).filter((e) => e.has_draft || NEEDS_ACTION.has(e.status));
   const withDraft = items.filter((e) => e.has_draft && !!e.draft_id).length;
   const awaitingGen = items.length - withDraft;
   const noSubjectCount = items.filter((e) => e.subject === "(kein Betreff)").length;
