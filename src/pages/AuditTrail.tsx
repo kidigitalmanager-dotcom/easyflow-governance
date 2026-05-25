@@ -117,7 +117,7 @@ export default function AuditTrail() {
 
           {/* Detail drawer */}
           {detail && (
-            <div className="w-96 flex-shrink-0 glass-card p-6 space-y-4 sticky top-8 self-start">
+            <div className="w-96 flex-shrink-0 glass-card p-6 space-y-4 sticky top-8 self-start max-h-[calc(100vh-6rem)] overflow-y-auto">
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-semibold">Details</h3>
                 <button onClick={() => setSelectedEntry(null)} className="text-muted-foreground hover:text-foreground">
