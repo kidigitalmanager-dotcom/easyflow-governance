@@ -3,7 +3,7 @@ import { PriorityBadge } from "@/components/PriorityBadge";
 import { useRecentEmails, useGenerateDraft, useDismissReview } from "@/hooks/use-api";
 import ReviewVerdictButtons from "@/components/ReviewVerdictButtons";
 import { REVIEW } from "@/data/strings.de";
-import { humanizeCategory } from "@/data/humanize";
+import { humanizeCategory, responseLabel } from "@/data/humanize";
 import { Eye, Inbox, Sparkles, Loader2, Info, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -115,7 +115,7 @@ export default function ReviewQueue() {
                 <div className="flex items-center gap-4 p-5">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
-                      <PriorityBadge priority={item.priority} showLabel />
+                      <PriorityBadge priority={item.priority} showLabel labelOverride={responseLabel(item)} />
                       <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted/50 border border-border">
                         {humanizeCategory(item.action_type)}
                       </span>

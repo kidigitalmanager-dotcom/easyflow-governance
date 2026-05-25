@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { getCurrentPlan } from "@/data/plan";
 import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2, RotateCcw, Ban } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence } from "@/data/humanize";
+import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence, responseLabel } from "@/data/humanize";
 import DecisionStory from "@/components/DecisionStory";
 
 const priorities = ["Alle", "P0", "P1", "P2", "P3"] as const;
@@ -137,7 +137,7 @@ export default function AuditTrail() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Priorität:</span>
-                    <div className="mt-0.5"><PriorityBadge priority={detail.priority} showLabel /></div>
+                    <div className="mt-0.5"><PriorityBadge priority={detail.priority} showLabel labelOverride={responseLabel(detail)} /></div>
                   </div>
                 </div>
 

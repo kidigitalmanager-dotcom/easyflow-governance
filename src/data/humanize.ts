@@ -218,3 +218,19 @@ export function humanizeShadow(decision?: string | null): string {
   if (!k) return "";
   return SHADOW_LABELS[k] || prettify(k);
 }
+
+
+// ── v4.18.7: Antwort vs. keine-Antwort (Frontend-Heuristik über Absender) ───
+// No-Reply-/Benachrichtigungs-Absender sind Mails, auf die man nicht antwortet
+// (Codes, Verifizierungen, System-Benachrichtigungen). Dann ist "Antwort
+// empfohlen" irreführend → "Keine Antwort nötig".
+const NOREPLY_RE = /(no-?reply|do-?not-?reply|donotreply|notification|notifications|mailer-daemon|postmaster|automated|^security@|noreply@|no-reply@)/i;
+export function isNoReplySender(addr?: string): boolean {
+  const a = String(addr || "");
+  return NOREPLY_RE.test(a);
+}
+export function responseLabel(e: Record<string, unknown>): string | undefined {
+  const sender = String((e?.sender ?? e?.mailbox ?? "") as string);
+  if (isNoReplySender(sender)) return "Keine Antwort nötig";
+  return undefined; // -> PriorityBadge nutzt sein Standard-Label
+}
