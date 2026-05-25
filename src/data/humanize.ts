@@ -114,3 +114,83 @@ export function humanizeConfidence(confidence?: number | null): string {
   if (confidence == null || !(confidence > 0)) return "nicht ermittelt";
   return `${(confidence * 100).toFixed(0)} %`;
 }
+
+// ── v4.18.4: Konfidenz-Ampel + Entscheidungs-Story ──────────────────────────
+export type ConfTone = "high" | "mid" | "low" | "none";
+
+export function confidenceTone(c?: number | null): ConfTone {
+  if (c == null || !(c > 0)) return "none";
+  if (c >= 0.9) return "high";
+  if (c >= 0.75) return "mid";
+  return "low";
+}
+
+export function confidenceWord(c?: number | null): string {
+  switch (confidenceTone(c)) {
+    case "high": return "Sehr sicher";
+    case "mid": return "Eher sicher";
+    case "low": return "Unsicher – bitte prüfen";
+    default: return "nicht ermittelt";
+  }
+}
+
+export interface DecisionStep {
+  icon: string;            // Key → Lucide-Icon in der Komponente
+  title: string;
+  detail?: string;
+  tone?: "default" | "good" | "warn" | "stop";
+}
+
+// Baut aus einem Audit-Eintrag eine verständliche Schritt-für-Schritt-Story.
+export function buildDecisionSteps(e: Record<string, unknown>): DecisionStep[] {
+  const get = (k: string) => (e?.[k] as string) ?? "";
+  const decision = humanizeDecision(get("decision"));
+  const steps: DecisionStep[] = [];
+
+  steps.push({
+    icon: "mail",
+    title: "E-Mail empfangen",
+    detail: get("mailbox") && get("mailbox") !== "—" ? `von ${get("mailbox")}` : undefined,
+  });
+
+  steps.push({
+    icon: "tag",
+    title: `Eingeordnet als „${humanizeCategory(get("category"))}"`,
+    detail: [humanizePlaybook(get("playbook"), get("playbook_version")), confidenceWord(e?.confidence as number)]
+      .filter(Boolean).join(" · "),
+  });
+
+  let decIcon = "route";
+  let decTone: DecisionStep["tone"] = "default";
+  const dp = (get("decision") || "").toLowerCase();
+  if (dp.includes("opt") || /gestoppt/i.test(decision)) { decIcon = "stop"; decTone = "stop"; }
+  else if (/risiko|eskal/i.test(decision)) { decIcon = "alert"; decTone = "warn"; }
+  else if (/erledigt|geschlossen/i.test(decision)) { decIcon = "check"; decTone = "good"; }
+  else if (/pr[üu]fung/i.test(decision)) { decIcon = "user"; decTone = "warn"; }
+  const why = humanizeReason(get("reason"));
+  steps.push({ icon: decIcon, tone: decTone, title: decision, detail: why !== "—" ? why : undefined });
+
+  const OUT: Record<string, { t: string; i: string; tone: DecisionStep["tone"] }> = {
+    approved: { t: "Freigegeben & als Entwurf abgelegt", i: "check", tone: "good" },
+    rejected: { t: "Verworfen", i: "x", tone: "stop" },
+    sent: { t: "Gesendet", i: "send", tone: "good" },
+    pending: { t: "Wartet auf deine Freigabe", i: "clock", tone: "warn" },
+    needs_review: { t: "Wartet auf deine Prüfung", i: "clock", tone: "warn" },
+    dismissed: { t: "Aus der Queue entfernt", i: "x", tone: "default" },
+    processed: { t: "Eingeordnet & gelabelt – keine Antwort nötig", i: "tag", tone: "default" },
+  };
+  const ua = get("user_action");
+  const o = OUT[ua] || { t: humanizeCategory(ua) || "Verarbeitet", i: "tag", tone: "default" };
+  steps.push({ icon: o.i, tone: o.tone, title: o.t, detail: get("actor") ? `durch ${humanizeActor(get("actor"))}` : undefined });
+
+  return steps;
+}
+
+export function decisionTakeaway(e: Record<string, unknown>): string {
+  const ua = (e?.user_action as string) ?? "";
+  if (ua === "pending" || ua === "needs_review") return "Bitte prüfen und freigeben – oder verwerfen.";
+  if (ua === "approved") return "Erledigt: liegt als Entwurf in deinem Postfach, du musst nur noch senden.";
+  if (ua === "sent") return "Wurde versendet.";
+  if (ua === "rejected" || ua === "dismissed") return "Wurde verworfen – keine weitere Aktion nötig.";
+  return "Automatisch eingeordnet – keine Aktion von dir nötig.";
+}

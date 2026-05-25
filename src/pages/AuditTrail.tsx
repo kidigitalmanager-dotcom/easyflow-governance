@@ -5,6 +5,7 @@ import { getCurrentPlan } from "@/data/plan";
 import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence } from "@/data/humanize";
+import DecisionStory from "@/components/DecisionStory";
 
 const priorities = ["Alle", "P0", "P1", "P2", "P3"] as const;
 
@@ -121,7 +122,11 @@ export default function AuditTrail() {
                 </button>
               </div>
 
-              <div className="space-y-3 text-sm">
+              <DecisionStory entry={detail} />
+
+              <details className="rounded-md border border-border">
+                <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground">Technische Details</summary>
+                <div className="space-y-3 text-sm p-3 pt-0">
                 <div className="flex items-center gap-4">
                   <div>
                     <span className="text-muted-foreground">Playbook:</span>
@@ -195,6 +200,7 @@ export default function AuditTrail() {
                   <p className="mt-0.5 font-medium">{detail.timestamp}</p>
                 </div>
               </div>
+              </details>
 
               <div className="pt-3 border-t border-border">
                 {plan.exportEnabled ? (
