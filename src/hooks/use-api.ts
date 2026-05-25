@@ -34,6 +34,7 @@ import {
   submitReviewVerdict,
   generateDraft,
   dismissReview,
+  undoAuditAction,
   requestAutopilotPromotion,
   fetchAutopilotFewShot,
   fetchAutopilotLog,
@@ -387,6 +388,17 @@ export function useDismissReview() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["recent-emails"] });
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
+  });
+}
+
+export function useUndoAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: import("@/lib/api-client").UndoInput) => undoAuditAction(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["audit-log"] });
+      qc.invalidateQueries({ queryKey: ["recent-emails"] });
     },
   });
 }

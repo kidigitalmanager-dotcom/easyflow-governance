@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { PriorityBadge } from "@/components/PriorityBadge";
-import { useAuditLog } from "@/hooks/use-api";
+import { useAuditLog, useUndoAction } from "@/hooks/use-api";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { getCurrentPlan } from "@/data/plan";
-import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2 } from "lucide-react";
+import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2, RotateCcw, Ban } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence } from "@/data/humanize";
 import DecisionStory from "@/components/DecisionStory";
@@ -28,6 +30,7 @@ const actionIcons: Record<string, React.ReactNode> = {
 export default function AuditTrail() {
   const plan = getCurrentPlan();
   const { data: auditData, isLoading, error } = useAuditLog();
+  const undo = useUndoAction();
   const [selectedPriority, setSelectedPriority] = useState<string>("Alle");
   const [selectedEntry, setSelectedEntry] = useState<string | null>(null);
 
@@ -201,6 +204,30 @@ export default function AuditTrail() {
                 </div>
               </div>
               </details>
+
+              {(detail.user_action === "dismissed" || detail.user_action === "autopilot_approved") && (
+                <div className="pt-3 border-t border-border space-y-2">
+                  <p className="text-xs text-muted-foreground">Rückgängig</p>
+                  {detail.user_action === "dismissed" && (
+                    <Button size="sm" variant="outline" className="w-full justify-center" disabled={undo.isPending}
+                      onClick={() => undo.mutate({ event_id: detail.id, undo_type: "reopen" }, {
+                        onSuccess: () => toast.success("Wieder in die Queue geholt."),
+                        onError: (e) => toast.error("Fehler: " + (e instanceof Error ? e.message : String(e))),
+                      })}>
+                      <RotateCcw className="w-3.5 h-3.5 mr-1" /> Wieder öffnen
+                    </Button>
+                  )}
+                  {detail.user_action === "autopilot_approved" && (
+                    <Button size="sm" variant="destructive" className="w-full justify-center" disabled={undo.isPending}
+                      onClick={() => undo.mutate({ event_id: detail.id, undo_type: "cancel_send" }, {
+                        onSuccess: () => toast.success("Autonomer Versand abgebrochen."),
+                        onError: (e) => toast.error("Fehler: " + (e instanceof Error ? e.message : String(e))),
+                      })}>
+                      <Ban className="w-3.5 h-3.5 mr-1" /> Autonomen Versand abbrechen
+                    </Button>
+                  )}
+                </div>
+              )}
 
               <div className="pt-3 border-t border-border">
                 {plan.exportEnabled ? (

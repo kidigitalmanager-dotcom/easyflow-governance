@@ -882,6 +882,11 @@ export interface DismissReviewResponse { ok: boolean; dismissed: number; by?: st
 export const dismissReview = (input: DismissReviewInput) =>
   apiPost<DismissReviewResponse>("/review/dismiss", input as unknown as Record<string, unknown>);
 
+// v4.18.5: sicheres DB-Undo (Versand-Abbruch im Cooldown / verworfenes Item wieder öffnen).
+export interface UndoInput { event_id: string; undo_type: "cancel_send" | "reopen"; }
+export const undoAuditAction = (input: UndoInput) =>
+  apiPost<{ ok: boolean; undo_type?: string; affected?: number }>("/audit/undo", input as unknown as Record<string, unknown>);
+
 // -- Promotion (Tenant-Anfrage) ---------------------------------------------
 export interface AutopilotPromoteRequestInput {
   core_key: AutopilotCoreKey;
