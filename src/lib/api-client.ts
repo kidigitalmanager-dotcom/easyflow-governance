@@ -199,6 +199,8 @@ export interface RecentEmail {
   status: string;
   created_at: string;
   has_draft: boolean;
+  draft_id?: string | null;   // v4.18.0: ECHTER draft_queue.draft_id (statt synthetisch)
+  draft_body?: string | null; // v4.18.0: Draft-Text für Vorschau + Edit-Vorbefüllung
   [key: string]: unknown;
 }
 
@@ -214,7 +216,7 @@ export interface AuditLogEntry {
   decision: string;
   reason: string;
   evidence: string[];
-  confidence: number;
+  confidence: number | null; // v4.18.0: null => "—" statt "0 %"
   policy_hits: string[];
   user_action: string;
   actor: string;
@@ -832,6 +834,41 @@ export interface AutopilotFeedbackResponse {
 }
 export const submitAutopilotFeedback = (input: AutopilotFeedbackInput) =>
   apiPost<AutopilotFeedbackResponse>("/autopilot/feedback", input as unknown as Record<string, unknown>);
+
+// ── v4.18.0: Console Review-Queue (operativ) ───────────────────────────────
+// Trennung von der Lernschleife (Briefing 0b): /review/verdict legt den Entwurf
+// in den Gmail/Outlook-Entwürfe-Ordner (approve/edit) bzw. verwirft (reject) UND
+// schreibt — nur bei Tenant in shadow/assisted — autopilot_feedback als
+// Backend-Side-Effect. /draft/generate erzeugt on-demand einen Entwurf.
+export interface ReviewVerdictInput {
+  draft_id: string;
+  human_verdict: AutopilotHumanVerdict;
+  draft_body_final?: string;
+}
+export interface ReviewVerdictResponse {
+  ok: boolean;
+  draft_id: string;
+  human_verdict: AutopilotHumanVerdict;
+  new_status: "approved" | "rejected";
+  mailbox_draft: { ok: boolean; provider: string | null; draft_message_id: string | null } | null;
+  learning_recorded: boolean;
+  is_mismatch: boolean;
+  edit_distance: number;
+  created_by: string;
+}
+export const submitReviewVerdict = (input: ReviewVerdictInput) =>
+  apiPost<ReviewVerdictResponse>("/review/verdict", input as unknown as Record<string, unknown>);
+
+export interface GenerateDraftResponse {
+  ok: boolean;
+  draft_id: string;
+  event_id: string;
+  subject: string;
+  body: string;
+  provider: string | null;
+}
+export const generateDraft = (eventId: string) =>
+  apiPost<GenerateDraftResponse>("/draft/generate", { event_id: eventId });
 
 // -- Promotion (Tenant-Anfrage) ---------------------------------------------
 export interface AutopilotPromoteRequestInput {

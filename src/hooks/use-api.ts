@@ -30,6 +30,9 @@ import {
   savePlaybookActive,
   // Autopilot Email (Chat B + C)
   submitAutopilotFeedback,
+  // Console Review-Queue (v4.18.0)
+  submitReviewVerdict,
+  generateDraft,
   requestAutopilotPromotion,
   fetchAutopilotFewShot,
   fetchAutopilotLog,
@@ -39,7 +42,8 @@ import {
   fetchAutopilotPromotionPendingAdmin,
   promoteAutopilot,
 } from "@/lib/api-client";
-import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload, PlaybookActivePayload, AutopilotFeedbackInput, AutopilotPromoteRequestInput, AutopilotPolicyPutInput, AutopilotCoreKey, AutopilotPromoteInput } from "@/lib/api-client";
+import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload, PlaybookActivePayload, AutopilotFeedbackInput,
+  ReviewVerdictInput, AutopilotPromoteRequestInput, AutopilotPolicyPutInput, AutopilotCoreKey, AutopilotPromoteInput } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useMe() {
@@ -348,6 +352,29 @@ export function useSubmitAutopilotFeedback() {
       qc.invalidateQueries({ queryKey: ["recent-emails"] });
       qc.invalidateQueries({ queryKey: ["audit-log"] });
       qc.invalidateQueries({ queryKey: ["autopilot-log"] });
+    },
+  });
+}
+
+// ── v4.18.0: Console Review-Queue (operatives Verdict + On-demand Draft) ──────
+export function useSubmitReviewVerdict() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ReviewVerdictInput) => submitReviewVerdict(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["recent-emails"] });
+      qc.invalidateQueries({ queryKey: ["audit-log"] });
+      qc.invalidateQueries({ queryKey: ["autopilot-log"] });
+    },
+  });
+}
+
+export function useGenerateDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (eventId: string) => generateDraft(eventId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["recent-emails"] });
     },
   });
 }

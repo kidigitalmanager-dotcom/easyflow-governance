@@ -82,10 +82,17 @@ export const REQUEST_CHANGE = {
 // ─── Review Queue ───
 export const REVIEW = {
   title: "Review Queue",
+  subtitle: "Sammel- & Nachhol-Ansicht: alle vorbereiteten Antworten gebündelt.",
+  hint: "Einzelne Antworten gibst du am schnellsten direkt im Postfach frei (UseEasy-Button in Gmail/Outlook). Hier siehst du alles gebündelt — zum Abräumen, Nachholen und für Entwürfe mit vollem Kontext.",
   empty: "Alle Reviews erledigt",
   emptyDesc: "Keine offenen Vorschläge.",
-  approvedToast: "Vorschlag wurde übernommen.",
+  approvedToast: "Als Entwurf in deinem Postfach abgelegt.",
+  editedToast: "Bearbeitet & als Entwurf in deinem Postfach abgelegt.",
   rejectedToast: "Vorschlag wurde verworfen.",
+  generateDraft: "Entwurf generieren",
+  generatingDraft: "Entwurf wird erstellt…",
+  draftToBox: "Als Entwurf in dein Postfach legen",
+  noDraftYet: "Noch kein Entwurf — kontextbasiert generieren.",
   detailHeading: "Warum diese Entscheidung?",
 };
 

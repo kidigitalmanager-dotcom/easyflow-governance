@@ -132,12 +132,14 @@ export default function AuditTrail() {
                   </div>
                 </div>
 
-                {detail.confidence !== undefined && (
-                  <div>
-                    <span className="text-muted-foreground">Konfidenz:</span>
-                    <p className="mt-0.5 font-medium">{(detail.confidence * 100).toFixed(0)}%</p>
-                  </div>
-                )}
+                <div>
+                  <span className="text-muted-foreground">Konfidenz:</span>
+                  <p className="mt-0.5 font-medium">
+                    {detail.confidence != null
+                      ? `${(detail.confidence * 100).toFixed(0)}%`
+                      : "—"}
+                  </p>
+                </div>
 
                 <div>
                   <span className="text-muted-foreground">Evidenz:</span>
