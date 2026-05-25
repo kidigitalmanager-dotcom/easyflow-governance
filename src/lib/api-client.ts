@@ -229,6 +229,8 @@ export interface AuditLogEntry {
   shadow_reasons?: unknown;
   response_type?: "reply" | "action" | "info"; // v4.18.8: empfohlene Reaktion (read-time)
   response_type_reason?: string;               // v4.18.8
+  applied_label?: string | null;               // v4.21.0: tatsächlich gesetztes UE-Label (Display)
+  applied_core_key?: string | null;            // v4.21.0: Core-Key des gesetzten Labels (Picker-Markierung)
   [key: string]: unknown;
 }
 

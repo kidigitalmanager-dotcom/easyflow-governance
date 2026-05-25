@@ -236,6 +236,9 @@ export default function AuditTrail() {
 
               <div className="pt-3 border-t border-border space-y-2">
                 <p className="text-xs text-muted-foreground">Postfach-Label korrigieren</p>
+                <p className="text-xs">
+                  Aktuell gesetzt: <span className="font-medium text-foreground">{detail.applied_label ?? "kein UseEasy-Label"}</span>
+                </p>
                 <p className="text-[11px] text-muted-foreground leading-snug">
                   Falsch einsortiert? Wähle die richtige Kategorie — UseEasy ersetzt das Label im Postfach in einem Klick und lernt aus der Korrektur.
                 </p>
@@ -247,7 +250,9 @@ export default function AuditTrail() {
                 >
                   <option value="">Kategorie wählen …</option>
                   {(me?.core_labels ?? []).map((c) => (
-                    <option key={c.core_key} value={c.core_key}>{c.display}</option>
+                    <option key={c.core_key} value={c.core_key}>
+                      {c.display}{c.core_key === detail.applied_core_key ? " (aktuell)" : ""}
+                    </option>
                   ))}
                   <option value="noise">Kein passendes Label (nur entfernen)</option>
                 </select>
