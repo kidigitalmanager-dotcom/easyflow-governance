@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { ResponseTypeBadge } from "@/components/ResponseTypeBadge";
-import { useAuditLog, useUndoAction } from "@/hooks/use-api";
+import { useAuditLog, useUndoAction, useRemoveLabel } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getCurrentPlan } from "@/data/plan";
-import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2, RotateCcw, Ban } from "lucide-react";
+import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2, RotateCcw, Ban, Tag } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence, responseLabel, responseType } from "@/data/humanize";
 import DecisionStory from "@/components/DecisionStory";
@@ -32,6 +32,7 @@ export default function AuditTrail() {
   const plan = getCurrentPlan();
   const { data: auditData, isLoading, error } = useAuditLog();
   const undo = useUndoAction();
+  const removeLabel = useRemoveLabel();
   const [selectedPriority, setSelectedPriority] = useState<string>("Alle");
   const [selectedEntry, setSelectedEntry] = useState<string | null>(null);
 
@@ -230,6 +231,21 @@ export default function AuditTrail() {
                   )}
                 </div>
               )}
+
+              <div className="pt-3 border-t border-border space-y-2">
+                <p className="text-xs text-muted-foreground">Postfach-Label</p>
+                <Button size="sm" variant="outline" className="w-full justify-center" disabled={removeLabel.isPending}
+                  onClick={() => {
+                    if (!window.confirm("UseEasy-Labels (UE/…) dieser E-Mail im Postfach entfernen? Deine eigenen Labels bleiben unberührt.")) return;
+                    removeLabel.mutate({ event_id: detail.id }, {
+                      onSuccess: (r) => toast.success(r.removed && r.removed.length ? `Entfernt: ${r.removed.join(", ")}` : "Keine UseEasy-Labels an dieser Mail."),
+                      onError: (e) => toast.error("Fehler: " + (e instanceof Error ? e.message : String(e))),
+                    });
+                  }}>
+                  {removeLabel.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Tag className="w-3.5 h-3.5 mr-1" />}
+                  UseEasy-Label entfernen
+                </Button>
+              </div>
 
               <div className="pt-3 border-t border-border">
                 {plan.exportEnabled ? (

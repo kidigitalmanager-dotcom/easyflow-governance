@@ -35,6 +35,7 @@ import {
   generateDraft,
   dismissReview,
   undoAuditAction,
+  removeLabel,
   requestAutopilotPromotion,
   fetchAutopilotFewShot,
   fetchAutopilotLog,
@@ -396,6 +397,18 @@ export function useUndoAction() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: import("@/lib/api-client").UndoInput) => undoAuditAction(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["audit-log"] });
+      qc.invalidateQueries({ queryKey: ["recent-emails"] });
+    },
+  });
+}
+
+// v4.18.9: Label-Undo im Postfach (Gmail removeLabelIds / Outlook category-remove, UE-only).
+export function useRemoveLabel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { event_id: string }) => removeLabel(input.event_id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["audit-log"] });
       qc.invalidateQueries({ queryKey: ["recent-emails"] });

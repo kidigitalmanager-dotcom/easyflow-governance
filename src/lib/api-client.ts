@@ -891,6 +891,18 @@ export interface UndoInput { event_id: string; undo_type: "cancel_send" | "reope
 export const undoAuditAction = (input: UndoInput) =>
   apiPost<{ ok: boolean; undo_type?: string; affected?: number }>("/audit/undo", input as unknown as Record<string, unknown>);
 
+// v4.18.9: Label-Undo im Postfach — entfernt NUR UseEasy-Labels/Kategorien (UE/) einer Mail.
+export interface RemoveLabelResponse {
+  ok: boolean;
+  provider?: string;
+  removed?: string[];
+  target_type?: string;
+  target_id?: string | null;
+  note?: string;
+}
+export const removeLabel = (eventId: string) =>
+  apiPost<RemoveLabelResponse>("/label/remove", { event_id: eventId });
+
 // -- Promotion (Tenant-Anfrage) ---------------------------------------------
 export interface AutopilotPromoteRequestInput {
   core_key: AutopilotCoreKey;
