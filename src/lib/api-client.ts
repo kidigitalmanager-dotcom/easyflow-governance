@@ -1189,3 +1189,44 @@ export const decideRuleSuggestion = async (input: DecideRuleSuggestionInput) => 
   }
   return res.json() as Promise<{ ok: boolean; id: number | null; pattern_key: string; status: string; scope: string }>;
 };
+
+// ── Stufe 3C: freigegebene Vorschläge anwenden/aktivieren ──────────────────
+export interface ApprovedRuleSuggestion {
+  pattern_key: string; tenant_id: string; to_core_key: string; sender_domain: string;
+  tenant_domain: string | null; pack_key: string | null; scope: string; sample_count: number | null;
+  applied_rule_key: string | null; applied_pack_key: string | null;
+  applied_at: string | null; activated_at: string | null; decided_at: string | null;
+  applied: boolean; active: boolean;
+}
+export interface ApprovedRuleSuggestionsResponse { ok: boolean; count: number; approved: ApprovedRuleSuggestion[]; error?: string; }
+
+export const fetchApprovedRuleSuggestions = async (): Promise<ApprovedRuleSuggestionsResponse> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? null;
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+  const res = await fetch("https://api.useeasy.ai/v1/admin/ops/rule-suggestions?status=approved", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 403) throw new ApiError(403, "super_admin_required");
+  if (!res.ok) throw new ApiError(res.status, `approved_failed_${res.status}`);
+  return res.json();
+};
+
+async function _adminPost(pathSuffix: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? null;
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+  const res = await fetch(`https://api.useeasy.ai/v1/admin/ops/rule-suggestions/${pathSuffix}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new ApiError(res.status, e.error || `${pathSuffix}_failed_${res.status}`); }
+  return res.json();
+}
+export interface ApplyRuleInput {
+  pattern_key: string; to_core_key: string; sender_domain: string;
+  tenant_domain?: string | null; scope: "pack" | "global";
+}
+export const applyRuleSuggestion = (input: ApplyRuleInput) => _adminPost("apply", input as unknown as Record<string, unknown>);
+export const activateRuleSuggestion = (patternKey: string) => _adminPost("activate", { pattern_key: patternKey });

@@ -47,9 +47,12 @@ import {
   promoteAutopilot,
   fetchRuleSuggestions,
   decideRuleSuggestion,
+  fetchApprovedRuleSuggestions,
+  applyRuleSuggestion,
+  activateRuleSuggestion,
 } from "@/lib/api-client";
 import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload, PlaybookActivePayload, AutopilotFeedbackInput,
-  ReviewVerdictInput, AutopilotPromoteRequestInput, AutopilotPolicyPutInput, AutopilotCoreKey, AutopilotPromoteInput, DecideRuleSuggestionInput } from "@/lib/api-client";
+  ReviewVerdictInput, AutopilotPromoteRequestInput, AutopilotPolicyPutInput, AutopilotCoreKey, AutopilotPromoteInput, DecideRuleSuggestionInput, ApplyRuleInput } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useMe() {
@@ -541,5 +544,26 @@ export function useDecideRuleSuggestion() {
   return useMutation({
     mutationFn: (input: DecideRuleSuggestionInput) => decideRuleSuggestion(input),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["rule-suggestions"] }); },
+  });
+}
+
+
+// v4.25.0 (Stufe 3C): freigegebene Vorschläge anwenden/aktivieren
+export function useApprovedRuleSuggestions() {
+  const { session } = useAuth();
+  return useQuery({ queryKey: ["rule-suggestions-approved"], queryFn: fetchApprovedRuleSuggestions, enabled: !!session, staleTime: 30_000 });
+}
+export function useApplyRuleSuggestion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ApplyRuleInput) => applyRuleSuggestion(input),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rule-suggestions-approved"] }); },
+  });
+}
+export function useActivateRuleSuggestion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patternKey: string) => activateRuleSuggestion(patternKey),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rule-suggestions-approved"] }); },
   });
 }
