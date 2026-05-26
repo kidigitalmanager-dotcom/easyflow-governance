@@ -22,6 +22,7 @@ const DECISION_LABELS: Record<string, string> = {
   pack_engine_auto_close: "Automatisch erledigt",
   pack_engine_human_review: "Zur manuellen Pruefung",
   opt_out_hard_stop: "Opt-out (gestoppt)",
+  code_noise: "Verifizierungscode – kein Handlungsbedarf",
   tenant_resolve_error: "Zuordnungsfehler",
 };
 
