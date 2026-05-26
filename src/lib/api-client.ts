@@ -1230,3 +1230,10 @@ export interface ApplyRuleInput {
 }
 export const applyRuleSuggestion = (input: ApplyRuleInput) => _adminPost("apply", input as unknown as Record<string, unknown>);
 export const activateRuleSuggestion = (patternKey: string) => _adminPost("activate", { pattern_key: patternKey });
+
+// ── Stufe 3A: Kunden-"System verbessern?"-Karte (tenant-scoped) ────────────
+export interface ImproveSuggestion { pattern_key: string; to_core_key: string; sender_domain: string; count: number; }
+export interface ImproveSuggestionResponse { ok: boolean; suggestion: ImproveSuggestion | null; }
+export const fetchImproveSuggestion = () => apiFetch<ImproveSuggestionResponse>("/improve-suggestions");
+export const consentImproveSuggestion = (patternKey: string, toCoreKey: string, senderDomain: string) =>
+  apiPost<{ ok: boolean; pattern_key: string }>("/improve-suggestions/consent", { pattern_key: patternKey, to_core_key: toCoreKey, sender_domain: senderDomain });

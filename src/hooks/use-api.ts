@@ -50,6 +50,8 @@ import {
   fetchApprovedRuleSuggestions,
   applyRuleSuggestion,
   activateRuleSuggestion,
+  fetchImproveSuggestion,
+  consentImproveSuggestion,
 } from "@/lib/api-client";
 import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload, PlaybookActivePayload, AutopilotFeedbackInput,
   ReviewVerdictInput, AutopilotPromoteRequestInput, AutopilotPolicyPutInput, AutopilotCoreKey, AutopilotPromoteInput, DecideRuleSuggestionInput, ApplyRuleInput } from "@/lib/api-client";
@@ -565,5 +567,19 @@ export function useActivateRuleSuggestion() {
   return useMutation({
     mutationFn: (patternKey: string) => activateRuleSuggestion(patternKey),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["rule-suggestions-approved"] }); },
+  });
+}
+
+
+// v4.26.0 (Stufe 3A): Kunden-"System verbessern?"-Karte
+export function useImproveSuggestion() {
+  const { session } = useAuth();
+  return useQuery({ queryKey: ["improve-suggestion"], queryFn: fetchImproveSuggestion, enabled: !!session, staleTime: 5 * 60 * 1000 });
+}
+export function useConsentImprove() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { patternKey: string; toCoreKey: string; senderDomain: string }) => consentImproveSuggestion(v.patternKey, v.toCoreKey, v.senderDomain),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["improve-suggestion"] }); },
   });
 }

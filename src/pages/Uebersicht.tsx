@@ -1,9 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Clock, Mail, CheckCircle, AlertTriangle, TrendingUp, ChevronRight, Inbox } from "lucide-react";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { ResponseTypeBadge } from "@/components/ResponseTypeBadge";
 import { responseType } from "@/data/humanize";
-import { useDashboardStats, useRecentEmails } from "@/hooks/use-api";
+import { useDashboardStats, useRecentEmails, useImproveSuggestion, useConsentImprove } from "@/hooks/use-api";
+import { humanizeCategory } from "@/data/humanize";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { Sparkles, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { storeProviderTokens } from "@/lib/api-client";
@@ -13,6 +17,9 @@ export default function Uebersicht() {
     storeProviderTokens();
   }, []);
   const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
+  const { data: improve } = useImproveSuggestion();
+  const consent = useConsentImprove();
+  const [improveDismissed, setImproveDismissed] = useState(false);
   const { data: emails, isLoading: emailsLoading } = useRecentEmails();
 
   const kpis = stats
@@ -41,6 +48,34 @@ export default function Uebersicht() {
         <h1 className="text-2xl font-semibold tracking-tight">Übersicht</h1>
         <p className="text-sm text-muted-foreground mt-1">Dein UseEasy Dashboard – KPIs, offene Reviews und Eskalationen.</p>
       </div>
+
+      {/* v4.26.0 (3A): nicht-technische "System verbessern?"-Karte */}
+      {improve?.suggestion && !improveDismissed && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0 flex items-start gap-3">
+            <Sparkles className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-foreground">System verbessern?</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Uns ist aufgefallen: Mails von <span className="font-medium text-foreground">{improve.suggestion.sender_domain}</span> hast du schon {improve.suggestion.count}× nach <span className="font-medium text-foreground">{humanizeCategory(improve.suggestion.to_core_key)}</span> umsortiert. Sollen wir UseEasy dafür dauerhaft verbessern?
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button size="sm" disabled={consent.isPending} onClick={() => {
+              const s = improve.suggestion!;
+              consent.mutate({ patternKey: s.pattern_key, toCoreKey: s.to_core_key, senderDomain: s.sender_domain }, {
+                onSuccess: () => { toast.success("Danke! Wir kümmern uns darum."); setImproveDismissed(true); },
+                onError: (e) => toast.error("Fehler: " + (e instanceof Error ? e.message : String(e))),
+              });
+            }}>
+              {consent.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+              Ja, verbessern
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setImproveDismissed(true)}>Nicht jetzt</Button>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       {statsLoading ? (
