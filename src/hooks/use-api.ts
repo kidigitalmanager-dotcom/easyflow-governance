@@ -5,6 +5,8 @@ import {
   fetchRecentEmails,
   fetchAuditLog,
   fetchPlaybooks,
+  fetchAssistantConfig,
+  saveAssistantConfig,
   fetchKnowledge,
   uploadKnowledgeText,
   crawlKnowledgeUrl,
@@ -581,5 +583,27 @@ export function useConsentImprove() {
   return useMutation({
     mutationFn: (v: { patternKey: string; toCoreKey: string; senderDomain: string }) => consentImproveSuggestion(v.patternKey, v.toCoreKey, v.senderDomain),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["improve-suggestion"] }); },
+  });
+}
+
+
+// v4.29.0 (1c): Operations-Assistenz — Timeout-Einstellung.
+export function useAssistantConfig() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["assistant-config"],
+    queryFn: fetchAssistantConfig,
+    enabled: !!session,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSaveAssistantConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: saveAssistantConfig,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["assistant-config"] });
+    },
   });
 }

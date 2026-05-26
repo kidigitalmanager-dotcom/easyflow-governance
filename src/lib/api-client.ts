@@ -409,6 +409,22 @@ export const fetchStats = async (): Promise<DashboardStats> => {
 };
 export const fetchRecentEmails = () => apiFetch<RecentEmail[]>("/emails/recent");
 export const fetchAuditLog = () => apiFetch<AuditLogEntry[]>("/audit");
+// v4.29.0 (1c): Operations-Assistenz — Timeout-Einstellung (Geduldig/Zügig).
+export interface AssistantConfig {
+  enabled: boolean;
+  timeout_preset: "patient" | "brisk";
+  default_max_steps: number;
+  allowed_actions: string[];
+  nudge_after_hours: number;
+  expire_after_hours: number;
+}
+export const fetchAssistantConfig = () => apiFetch<AssistantConfig>("/assistant-config");
+export const saveAssistantConfig = (body: {
+  timeout_preset: "patient" | "brisk";
+  enabled?: boolean;
+  default_max_steps?: number;
+  allowed_actions?: string[];
+}) => apiSend<AssistantConfig>("PUT", "/assistant-config", body);
 export const fetchPlaybooks = () => apiFetch<PlaybooksResponse>("/playbooks?legacy=1");
 
 // ── Knowledge Base Fetchers ──────────────────────────

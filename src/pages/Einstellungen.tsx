@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import KnowledgeBaseTab from "@/components/KnowledgeBaseTab";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
 import TelegramIntegration from "@/components/TelegramIntegration";
+import AssistantConfigCard from "@/components/AssistantConfigCard";
 import SpreadsheetConfigTab from "@/components/SpreadsheetConfigTab";
 import SpreadsheetAuditTab from "@/components/SpreadsheetAuditTab";
 import JanaAutopilotTab from "@/components/JanaAutopilotTab";
@@ -325,6 +326,7 @@ export default function Einstellungen() {
         <TabsContent value="integrations" className="mt-6 space-y-6">
           <HubSpotIntegration />
           <TelegramIntegration />
+          <AssistantConfigCard />
         </TabsContent>
 
         <TabsContent value="email-autopilot" className="mt-6 space-y-6">
