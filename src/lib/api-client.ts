@@ -1137,3 +1137,55 @@ export const promoteAutopilot = async (input: AutopilotPromoteInput) => {
   }
   return res.json() as Promise<{ ok: boolean; promoted: Record<string, unknown>; promoted_by: string }>;
 };
+
+// ── Stufe 3B: Regel-Vorschläge (Super-Admin) ───────────────────────────────
+export interface RuleSuggestion {
+  pattern_key: string;
+  tenant_id: string;
+  to_core_key: string;
+  sender_domain: string;
+  tenant_domain: string | null;
+  proposed_pack_key: string | null;
+  sample_count: number;
+  sample_subjects: string[];
+  last_at: string | null;
+  cross_tenant_count: number;
+  cross_tenant_same_domain: boolean;
+  suggested_scope: "tenant" | "pack" | "global";
+}
+export interface RuleSuggestionsResponse { ok: boolean; count: number; suggestions: RuleSuggestion[]; error?: string; }
+
+export const fetchRuleSuggestions = async (): Promise<RuleSuggestionsResponse> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? null;
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+  const res = await fetch("https://api.useeasy.ai/v1/admin/ops/rule-suggestions", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 403) throw new ApiError(403, "super_admin_required");
+  if (!res.ok) throw new ApiError(res.status, `rule_suggestions_failed_${res.status}`);
+  return res.json();
+};
+
+export interface DecideRuleSuggestionInput {
+  pattern_key: string;
+  decision: "approve" | "reject" | "dismiss";
+  tenant_id?: string; to_core_key?: string; sender_domain?: string;
+  tenant_domain?: string | null; pack_key?: string | null;
+  scope?: "tenant" | "pack" | "global"; sample_count?: number; sample_subjects?: string[];
+}
+export const decideRuleSuggestion = async (input: DecideRuleSuggestionInput) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? null;
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+  const res = await fetch("https://api.useeasy.ai/v1/admin/ops/rule-suggestions/decide", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, err.error || `decide_failed_${res.status}`);
+  }
+  return res.json() as Promise<{ ok: boolean; id: number | null; pattern_key: string; status: string; scope: string }>;
+};

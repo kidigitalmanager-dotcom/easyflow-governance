@@ -45,9 +45,11 @@ import {
   saveAutopilotPolicy,
   fetchAutopilotPromotionPendingAdmin,
   promoteAutopilot,
+  fetchRuleSuggestions,
+  decideRuleSuggestion,
 } from "@/lib/api-client";
 import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload, PlaybookActivePayload, AutopilotFeedbackInput,
-  ReviewVerdictInput, AutopilotPromoteRequestInput, AutopilotPolicyPutInput, AutopilotCoreKey, AutopilotPromoteInput } from "@/lib/api-client";
+  ReviewVerdictInput, AutopilotPromoteRequestInput, AutopilotPolicyPutInput, AutopilotCoreKey, AutopilotPromoteInput, DecideRuleSuggestionInput } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useMe() {
@@ -520,5 +522,24 @@ export function usePromoteAutopilot() {
       qc.invalidateQueries({ queryKey: ["autopilot-promotion-pending"] });
       qc.invalidateQueries({ queryKey: ["autopilot-policy"] });
     },
+  });
+}
+
+
+// v4.24.0 (Stufe 3B): Regel-Vorschläge (Super-Admin)
+export function useRuleSuggestions() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["rule-suggestions"],
+    queryFn: fetchRuleSuggestions,
+    enabled: !!session,
+    staleTime: 60_000,
+  });
+}
+export function useDecideRuleSuggestion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DecideRuleSuggestionInput) => decideRuleSuggestion(input),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rule-suggestions"] }); },
   });
 }
