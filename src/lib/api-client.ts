@@ -1287,6 +1287,9 @@ export interface TenantSetup {
   flags?: {
     spreadsheet_enabled: boolean; autopilot_enabled: boolean; autopilot_mode: string | null;
     autopilot_kill_switch: boolean; autopilot_legal_basis_ack: boolean; autopilot_policy_exists: boolean;
+    auto_consent_on_inquiry?: boolean; email_cta_enabled?: boolean;
+    telegram_enabled?: boolean; whatsapp_enabled?: boolean;
+    hubspot_connected?: boolean; mailbox_count?: number;
   };
   voice: {
     jana_enabled: boolean; vapi_assistant_id: string | null; twilio_phone_number: string | null;
@@ -1336,7 +1339,7 @@ export interface TenantSetupWriteBody {
   voice_policy?: Partial<{ enabled: boolean; active_hours_start: string; active_hours_end: string; active_days: number[]; timezone: string; daily_cap: number; per_contact_cooldown_days: number }>;
   tenant?: Partial<{ status: string; plan: string }>;
   pack?: Partial<{ mailbox_profile: string; domain: string; active_pack_keys: string[] }>;
-  flags?: Partial<{ spreadsheet_enabled: boolean; autopilot_kill_switch: boolean }>;
+  flags?: Partial<{ spreadsheet_enabled: boolean; autopilot_kill_switch: boolean; auto_consent_on_inquiry: boolean; email_cta_enabled: boolean; telegram_enabled: boolean; whatsapp_enabled: boolean }>;
   apply_voice_preset?: boolean;
 }
 export interface CreateTenantBody {

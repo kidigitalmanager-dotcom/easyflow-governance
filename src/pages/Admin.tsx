@@ -22,7 +22,7 @@ export default function Admin() {
     );
   }
   const tools = [
-    { to: "/admin/tenant-setup", icon: PhoneCall, title: "Tenant-Setup (Voice)", desc: "Kunden visuell für Telefon-Anrufe & Assistenz einrichten — ohne SQL. Tenant wählen, Häkchen setzen, fertig." },
+    { to: "/admin/tenant-setup", icon: PhoneCall, title: "Tenant-Setup", desc: "Kunden visuell verwalten & einrichten — ohne SQL: Status, Tarif, Branche, Postfach, Telefonie, DSGVO, Assistenz & Feature-Flags." },
     { to: "/admin/rule-suggestions", icon: Lightbulb, title: "Regel-Vorschläge", desc: "Aus Nutzer-Korrekturen aggregierte Muster prüfen und als feste Regeln freigeben." },
     { to: "/admin/autopilot/promotion", icon: Sparkles, title: "Autopilot-Promotion", desc: "Reifegate-Anfragen prüfen und Autopilot-Modus pro Tenant freigeben." },
   ];

@@ -32,8 +32,10 @@ const ACTION_HELP: Record<string, string> = {
 
 function InfoTip({ text }: { text: string }) {
   return (
-    <span title={text}
-      className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-border text-[10px] leading-none text-muted-foreground cursor-help ml-1 align-middle select-none">?</span>
+    <span className="relative inline-flex group/tip align-middle ml-1">
+      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-border text-[10px] leading-none text-muted-foreground cursor-help select-none">?</span>
+      <span role="tooltip" className="pointer-events-none absolute left-1/2 bottom-full z-50 mb-1.5 hidden w-64 -translate-x-1/2 group-hover/tip:block rounded-md border border-border bg-card px-2.5 py-2 text-xs font-normal text-foreground shadow-lg leading-snug whitespace-normal text-left">{text}</span>
+    </span>
   );
 }
 
@@ -52,6 +54,8 @@ type FormState = {
   mailbox_profile: string;
   // Flags (v4.33.0)
   spreadsheet_enabled: boolean; autopilot_kill_switch: boolean;
+  auto_consent_on_inquiry: boolean; email_cta_enabled: boolean;
+  telegram_enabled: boolean; whatsapp_enabled: boolean;
 };
 
 function initForm(s: TenantSetup): FormState {
@@ -75,6 +79,10 @@ function initForm(s: TenantSetup): FormState {
     mailbox_profile: s.tenant.mailbox_profile ?? "",
     spreadsheet_enabled: s.flags?.spreadsheet_enabled ?? false,
     autopilot_kill_switch: s.flags?.autopilot_kill_switch ?? false,
+    auto_consent_on_inquiry: s.flags?.auto_consent_on_inquiry ?? false,
+    email_cta_enabled: s.flags?.email_cta_enabled ?? false,
+    telegram_enabled: s.flags?.telegram_enabled ?? false,
+    whatsapp_enabled: s.flags?.whatsapp_enabled ?? false,
   };
 }
 
@@ -141,7 +149,11 @@ export default function AdminTenantSetup() {
       voice_policy: { active_hours_start: form.active_hours_start, active_hours_end: form.active_hours_end, active_days: form.active_days, timezone: form.timezone, daily_cap: form.daily_cap },
       tenant: { status: form.status, plan: form.plan || undefined },
       pack: form.mailbox_profile ? { mailbox_profile: form.mailbox_profile } : undefined,
-      flags: { spreadsheet_enabled: form.spreadsheet_enabled, autopilot_kill_switch: form.autopilot_kill_switch },
+      flags: {
+        spreadsheet_enabled: form.spreadsheet_enabled, autopilot_kill_switch: form.autopilot_kill_switch,
+        auto_consent_on_inquiry: form.auto_consent_on_inquiry, email_cta_enabled: form.email_cta_enabled,
+        telegram_enabled: form.telegram_enabled, whatsapp_enabled: form.whatsapp_enabled,
+      },
       ...extra,
     };
     save.mutate({ tenantId: selected, body }, {
@@ -192,7 +204,7 @@ export default function AdminTenantSetup() {
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Tenant-Setup (Voice &amp; Assistenz)</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Tenant-Setup</h1>
           <p className="text-sm text-muted-foreground">Kunden visuell verwalten &amp; einrichten — ohne SQL. Status, Tarif, Branche, Telefonie, DSGVO, Assistenz-Aktionen, Anrufzeiten, Feature-Flags.</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setShowNew((v) => !v)} className="gap-1.5 flex-shrink-0">
@@ -431,7 +443,16 @@ export default function AdminTenantSetup() {
             <h2 className="font-medium text-sm flex items-center gap-2"><Zap className="w-4 h-4 text-primary" /> Feature-Flags</h2>
             <Toggle checked={form.spreadsheet_enabled} onChange={(v) => upd({ spreadsheet_enabled: v })} label="Excel Live-Sync aktiv" hint="Erlaubt das automatische Aktualisieren verbundener Tabellen." />
             <Toggle checked={form.autopilot_kill_switch} onChange={(v) => upd({ autopilot_kill_switch: v })} label="Autopilot-Notbremse (Kill-Switch)" hint="Wenn AN: stoppt jeden automatischen Versand sofort, egal welcher Modus." />
-            <p className="text-[11px] text-muted-foreground">Autopilot-Modus: {setup.flags?.autopilot_mode ?? "—"} (Freigabe/Reifegate über „Autopilot-Promotion").</p>
+            <Toggle checked={form.auto_consent_on_inquiry} onChange={(v) => upd({ auto_consent_on_inquiry: v })} label="Auto-Einwilligung bei eingehender Anfrage" hint="Wenn der Kunde von sich aus schreibt/anruft, gilt die Aufzeichnungs-Einwilligung als gegeben (für Rückrufe)." />
+            <Toggle checked={form.email_cta_enabled} onChange={(v) => upd({ email_cta_enabled: v })} label="Rückruf-CTA in E-Mails" hint="Hängt bei passenden Antworten einen Rückruf-Hinweis an (nur wenn Auto-Versand aus)." />
+            <Toggle checked={form.telegram_enabled} onChange={(v) => upd({ telegram_enabled: v })} label="Telegram-Steuerung erlauben" hint="Erlaubt diesem Kunden, sein UseEasy per Telegram zu steuern (Verknüpfung via Magic-Link). Greift, sobald der Telegram-Bot live ist." />
+            <Toggle checked={form.whatsapp_enabled} onChange={(v) => upd({ whatsapp_enabled: v })} label="WhatsApp-Steuerung erlauben" hint="Wie Telegram, aber über WhatsApp (sobald der WhatsApp-Kanal live ist)." />
+            <div className="border-t border-border pt-3 space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Integrationen (Status)</p>
+              <p className="text-xs flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${setup.flags?.hubspot_connected ? "bg-emerald-500" : "bg-muted-foreground/40"}`} /> HubSpot: {setup.flags?.hubspot_connected ? "verbunden" : "nicht verbunden"}</p>
+              <p className="text-xs flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${(setup.flags?.mailbox_count ?? 0) > 0 ? "bg-emerald-500" : "bg-muted-foreground/40"}`} /> Postfächer verbunden: {setup.flags?.mailbox_count ?? 0}</p>
+              <p className="text-[11px] text-muted-foreground pt-1">Autopilot-Modus: {setup.flags?.autopilot_mode ?? "—"} (Freigabe/Reifegate über „Autopilot-Promotion").</p>
+            </div>
           </section>
 
           <div className="flex items-center gap-3 sticky bottom-0 bg-background/80 backdrop-blur py-3">
