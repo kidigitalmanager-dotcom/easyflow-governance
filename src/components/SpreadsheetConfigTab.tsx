@@ -214,8 +214,8 @@ export default function SpreadsheetConfigTab() {
       alert("Nur .xlsx, .xls oder .csv Dateien werden unterstützt.");
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      alert("Datei zu groß (max. 10 MB).");
+    if (file.size > 4 * 1024 * 1024) {
+      alert("Datei zu groß (max. 4 MB beim Direkt-Upload).");
       return;
     }
 
@@ -287,7 +287,7 @@ export default function SpreadsheetConfigTab() {
             durchsuchen
           </button>
         </p>
-        <p className="text-xs text-muted-foreground/60 mt-1">.xlsx, .xls, .csv — max. 10 MB</p>
+        <p className="text-xs text-muted-foreground/60 mt-1">.xlsx, .xls, .csv — max. 4 MB</p>
 
         {uploadMut.isPending && (
           <div className="mt-3 text-xs text-blue-400">Datei wird verarbeitet...</div>
