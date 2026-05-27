@@ -611,6 +611,8 @@ export function useSaveAssistantConfig() {
 // ── v4.32.0 Tenant-Setup (Voice/Assistenz) ──────────────────────────────────
 import {
   fetchAdminTenants,
+  archiveAdminTenant,
+  deleteAdminTenant,
   fetchAdminTenantSetup,
   saveAdminTenantSetup,
   createAdminTenant,
@@ -619,8 +621,26 @@ import {
 } from "@/lib/api-client";
 import type { TenantSetupWriteBody, CreateTenantBody } from "@/lib/api-client";
 
-export function useAdminTenants() {
-  return useQuery({ queryKey: ["admin-tenants"], queryFn: fetchAdminTenants, staleTime: 30_000 });
+export function useAdminTenants(includeArchived = false) {
+  return useQuery({
+    queryKey: ["admin-tenants", includeArchived],
+    queryFn: () => fetchAdminTenants(includeArchived),
+    staleTime: 30_000,
+  });
+}
+export function useArchiveTenant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tenantId, archived }: { tenantId: string; archived: boolean }) => archiveAdminTenant(tenantId, archived),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-tenants"] }),
+  });
+}
+export function useDeleteTenant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tenantId: string) => deleteAdminTenant(tenantId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-tenants"] }),
+  });
 }
 export function useAdminTenantSetup(tenantId: string | null) {
   return useQuery({

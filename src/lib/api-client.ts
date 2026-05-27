@@ -1268,6 +1268,9 @@ export interface TenantSetupKnownValues {
   action_options: Array<{ action: string; label: string }>;
   timeout_presets: Array<{ value: string; label: string }>;
   default_consent_banner: string;
+  status_options?: string[];
+  plan_options?: string[];
+  protected_tenants?: string[];
 }
 export interface TenantSetupChecklistItem { key: string; label: string; ok: boolean; }
 export interface TenantSetup {
@@ -1278,6 +1281,12 @@ export interface TenantSetup {
     tenant_id: string; tenant_name: string; status: string | null; plan: string | null;
     admin_email: string | null; mailbox_profile: string | null; domain: string | null;
     active_pack_keys: string[]; gmail_enabled: boolean; outlook_enabled: boolean;
+    protected?: boolean;
+  };
+  mailboxes?: Array<{ provider: string | null; email: string | null; token_expiry: string | null; expired: boolean | null }>;
+  flags?: {
+    spreadsheet_enabled: boolean; autopilot_enabled: boolean; autopilot_mode: string | null;
+    autopilot_kill_switch: boolean; autopilot_legal_basis_ack: boolean; autopilot_policy_exists: boolean;
   };
   voice: {
     jana_enabled: boolean; vapi_assistant_id: string | null; twilio_phone_number: string | null;
@@ -1312,9 +1321,11 @@ export interface TenantListItem {
   mailbox_profile: string | null; gmail_enabled: boolean; outlook_enabled: boolean;
   jana_enabled: boolean; recording_consent_enabled: boolean;
   voice_call_allowed: boolean; voice_ready: boolean;
+  archived?: boolean; protected?: boolean;
 }
 export interface TenantListResponse {
   ok: boolean; total: number; tenants: TenantListItem[]; known_values: TenantSetupKnownValues;
+  archived_count?: number; include_archived?: boolean;
 }
 
 // Partielle Write-Payload (alle Sektionen optional).
@@ -1323,6 +1334,9 @@ export interface TenantSetupWriteBody {
   consent?: Partial<{ recording_consent_enabled: boolean; recording_consent_banner_text: string | null }>;
   assistant?: Partial<{ enabled: boolean; timeout_preset: string; default_max_steps: number; allowed_actions: string[] }>;
   voice_policy?: Partial<{ enabled: boolean; active_hours_start: string; active_hours_end: string; active_days: number[]; timezone: string; daily_cap: number; per_contact_cooldown_days: number }>;
+  tenant?: Partial<{ status: string; plan: string }>;
+  pack?: Partial<{ mailbox_profile: string; domain: string; active_pack_keys: string[] }>;
+  flags?: Partial<{ spreadsheet_enabled: boolean; autopilot_kill_switch: boolean }>;
   apply_voice_preset?: boolean;
 }
 export interface CreateTenantBody {
@@ -1350,7 +1364,12 @@ async function _adminTsFetch<T>(method: string, urlPath: string, body?: unknown)
 }
 
 // ── Super-Admin ──
-export const fetchAdminTenants = () => _adminTsFetch<TenantListResponse>("GET", "/v1/admin/ops/tenant-setup");
+export const fetchAdminTenants = (includeArchived = false) =>
+  _adminTsFetch<TenantListResponse>("GET", `/v1/admin/ops/tenant-setup${includeArchived ? "?include_archived=1" : ""}`);
+export const archiveAdminTenant = (tenantId: string, archived: boolean) =>
+  _adminTsFetch<{ ok: boolean; tenant_id: string; status: string; archived: boolean }>("POST", `/v1/admin/ops/tenant-setup/${encodeURIComponent(tenantId)}/archive`, { archived });
+export const deleteAdminTenant = (tenantId: string) =>
+  _adminTsFetch<{ ok: boolean; tenant_id: string; deleted: string[] }>("DELETE", `/v1/admin/ops/tenant-setup/${encodeURIComponent(tenantId)}`, { confirm: tenantId });
 export const fetchAdminTenantSetup = (tenantId: string) =>
   _adminTsFetch<TenantSetup>("GET", `/v1/admin/ops/tenant-setup/${encodeURIComponent(tenantId)}`);
 export const saveAdminTenantSetup = (tenantId: string, body: TenantSetupWriteBody) =>

@@ -2,39 +2,56 @@ import { useState, useEffect } from "react";
 import { useMe } from "@/hooks/use-api";
 import {
   useAdminTenants, useAdminTenantSetup, useSaveAdminTenantSetup, useCreateAdminTenant,
+  useArchiveTenant, useDeleteTenant,
 } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   ShieldAlert, PhoneCall, ShieldCheck, ListChecks, Clock, Check, X,
-  Loader2, UserPlus, Zap, CircleCheck, CircleAlert,
+  Loader2, UserPlus, Zap, CircleCheck, CircleAlert, Archive, ArchiveRestore, Trash2,
+  Building2, Mail, ToggleLeft,
 } from "lucide-react";
 import type { TenantSetup, TenantSetupWriteBody } from "@/lib/api-client";
 
-// v4.32.0 — Super-Admin Tenant-Setup: visuelles Voice-/Assistenz-Setup ohne SQL.
-// Tenant wählen → Häkchen/Felder → speichern. 1-Klick "Voice-Call aktivieren".
-// Plus "Neuer Kunde anlegen". Gated über is_super_admin (+ Backend-403).
+// v4.32.0/v4.33.0 — Super-Admin Tenant-Setup: Voice/Assistenz + Tenant-Verwaltung
+// (Archivieren/Löschen) + erweitertes Setup (Status/Tarif, Pack/Branche, Postfach-
+// Status, Feature-Flags) — alles ohne SQL. Gated über is_super_admin (+ Backend-403).
 
 const WEEKDAYS = [
   { n: 1, label: "Mo" }, { n: 2, label: "Di" }, { n: 3, label: "Mi" },
   { n: 4, label: "Do" }, { n: 5, label: "Fr" }, { n: 6, label: "Sa" }, { n: 7, label: "So" },
 ];
 
+// Klartext-Erklärungen für die Assistenz-Aktionen (Tooltip bei ?-Hover).
+const ACTION_HELP: Record<string, string> = {
+  email_clarify: "Die Assistenz darf bei Unklarheiten selbstständig eine Rückfrage-E-Mail an den Kontakt als Entwurf formulieren (z. B. fehlende Bestellnummer erfragen). Versand erfolgt im Autopilot-Rahmen / nach Freigabe.",
+  voice_call: "Die Assistenz darf einen Kontakt telefonisch klären lassen (Jana/VAPI). Erfordert: Telefonie aktiv + DSGVO-Aufzeichnungs-Einwilligung + freigegebene Anrufzeiten. Nach jedem Anruf gibt es einen Checkpoint.",
+  crm_update: "Die Assistenz darf Kontakt-/Deal-Daten im verbundenen CRM (HubSpot) aktualisieren — z. B. Lead-Status setzen oder ein Feld pflegen.",
+  note_capture: "Die Assistenz darf eine interne Notiz zum Vorgang festhalten (z. B. Gesprächsergebnis). Kein Versand nach außen.",
+};
+
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span title={text}
+      className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-border text-[10px] leading-none text-muted-foreground cursor-help ml-1 align-middle select-none">?</span>
+  );
+}
+
 type FormState = {
-  jana_enabled: boolean;
-  vapi_assistant_id: string;
-  caller_id: string;            // twilio_phone_number ODER vapi_phone_number_id
-  domain: string;
-  recording_consent_enabled: boolean;
-  recording_consent_banner_text: string;
-  assistant_enabled: boolean;
-  allowed_actions: string[];
-  timeout_preset: string;
-  active_hours_start: string;
-  active_hours_end: string;
-  active_days: number[];
-  timezone: string;
-  daily_cap: number;
+  // Voice
+  jana_enabled: boolean; vapi_assistant_id: string; caller_id: string; domain: string;
+  // Consent
+  recording_consent_enabled: boolean; recording_consent_banner_text: string;
+  // Assistant
+  assistant_enabled: boolean; allowed_actions: string[]; timeout_preset: string;
+  // Voice policy
+  active_hours_start: string; active_hours_end: string; active_days: number[]; timezone: string; daily_cap: number;
+  // Tenant meta (v4.33.0)
+  status: string; plan: string;
+  // Pack/Branche (v4.33.0)
+  mailbox_profile: string;
+  // Flags (v4.33.0)
+  spreadsheet_enabled: boolean; autopilot_kill_switch: boolean;
 };
 
 function initForm(s: TenantSetup): FormState {
@@ -53,11 +70,14 @@ function initForm(s: TenantSetup): FormState {
     active_days: s.voice_policy.active_days ?? [1, 2, 3, 4, 5],
     timezone: s.voice_policy.timezone ?? "Europe/Berlin",
     daily_cap: s.voice_policy.daily_cap ?? 10,
+    status: s.tenant.status ?? "active",
+    plan: s.tenant.plan ?? "",
+    mailbox_profile: s.tenant.mailbox_profile ?? "",
+    spreadsheet_enabled: s.flags?.spreadsheet_enabled ?? false,
+    autopilot_kill_switch: s.flags?.autopilot_kill_switch ?? false,
   };
 }
 
-// Caller-ID, die nur eine Telefonnummer (E.164) ist, geht ins twilio_phone_number-
-// Feld; alles andere wird als vapi_phone_number_id interpretiert.
 function buildVoiceWrite(f: FormState) {
   const isE164 = /^\+[1-9]\d{6,14}$/.test(f.caller_id.trim());
   return {
@@ -86,11 +106,14 @@ function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange
 
 export default function AdminTenantSetup() {
   const { data: me, isLoading: meLoading } = useMe();
-  const { data: list, isLoading: listLoading } = useAdminTenants();
+  const [showArchived, setShowArchived] = useState(false);
+  const { data: list, isLoading: listLoading } = useAdminTenants(showArchived);
   const [selected, setSelected] = useState<string | null>(null);
   const { data: setup, isLoading: setupLoading } = useAdminTenantSetup(selected);
   const save = useSaveAdminTenantSetup();
   const create = useCreateAdminTenant();
+  const archive = useArchiveTenant();
+  const del = useDeleteTenant();
 
   const [form, setForm] = useState<FormState | null>(null);
   const [showNew, setShowNew] = useState(false);
@@ -104,6 +127,9 @@ export default function AdminTenantSetup() {
   }
 
   const kv = setup?.known_values ?? list?.known_values;
+  const selItem = (list?.tenants ?? []).find((t) => t.tenant_id === selected);
+  const isProtected = setup?.tenant?.protected || selItem?.protected;
+  const isArchived = setup?.tenant?.status === "archived" || selItem?.archived;
   const upd = (patch: Partial<FormState>) => setForm((f) => (f ? { ...f, ...patch } : f));
 
   const doSave = (extra?: Partial<TenantSetupWriteBody>) => {
@@ -112,10 +138,10 @@ export default function AdminTenantSetup() {
       voice: buildVoiceWrite(form),
       consent: { recording_consent_enabled: form.recording_consent_enabled, recording_consent_banner_text: form.recording_consent_banner_text || null },
       assistant: { enabled: form.assistant_enabled, allowed_actions: form.allowed_actions, timeout_preset: form.timeout_preset },
-      voice_policy: {
-        active_hours_start: form.active_hours_start, active_hours_end: form.active_hours_end,
-        active_days: form.active_days, timezone: form.timezone, daily_cap: form.daily_cap,
-      },
+      voice_policy: { active_hours_start: form.active_hours_start, active_hours_end: form.active_hours_end, active_days: form.active_days, timezone: form.timezone, daily_cap: form.daily_cap },
+      tenant: { status: form.status, plan: form.plan || undefined },
+      pack: form.mailbox_profile ? { mailbox_profile: form.mailbox_profile } : undefined,
+      flags: { spreadsheet_enabled: form.spreadsheet_enabled, autopilot_kill_switch: form.autopilot_kill_switch },
       ...extra,
     };
     save.mutate({ tenantId: selected, body }, {
@@ -126,9 +152,7 @@ export default function AdminTenantSetup() {
 
   const doPreset = () => {
     if (!selected) return;
-    if (!window.confirm(
-      "Voice-Call für diesen Kunden aktivieren?\n\nSetzt: Telefonie an, DSGVO-Aufzeichnungs-Einwilligung an, Aktion Telefon-Anruf frei, Anrufzeiten 09–18 Uhr Mo–Fr. Nur aktivieren, wenn der Kunde DSGVO-konform aufzeichnet."
-    )) return;
+    if (!window.confirm("Voice-Call für diesen Kunden aktivieren?\n\nSetzt: Telefonie an, DSGVO-Aufzeichnungs-Einwilligung an, Aktion Telefon-Anruf frei, Anrufzeiten 09–18 Uhr Mo–Fr. Nur aktivieren, wenn der Kunde DSGVO-konform aufzeichnet.")) return;
     save.mutate({ tenantId: selected, body: { apply_voice_preset: true } }, {
       onSuccess: () => toast.success("Voice-Call aktiviert (Preset angewendet)."),
       onError: (e) => toast.error("Fehler: " + (e instanceof Error ? e.message : String(e))),
@@ -143,6 +167,24 @@ export default function AdminTenantSetup() {
     });
   };
 
+  const doArchive = (archived: boolean) => {
+    if (!selected) return;
+    archive.mutate({ tenantId: selected, archived }, {
+      onSuccess: () => toast.success(archived ? "Tenant archiviert." : "Tenant reaktiviert."),
+      onError: (e) => toast.error("Fehler: " + (e instanceof Error ? e.message : String(e))),
+    });
+  };
+  const doDelete = () => {
+    if (!selected) return;
+    if (isProtected) { toast.error("Prod-Tenant — nur Archivieren erlaubt."); return; }
+    if (!window.confirm(`Tenant „${selected}" ENDGÜLTIG löschen?\n\nEntfernt Identitäts- und Setup-Daten unwiderruflich aus der DB.`)) return;
+    if (!window.confirm(`Wirklich sicher? Letzte Bestätigung für „${selected}".`)) return;
+    del.mutate(selected, {
+      onSuccess: (r) => { toast.success(`Gelöscht (${r.deleted.length} Tabellen).`); setSelected(null); },
+      onError: (e) => toast.error("Fehler: " + (e instanceof Error ? e.message : String(e))),
+    });
+  };
+
   const toggleAction = (a: string) => upd({ allowed_actions: form!.allowed_actions.includes(a) ? form!.allowed_actions.filter((x) => x !== a) : [...form!.allowed_actions, a] });
   const toggleDay = (n: number) => upd({ active_days: form!.active_days.includes(n) ? form!.active_days.filter((x) => x !== n) : [...form!.active_days, n].sort() });
 
@@ -151,7 +193,7 @@ export default function AdminTenantSetup() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Tenant-Setup (Voice &amp; Assistenz)</h1>
-          <p className="text-sm text-muted-foreground">Kunden visuell einrichten — ohne SQL. Telefonie, DSGVO-Einwilligung, Assistenz-Aktionen und Anrufzeiten.</p>
+          <p className="text-sm text-muted-foreground">Kunden visuell verwalten &amp; einrichten — ohne SQL. Status, Tarif, Branche, Telefonie, DSGVO, Assistenz-Aktionen, Anrufzeiten, Feature-Flags.</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setShowNew((v) => !v)} className="gap-1.5 flex-shrink-0">
           <UserPlus className="w-4 h-4" /> Neuer Kunde
@@ -175,7 +217,7 @@ export default function AdminTenantSetup() {
             </label>
             <label className="text-xs text-muted-foreground">E-Mail-Anbieter
               <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={newT.provider} onChange={(e) => setNewT({ ...newT, provider: e.target.value })}>
-                <option value="gmail">Gmail</option><option value="outlook">Outlook</option>
+                <option value="gmail">Gmail</option><option value="outlook">Outlook / Microsoft 365</option>
               </select>
             </label>
             <label className="text-xs text-muted-foreground">Tarif (optional)
@@ -185,7 +227,7 @@ export default function AdminTenantSetup() {
               <input className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={newT.admin_email} onChange={(e) => setNewT({ ...newT, admin_email: e.target.value })} placeholder="chef@kunde.de" />
             </label>
           </div>
-          <p className="text-[11px] text-muted-foreground">Das E-Mail-Postfach (Gmail/Outlook) wird separat über den Connect-Flow verbunden. Hier wird der Tenant + leere Voice-Konfiguration angelegt.</p>
+          <p className="text-[11px] text-muted-foreground">Das E-Mail-Postfach (Gmail/Outlook/M365) wird separat über den Connect-Flow (OAuth) verbunden. Hier wird der Tenant + leere Voice-Konfiguration angelegt.</p>
           <div className="flex gap-2">
             <Button size="sm" onClick={doCreate} disabled={create.isPending}>{create.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Anlegen"}</Button>
             <Button size="sm" variant="ghost" onClick={() => setShowNew(false)}>Abbrechen</Button>
@@ -193,18 +235,36 @@ export default function AdminTenantSetup() {
         </div>
       )}
 
-      {/* Tenant-Picker */}
-      <div className="rounded-lg border border-border bg-card p-4">
-        <label className="text-xs font-medium text-muted-foreground">Kunde auswählen</label>
-        <select className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+      {/* Tenant-Picker + Verwaltung */}
+      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium text-muted-foreground">Kunde auswählen</label>
+          <label className="text-xs text-muted-foreground flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="accent-primary" />
+            Archivierte anzeigen{typeof list?.archived_count === "number" ? ` (${list.archived_count})` : ""}
+          </label>
+        </div>
+        <select className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
           value={selected ?? ""} onChange={(e) => setSelected(e.target.value || null)}>
           <option value="">{listLoading ? "Lädt …" : "— Kunde wählen —"}</option>
           {(list?.tenants ?? []).map((t) => (
             <option key={t.tenant_id} value={t.tenant_id}>
-              {t.voice_ready ? "✅ " : ""}{t.tenant_name} ({t.tenant_id}){t.status && t.status !== "active" ? ` · ${t.status}` : ""}
+              {t.archived ? "🗄 " : t.voice_ready ? "✅ " : ""}{t.tenant_name} ({t.tenant_id}){t.status && t.status !== "active" ? ` · ${t.status}` : ""}
             </option>
           ))}
         </select>
+        {selected && (
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            {isArchived
+              ? <Button size="sm" variant="outline" className="gap-1.5" onClick={() => doArchive(false)} disabled={archive.isPending}><ArchiveRestore className="w-3.5 h-3.5" /> Reaktivieren</Button>
+              : <Button size="sm" variant="outline" className="gap-1.5" onClick={() => doArchive(true)} disabled={archive.isPending}><Archive className="w-3.5 h-3.5" /> Archivieren</Button>}
+            <Button size="sm" variant="ghost" className="gap-1.5 text-destructive hover:text-destructive" onClick={doDelete} disabled={del.isPending || isProtected}
+              title={isProtected ? "Prod-Tenant — nur Archivieren erlaubt" : "Endgültig löschen"}>
+              <Trash2 className="w-3.5 h-3.5" /> Löschen
+            </Button>
+            {isProtected && <span className="text-[11px] text-muted-foreground">Prod-Tenant (geschützt)</span>}
+          </div>
+        )}
       </div>
 
       {selected && setupLoading && <div className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Setup lädt …</div>}
@@ -219,9 +279,7 @@ export default function AdminTenantSetup() {
                 <span className="font-medium text-sm">{setup.voice_ready ? "Bereit für Telefon-Anrufe" : "Telefon-Anrufe noch nicht bereit"}</span>
               </div>
               {!setup.voice_ready && (
-                <Button size="sm" onClick={doPreset} disabled={save.isPending} className="gap-1.5">
-                  <Zap className="w-4 h-4" /> Voice-Call aktivieren
-                </Button>
+                <Button size="sm" onClick={doPreset} disabled={save.isPending} className="gap-1.5"><Zap className="w-4 h-4" /> Voice-Call aktivieren</Button>
               )}
             </div>
             <ul className="mt-3 grid sm:grid-cols-2 gap-1.5">
@@ -233,6 +291,56 @@ export default function AdminTenantSetup() {
               ))}
             </ul>
           </div>
+
+          {/* A) Status & Tarif */}
+          <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <h2 className="font-medium text-sm flex items-center gap-2"><ToggleLeft className="w-4 h-4 text-primary" /> Status &amp; Tarif</h2>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <label className="text-xs text-muted-foreground">Status
+                <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.status} onChange={(e) => upd({ status: e.target.value })}>
+                  {(kv?.status_options ?? ["active", "suspended", "archived"]).map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </label>
+              <label className="text-xs text-muted-foreground">Tarif
+                <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.plan} onChange={(e) => upd({ plan: e.target.value })}>
+                  <option value="">— kein —</option>
+                  {(kv?.plan_options ?? ["starter", "team", "scale", "pro", "enterprise"]).map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </label>
+            </div>
+          </section>
+
+          {/* B) Pack/Branche & Domain */}
+          <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <h2 className="font-medium text-sm flex items-center gap-2"><Building2 className="w-4 h-4 text-primary" /> Branche / Pack <InfoTip text="Steuert, welche Klassifikations-Regeln laufen und wie Labels heißen (z. B. Hausverwaltung vs. E-Commerce). Domain wird automatisch passend gesetzt." /></h2>
+            <label className="text-xs text-muted-foreground block">Pack
+              <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.mailbox_profile} onChange={(e) => upd({ mailbox_profile: e.target.value })}>
+                <option value="">{setup.tenant.mailbox_profile ? `aktuell: ${setup.tenant.mailbox_profile}` : "— wählen —"}</option>
+                {(kv?.packs ?? []).map((p) => <option key={p.pack_key} value={p.pack_key}>{p.label} ({p.domain})</option>)}
+              </select>
+            </label>
+            <p className="text-[11px] text-muted-foreground">Aktuelle Domain: {setup.tenant.domain ?? "—"} · Packs: {(setup.tenant.active_pack_keys ?? []).join(", ") || "—"}</p>
+          </section>
+
+          {/* C) Postfach-Status & Connect */}
+          <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <h2 className="font-medium text-sm flex items-center gap-2"><Mail className="w-4 h-4 text-primary" /> Postfach-Status</h2>
+            {(setup.mailboxes ?? []).length === 0 ? (
+              <p className="text-xs text-muted-foreground">Kein Postfach verbunden. Der Kunde verbindet Gmail bzw. Outlook/Microsoft 365 selbst über den Connect-Button (OAuth, One-Click) in seinem Dashboard.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {(setup.mailboxes ?? []).map((m, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    <span className={`w-2 h-2 rounded-full ${m.expired ? "bg-destructive" : "bg-emerald-500"}`} />
+                    <span className="text-foreground">{m.provider}</span>
+                    <span className="text-muted-foreground">{m.email}</span>
+                    <span className="text-[11px] text-muted-foreground">{m.expired ? "· Token abgelaufen (Reconnect nötig)" : "· verbunden"}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="text-[11px] text-muted-foreground">Hinweis: Verbinden läuft über OAuth (kein Token-Eintippen). Ein „Outlook / Microsoft 365"-Button deckt beide ab, sobald die Azure-App „organizational + personal accounts" erlaubt.</p>
+          </section>
 
           {/* 1) Telefonie */}
           <section className="rounded-lg border border-border bg-card p-4 space-y-4">
@@ -268,7 +376,7 @@ export default function AdminTenantSetup() {
             </label>
           </section>
 
-          {/* 3) Assistenz-Aktionen */}
+          {/* 3) Assistenz-Aktionen (mit Tooltips) */}
           <section className="rounded-lg border border-border bg-card p-4 space-y-3">
             <h2 className="font-medium text-sm flex items-center gap-2"><ListChecks className="w-4 h-4 text-primary" /> Assistenz-Aktionen</h2>
             <Toggle checked={form.assistant_enabled} onChange={(v) => upd({ assistant_enabled: v })} label="Operations-Assistenz aktiv" />
@@ -277,6 +385,7 @@ export default function AdminTenantSetup() {
                 <label key={opt.action} className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={form.allowed_actions.includes(opt.action)} onChange={() => toggleAction(opt.action)} className="accent-primary" />
                   <span className="text-foreground">{opt.label}</span>
+                  {ACTION_HELP[opt.action] && <InfoTip text={ACTION_HELP[opt.action]} />}
                 </label>
               ))}
             </div>
@@ -315,6 +424,14 @@ export default function AdminTenantSetup() {
                 ))}
               </div>
             </div>
+          </section>
+
+          {/* D) Feature-Flags */}
+          <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <h2 className="font-medium text-sm flex items-center gap-2"><Zap className="w-4 h-4 text-primary" /> Feature-Flags</h2>
+            <Toggle checked={form.spreadsheet_enabled} onChange={(v) => upd({ spreadsheet_enabled: v })} label="Excel Live-Sync aktiv" hint="Erlaubt das automatische Aktualisieren verbundener Tabellen." />
+            <Toggle checked={form.autopilot_kill_switch} onChange={(v) => upd({ autopilot_kill_switch: v })} label="Autopilot-Notbremse (Kill-Switch)" hint="Wenn AN: stoppt jeden automatischen Versand sofort, egal welcher Modus." />
+            <p className="text-[11px] text-muted-foreground">Autopilot-Modus: {setup.flags?.autopilot_mode ?? "—"} (Freigabe/Reifegate über „Autopilot-Promotion").</p>
           </section>
 
           <div className="flex items-center gap-3 sticky bottom-0 bg-background/80 backdrop-blur py-3">
