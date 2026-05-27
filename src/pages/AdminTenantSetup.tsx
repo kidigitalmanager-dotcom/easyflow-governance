@@ -129,6 +129,22 @@ export default function AdminTenantSetup() {
 
   useEffect(() => { if (setup?.ok) setForm(initForm(setup)); }, [setup]);
 
+  // v4.35.0 — Rückkehr vom Outlook/M365-OAuth-Reconnect: Toast + URL säubern.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get("outlook");
+    if (!outcome) return;
+    if (outcome === "connected") {
+      toast.success(`Outlook neu verbunden${params.get("mailbox") ? `: ${params.get("mailbox")}` : ""}.`);
+    } else if (outcome === "error") {
+      const reason = params.get("reason") || "unbekannt";
+      toast.error(`Outlook-Verbindung fehlgeschlagen: ${reason}`);
+    }
+    const url = new URL(window.location.href);
+    ["outlook", "mailbox", "tenant", "reason", "got", "expected"].forEach((k) => url.searchParams.delete(k));
+    window.history.replaceState({}, "", url.pathname + url.search);
+  }, []);
+
   if (meLoading) return <div className="text-sm text-muted-foreground">Lädt …</div>;
   if (!me?.user?.is_super_admin) {
     return <div className="max-w-lg flex items-center gap-2 text-destructive"><ShieldAlert className="w-5 h-5" /><h1 className="text-lg font-semibold">Kein Zugriff</h1></div>;
@@ -347,6 +363,21 @@ export default function AdminTenantSetup() {
                     <span className="text-foreground">{m.provider}</span>
                     <span className="text-muted-foreground">{m.email}</span>
                     <span className="text-[11px] text-muted-foreground">{m.expired ? "· Token abgelaufen (Reconnect nötig)" : "· verbunden"}</span>
+                    {m.provider === "outlook" && selected && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="ml-auto h-7 px-2 text-xs"
+                        onClick={() => {
+                          const u = new URL("https://api.useeasy.ai/v1/outlook/oauth/start");
+                          u.searchParams.set("tenant_id", selected);
+                          u.searchParams.set("mailbox", m.email);
+                          window.location.href = u.toString();
+                        }}
+                      >
+                        Neu verbinden
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>
