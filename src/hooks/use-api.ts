@@ -607,3 +607,56 @@ export function useSaveAssistantConfig() {
     },
   });
 }
+
+// ── v4.32.0 Tenant-Setup (Voice/Assistenz) ──────────────────────────────────
+import {
+  fetchAdminTenants,
+  fetchAdminTenantSetup,
+  saveAdminTenantSetup,
+  createAdminTenant,
+  fetchTenantSetupSelf,
+  saveTenantSetupSelf,
+} from "@/lib/api-client";
+import type { TenantSetupWriteBody, CreateTenantBody } from "@/lib/api-client";
+
+export function useAdminTenants() {
+  return useQuery({ queryKey: ["admin-tenants"], queryFn: fetchAdminTenants, staleTime: 30_000 });
+}
+export function useAdminTenantSetup(tenantId: string | null) {
+  return useQuery({
+    queryKey: ["admin-tenant-setup", tenantId],
+    queryFn: () => fetchAdminTenantSetup(tenantId as string),
+    enabled: !!tenantId,
+  });
+}
+export function useSaveAdminTenantSetup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tenantId, body }: { tenantId: string; body: TenantSetupWriteBody }) =>
+      saveAdminTenantSetup(tenantId, body),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["admin-tenant-setup", vars.tenantId] });
+      qc.invalidateQueries({ queryKey: ["admin-tenants"] });
+    },
+  });
+}
+export function useCreateAdminTenant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateTenantBody) => createAdminTenant(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-tenants"] }),
+  });
+}
+export function useTenantSetupSelf() {
+  return useQuery({ queryKey: ["tenant-setup-self"], queryFn: fetchTenantSetupSelf });
+}
+export function useSaveTenantSetupSelf() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: TenantSetupWriteBody) => saveTenantSetupSelf(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tenant-setup-self"] });
+      qc.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+}

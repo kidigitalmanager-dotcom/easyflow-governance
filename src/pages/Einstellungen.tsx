@@ -10,6 +10,7 @@ import KnowledgeBaseTab from "@/components/KnowledgeBaseTab";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
 import TelegramIntegration from "@/components/TelegramIntegration";
 import AssistantConfigCard from "@/components/AssistantConfigCard";
+import TenantSetupSelfCard from "@/components/TenantSetupSelfCard";
 import SpreadsheetConfigTab from "@/components/SpreadsheetConfigTab";
 import SpreadsheetAuditTab from "@/components/SpreadsheetAuditTab";
 import JanaAutopilotTab from "@/components/JanaAutopilotTab";
@@ -327,6 +328,7 @@ export default function Einstellungen() {
           <HubSpotIntegration />
           <TelegramIntegration />
           <AssistantConfigCard />
+          <TenantSetupSelfCard />
         </TabsContent>
 
         <TabsContent value="email-autopilot" className="mt-6 space-y-6">

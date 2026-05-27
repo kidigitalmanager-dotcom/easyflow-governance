@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useMe } from "@/hooks/use-api";
-import { ShieldAlert, Sparkles, Lightbulb } from "lucide-react";
+import { ShieldAlert, Sparkles, Lightbulb, PhoneCall } from "lucide-react";
 
 // v4.23.0 (Stufe 3B-0): Super-Admin-Index. Nur fuer Super-Admins (Backend /me
 // is_super_admin + Nav-Gate). Kunden sehen weder Nav-Eintrag noch diese Seite.
@@ -22,6 +22,7 @@ export default function Admin() {
     );
   }
   const tools = [
+    { to: "/admin/tenant-setup", icon: PhoneCall, title: "Tenant-Setup (Voice)", desc: "Kunden visuell für Telefon-Anrufe & Assistenz einrichten — ohne SQL. Tenant wählen, Häkchen setzen, fertig." },
     { to: "/admin/rule-suggestions", icon: Lightbulb, title: "Regel-Vorschläge", desc: "Aus Nutzer-Korrekturen aggregierte Muster prüfen und als feste Regeln freigeben." },
     { to: "/admin/autopilot/promotion", icon: Sparkles, title: "Autopilot-Promotion", desc: "Reifegate-Anfragen prüfen und Autopilot-Modus pro Tenant freigeben." },
   ];

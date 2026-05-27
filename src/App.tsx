@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import AdminPromotion from "./pages/AdminPromotion";
 import Admin from "./pages/Admin";
 import AdminRuleSuggestions from "./pages/AdminRuleSuggestions";
+import AdminTenantSetup from "./pages/AdminTenantSetup";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
                       <Route path="/admin" element={<Admin />} />
                       <Route path="/admin/rule-suggestions" element={<AdminRuleSuggestions />} />
                       <Route path="/admin/autopilot/promotion" element={<AdminPromotion />} />
+                      <Route path="/admin/tenant-setup" element={<AdminTenantSetup />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppLayout>

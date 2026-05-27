@@ -1253,3 +1253,121 @@ export interface ImproveSuggestionResponse { ok: boolean; suggestion: ImproveSug
 export const fetchImproveSuggestion = () => apiFetch<ImproveSuggestionResponse>("/improve-suggestions");
 export const consentImproveSuggestion = (patternKey: string, toCoreKey: string, senderDomain: string) =>
   apiPost<{ ok: boolean; pattern_key: string }>("/improve-suggestions/consent", { pattern_key: patternKey, to_core_key: toCoreKey, sender_domain: senderDomain });
+
+// ════════════════════════════════════════════════════════════════════════════
+// v4.32.0 — Tenant-Setup (Voice/Assistenz, konsolidiert)
+//   Super-Admin (tenant-wählbar):  /v1/admin/ops/tenant-setup*
+//   Self-Serve (eigener Tenant):   /v1/dashboard/tenant-setup
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface TenantSetupKnownValues {
+  assistants: Array<{ id: string; label: string; is_default?: boolean }>;
+  default_assistant_id: string;
+  caller_ids: string[];
+  packs: Array<{ pack_key: string; label: string; domain: string }>;
+  action_options: Array<{ action: string; label: string }>;
+  timeout_presets: Array<{ value: string; label: string }>;
+  default_consent_banner: string;
+}
+export interface TenantSetupChecklistItem { key: string; label: string; ok: boolean; }
+export interface TenantSetup {
+  ok: boolean;
+  scope: "admin" | "self";
+  tenant_exists: boolean;
+  tenant: {
+    tenant_id: string; tenant_name: string; status: string | null; plan: string | null;
+    admin_email: string | null; mailbox_profile: string | null; domain: string | null;
+    active_pack_keys: string[]; gmail_enabled: boolean; outlook_enabled: boolean;
+  };
+  voice: {
+    jana_enabled: boolean; vapi_assistant_id: string | null; twilio_phone_number: string | null;
+    vapi_phone_number_id: string | null; caller_id: string | null; domain: string | null;
+    auto_consent_on_inquiry: boolean; config_row_exists: boolean;
+  };
+  consent: {
+    recording_consent_enabled: boolean; recording_consent_banner_text: string | null;
+    default_banner_text: string; updated_at: string | null; updated_by: string | null;
+    audit: Array<{ id: number; action: string; changed_by: string | null; created_at: string | null }>;
+  };
+  assistant: {
+    enabled: boolean; timeout_preset: string; default_max_steps: number;
+    allowed_actions: string[]; voice_call_allowed: boolean;
+    nudge_after_hours: number; expire_after_hours: number; config_row_exists: boolean;
+  };
+  voice_policy: {
+    enabled: boolean; active_hours_start: string; active_hours_end: string;
+    active_days: number[]; timezone: string; daily_cap: number;
+    per_contact_cooldown_days: number; config_row_exists: boolean;
+  };
+  voice_ready: boolean;
+  voice_ready_checklist: TenantSetupChecklistItem[];
+  editable_sections: string[];
+  known_values: TenantSetupKnownValues;
+  applied?: string[];
+  preset_applied?: boolean;
+}
+
+export interface TenantListItem {
+  tenant_id: string; tenant_name: string; status: string | null; plan: string | null;
+  mailbox_profile: string | null; gmail_enabled: boolean; outlook_enabled: boolean;
+  jana_enabled: boolean; recording_consent_enabled: boolean;
+  voice_call_allowed: boolean; voice_ready: boolean;
+}
+export interface TenantListResponse {
+  ok: boolean; total: number; tenants: TenantListItem[]; known_values: TenantSetupKnownValues;
+}
+
+// Partielle Write-Payload (alle Sektionen optional).
+export interface TenantSetupWriteBody {
+  voice?: Partial<{ jana_enabled: boolean; vapi_assistant_id: string | null; twilio_phone_number: string | null; vapi_phone_number_id: string | null; domain: string; auto_consent_on_inquiry: boolean }>;
+  consent?: Partial<{ recording_consent_enabled: boolean; recording_consent_banner_text: string | null }>;
+  assistant?: Partial<{ enabled: boolean; timeout_preset: string; default_max_steps: number; allowed_actions: string[] }>;
+  voice_policy?: Partial<{ enabled: boolean; active_hours_start: string; active_hours_end: string; active_days: number[]; timezone: string; daily_cap: number; per_contact_cooldown_days: number }>;
+  apply_voice_preset?: boolean;
+}
+export interface CreateTenantBody {
+  tenant_id: string; tenant_name?: string; pack_key?: string;
+  provider?: string; plan?: string; admin_email?: string;
+}
+
+async function _authToken(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? null;
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+  return token;
+}
+async function _adminTsFetch<T>(method: string, urlPath: string, body?: unknown): Promise<T> {
+  const token = await _authToken();
+  const res = await fetch(`https://api.useeasy.ai${urlPath}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json" } : {}) },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  if (res.status === 403) throw new ApiError(403, "super_admin_required");
+  if (res.status === 401) { await supabase.auth.signOut(); throw new ApiError(401, "Sitzung abgelaufen"); }
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new ApiError(res.status, (e as { error?: string }).error || `tenant_setup_${res.status}`); }
+  return res.json() as Promise<T>;
+}
+
+// ── Super-Admin ──
+export const fetchAdminTenants = () => _adminTsFetch<TenantListResponse>("GET", "/v1/admin/ops/tenant-setup");
+export const fetchAdminTenantSetup = (tenantId: string) =>
+  _adminTsFetch<TenantSetup>("GET", `/v1/admin/ops/tenant-setup/${encodeURIComponent(tenantId)}`);
+export const saveAdminTenantSetup = (tenantId: string, body: TenantSetupWriteBody) =>
+  _adminTsFetch<TenantSetup>("PUT", `/v1/admin/ops/tenant-setup/${encodeURIComponent(tenantId)}`, body);
+export const createAdminTenant = (body: CreateTenantBody) =>
+  _adminTsFetch<{ ok: boolean; tenant_id: string; tenant_name: string; domain: string; mailbox_profile: string; provider: string; plan: string | null; admin_email: string | null; next_step: string }>("POST", "/v1/admin/ops/tenant-setup", body);
+
+// ── Self-Serve (eigener Tenant) ──
+export const fetchTenantSetupSelf = () => apiFetch<TenantSetup>("/tenant-setup");
+export const saveTenantSetupSelf = async (body: TenantSetupWriteBody): Promise<TenantSetup> => {
+  const token = await _authToken();
+  const res = await fetch(`${API_BASE}/tenant-setup`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) { await supabase.auth.signOut(); throw new ApiError(401, "Sitzung abgelaufen"); }
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new ApiError(res.status, (e as { error?: string }).error || `tenant_setup_${res.status}`); }
+  return res.json();
+};
