@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
+import Connect from "./pages/Connect";
 import Uebersicht from "./pages/Uebersicht";
 import ReviewQueue from "./pages/ReviewQueue";
 import AuditTrail from "./pages/AuditTrail";
@@ -29,6 +30,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            <Route path="/connect" element={<Connect />} />
             <Route path="/login" element={<Login />} />
             <Route
               path="/*"
