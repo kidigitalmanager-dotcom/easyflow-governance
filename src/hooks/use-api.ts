@@ -18,6 +18,7 @@ import {
   revertSpreadsheetAction,
   deleteSpreadsheet,
   toggleSpreadsheet,
+  downloadSpreadsheet,
   fetchVoiceReps,
   createVoiceRep,
   updateVoiceRep,
@@ -224,6 +225,16 @@ export function useSpreadsheetToggle() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["spreadsheets"] });
     },
+  });
+}
+
+/**
+ * v4.36.0 — Download S3-Version der Spreadsheet als .xlsx-Datei.
+ * Triggert den Browser-Download direkt (anchor.click in api-client).
+ */
+export function useSpreadsheetDownload() {
+  return useMutation({
+    mutationFn: (spreadsheetId: number) => downloadSpreadsheet(spreadsheetId),
   });
 }
 

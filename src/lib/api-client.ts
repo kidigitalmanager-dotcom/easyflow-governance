@@ -486,6 +486,52 @@ export const toggleSpreadsheet = (spreadsheetId: number, isActive: boolean) =>
     is_active: isActive,
   });
 
+/**
+ * v4.36.0 — Download S3-Version der Tenant-Spreadsheet als .xlsx-Blob.
+ * Backend setzt Content-Disposition mit Original-Dateinamen. Frontend triggert
+ * den Browser-Download per anchor.click().
+ */
+export async function downloadSpreadsheet(spreadsheetId: number): Promise<void> {
+  const token = await getToken();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+
+  const url = `https://api.useeasy.ai/v1/spreadsheet/download?spreadsheet_id=${encodeURIComponent(String(spreadsheetId))}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.status === 401) {
+    await supabase.auth.signOut();
+    throw new ApiError(401, "Sitzung abgelaufen");
+  }
+  if (!res.ok) {
+    // Backend liefert bei Fehler JSON — versuchen zu lesen.
+    let msg = `Download fehlgeschlagen (${res.status})`;
+    try {
+      const data = await res.json();
+      if (data?.error) msg = String(data.error);
+    } catch { /* ignore */ }
+    throw new ApiError(res.status, msg);
+  }
+
+  // Filename aus Content-Disposition extrahieren — Backend setzt
+  // \`attachment; filename="<name>.xlsx"\`. Fallback auf generischen Namen.
+  const cd = res.headers.get("Content-Disposition") || "";
+  const match = cd.match(/filename="?([^";]+)"?/i);
+  const filename = match ? match[1] : `spreadsheet-${spreadsheetId}.xlsx`;
+
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Kleiner Verzögerung, dann Object-URL freigeben (Browser sonst hartnäckig).
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
 // ── Stripe ────────────────────────────────────────────
 
 export async function createStripePortalSession(): Promise<{ ok?: boolean; url?: string; fallback?: boolean; error?: string }> {

@@ -12,7 +12,6 @@ import TelegramIntegration from "@/components/TelegramIntegration";
 import AssistantConfigCard from "@/components/AssistantConfigCard";
 import TenantSetupSelfCard from "@/components/TenantSetupSelfCard";
 import SpreadsheetConfigTab from "@/components/SpreadsheetConfigTab";
-import SpreadsheetAuditTab from "@/components/SpreadsheetAuditTab";
 import JanaAutopilotTab from "@/components/JanaAutopilotTab";
 import EmailAutopilotTab from "@/components/EmailAutopilotTab";
 import EmailAutopilotAuditView from "@/components/EmailAutopilotAuditView";
@@ -317,11 +316,8 @@ export default function Einstellungen() {
           <KnowledgeBaseTab />
         </TabsContent>
 
-        <TabsContent value="spreadsheet" className="mt-6 space-y-8">
+        <TabsContent value="spreadsheet" className="mt-6">
           <SpreadsheetConfigTab />
-          <div className="border-t border-border pt-6">
-            <SpreadsheetAuditTab />
-          </div>
         </TabsContent>
 
         <TabsContent value="integrations" className="mt-6 space-y-6">

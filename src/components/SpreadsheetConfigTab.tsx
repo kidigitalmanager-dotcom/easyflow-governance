@@ -1,19 +1,33 @@
 /**
  * SpreadsheetConfigTab — Excel Live-Sync Konfiguration
- * Zeigt verbundene Spreadsheets, Spalten-Mappings, Upload-Funktion.
+ *
+ * v4.36.0 (2026-05-28):
+ *  - Verbundene-Datei-Card ist klappbar. Beim Aufklappen erscheinen:
+ *    Keywords, Spalten-Mapping, **eingebetteter Datei-Audit** (pro Datei),
+ *    Aktionen inkl. **Download-Button** (lädt S3-Version als .xlsx).
+ *  - Globaler "Änderungsverlauf"-Tab ist entfernt (war über alle Dateien
+ *    gemischt). Verlauf lebt jetzt pro Datei in der Expanded-Section.
+ *  - `?sheet=<id>` Query-Param klappt die passende Datei automatisch auf
+ *    + scrollt sie ins Sichtfeld (MiniUI Deep-Link aus content-script.js).
+ *  - "Zur Quell-Mail"-Link pro Audit-Eintrag wenn source_email_subject +
+ *    source_email_from vorhanden (Gmail-Suchlink, robust ohne messageId).
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   useSpreadsheets,
   useSpreadsheetMappings,
   useSpreadsheetUpload,
   useSpreadsheetDelete,
   useSpreadsheetToggle,
+  useSpreadsheetAudit,
+  useSpreadsheetRevert,
+  useSpreadsheetDownload,
 } from "@/hooks/use-api";
 import type {
   SpreadsheetConnection,
-  SpreadsheetColumnMapping,
+  SpreadsheetAuditEntry,
 } from "@/lib/api-client";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -29,6 +43,11 @@ import {
   Table2,
   AlertTriangle,
   Info,
+  Download,
+  History,
+  RotateCcw,
+  Mail,
+  ArrowRight,
 } from "lucide-react";
 
 const PURPOSE_LABELS: Record<string, string> = {
@@ -61,25 +80,257 @@ const SEMANTIC_FIELD_LABELS: Record<string, string> = {
   task_type: "Aufgabentyp",
 };
 
+const ACTION_LABELS: Record<string, { label: string; color: string }> = {
+  update_cell: { label: "Zelle aktualisiert", color: "text-blue-400" },
+  add_row: { label: "Zeile hinzugefügt", color: "text-emerald-400" },
+  search: { label: "Suche", color: "text-muted-foreground" },
+  preview: { label: "Vorschau", color: "text-muted-foreground" },
+  auto_provision: { label: "Auto-Erkennung", color: "text-purple-400" },
+  draft_from_template: { label: "Entwurf erstellt", color: "text-amber-400" },
+  revert: { label: "Rückgängig", color: "text-red-400" },
+};
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** Baut einen Gmail-Suchlink fuer eine Quell-Mail (robust ohne messageId). */
+function buildGmailSearchLink(from: string | null, subject: string | null): string | null {
+  if (!from && !subject) return null;
+  const parts: string[] = [];
+  if (from) parts.push(`from:${from.trim()}`);
+  if (subject) parts.push(`subject:${subject.trim()}`);
+  // Gmail erwartet URL-encoded Query (Leerzeichen werden zu +).
+  const q = parts.join(" ");
+  return `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(q)}`;
+}
+
+/** Groups consecutive entries with same bulk_id */
+function groupByBulk(entries: SpreadsheetAuditEntry[]): SpreadsheetAuditEntry[][] {
+  const groups: SpreadsheetAuditEntry[][] = [];
+  let currentBulk: string | null = null;
+  let currentGroup: SpreadsheetAuditEntry[] = [];
+
+  for (const entry of entries) {
+    if (entry.bulk_id && entry.bulk_id === currentBulk) {
+      currentGroup.push(entry);
+    } else {
+      if (currentGroup.length > 0) groups.push(currentGroup);
+      currentGroup = [entry];
+      currentBulk = entry.bulk_id;
+    }
+  }
+  if (currentGroup.length > 0) groups.push(currentGroup);
+  return groups;
+}
+
+/**
+ * InlineFileAudit — eingebetteter Pro-Datei-Audit (ersetzt globalen SpreadsheetAuditTab).
+ * Zeigt die letzten 10 Aktionen dieser einen Datei + Pagination.
+ */
+function InlineFileAudit({ spreadsheetId }: { spreadsheetId: number }) {
+  const [page, setPage] = useState(1);
+  const perPage = 10;
+  const { data, isLoading } = useSpreadsheetAudit({
+    spreadsheet_id: spreadsheetId,
+    page,
+    per_page: perPage,
+  });
+  const revertMut = useSpreadsheetRevert();
+  const [revertedBulkIds, setRevertedBulkIds] = useState<Set<string>>(new Set());
+
+  const entries = data?.entries ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const groups = groupByBulk(entries);
+
+  const handleRevert = (bulkId: string) => {
+    if (!confirm("Möchtest du diese Änderung wirklich rückgängig machen?")) return;
+    revertMut.mutate(bulkId, {
+      onSuccess: () => setRevertedBulkIds((prev) => new Set(prev).add(bulkId)),
+    });
+  };
+
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+        <History className="w-3.5 h-3.5" />
+        Änderungsverlauf dieser Datei
+        {total > 0 && (
+          <span className="text-muted-foreground/70">({total})</span>
+        )}
+      </p>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2].map((i) => (
+            <Skeleton key={i} className="h-14 w-full rounded" />
+          ))}
+        </div>
+      ) : entries.length === 0 ? (
+        <p className="text-xs text-muted-foreground/70 italic">
+          Noch keine Änderungen.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {groups.map((group) => {
+            const first = group[0];
+            const isBulk = group.length > 1;
+            const isReverted = first.bulk_id ? revertedBulkIds.has(first.bulk_id) : false;
+            const canRevert =
+              first.bulk_id &&
+              !isReverted &&
+              group.some((e) => e.action === "update_cell" || e.action === "add_row");
+            const actionInfo = ACTION_LABELS[first.action] ?? {
+              label: first.action,
+              color: "text-muted-foreground",
+            };
+            const mailLink = buildGmailSearchLink(first.source_email_from, first.source_email_subject);
+
+            return (
+              <div key={first.id} className="border border-border/60 rounded p-2 space-y-1.5 bg-background/40">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium ${actionInfo.color}`}>
+                      {actionInfo.label}
+                      {isBulk && ` (${group.length} Zellen)`}
+                    </span>
+                    <span className="text-xs text-muted-foreground/70">
+                      {formatDate(first.created_at)}
+                    </span>
+                  </div>
+                  {canRevert && (
+                    <button
+                      disabled={revertMut.isPending}
+                      onClick={() => handleRevert(first.bulk_id!)}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium text-amber-400 bg-amber-400/10 hover:bg-amber-400/20 transition-colors disabled:opacity-50"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      Rückgängig
+                    </button>
+                  )}
+                  {isReverted && (
+                    <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
+                      <CheckCircle2 className="w-3 h-3" /> Rückgängig
+                    </span>
+                  )}
+                </div>
+
+                {first.source_email_subject && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Mail className="w-3 h-3 shrink-0" />
+                    <span className="truncate flex-1">
+                      {first.source_email_from && <strong>{first.source_email_from}:</strong>}{" "}
+                      {first.source_email_subject}
+                    </span>
+                    {mailLink && (
+                      <a
+                        href={mailLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 text-blue-400 hover:underline whitespace-nowrap"
+                        title="In Gmail anzeigen"
+                      >
+                        Zur Quell-Mail →
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {group
+                  .filter((e) => e.action === "update_cell" || e.action === "add_row")
+                  .map((e) => (
+                    <div
+                      key={e.id}
+                      className="flex items-center gap-2 text-xs bg-muted/30 rounded px-2 py-1"
+                    >
+                      <span className="font-mono text-muted-foreground w-16 shrink-0">
+                        {e.column_ref ?? "?"}
+                      </span>
+                      {e.old_value != null && (
+                        <>
+                          <span className="text-red-400/70 line-through truncate max-w-[120px]">
+                            {e.old_value || "(leer)"}
+                          </span>
+                          <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                        </>
+                      )}
+                      <span className="text-emerald-400 truncate max-w-[160px] font-medium">
+                        {e.new_value || "(leer)"}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 disabled:opacity-40"
+          >
+            ← Zurück
+          </button>
+          <span className="text-xs text-muted-foreground">
+            Seite {page} von {totalPages}
+          </span>
+          <button
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 disabled:opacity-40"
+          >
+            Weiter →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SpreadsheetRow({
   sheet,
   onDelete,
   onToggle,
+  defaultExpanded,
 }: {
   sheet: SpreadsheetConnection;
   onDelete: (id: number) => void;
   onToggle: (id: number, active: boolean) => void;
+  defaultExpanded: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const { data: mappingsData, isLoading: mappingsLoading } = useSpreadsheetMappings(
     expanded ? sheet.id : null
   );
+  const downloadMut = useSpreadsheetDownload();
   const mappings = mappingsData?.mappings ?? [];
+  const rowRef = useRef<HTMLDivElement>(null);
 
   const ProviderIcon = PROVIDER_LABELS[sheet.provider]?.icon ?? Globe;
 
+  // Wenn defaultExpanded (Deep-Link `?sheet=<id>`) — automatisch ins Sichtfeld scrollen.
+  useEffect(() => {
+    if (defaultExpanded && rowRef.current) {
+      rowRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultExpanded]);
+
+  const isLocal = sheet.provider === "local";
+
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
+    <div ref={rowRef} id={`spreadsheet-${sheet.id}`} className="border border-border rounded-lg overflow-hidden">
       {/* Header */}
       <div
         className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors"
@@ -120,9 +371,9 @@ function SpreadsheetRow({
         </div>
       </div>
 
-      {/* Expanded: Mappings + Actions */}
+      {/* Expanded: Mappings + Audit + Actions */}
       {expanded && (
-        <div className="border-t border-border px-4 py-3 space-y-3 bg-muted/10">
+        <div className="border-t border-border px-4 py-3 space-y-4 bg-muted/10">
           {/* Keywords */}
           {sheet.purpose_keywords.length > 0 && (
             <div>
@@ -169,8 +420,27 @@ function SpreadsheetRow({
             )}
           </div>
 
+          {/* Per-File Audit (eingebettet, v4.36.0) */}
+          <div className="pt-2 border-t border-border/50">
+            <InlineFileAudit spreadsheetId={sheet.id} />
+          </div>
+
           {/* Actions */}
           <div className="flex items-center gap-2 pt-2 border-t border-border">
+            {isLocal && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  downloadMut.mutate(sheet.id);
+                }}
+                disabled={downloadMut.isPending}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-emerald-400 bg-emerald-400/10 hover:bg-emerald-400/20 transition-colors disabled:opacity-50"
+                title="Aktuelle Version aus der Cloud herunterladen — enthält alle UseEasy-Updates"
+              >
+                <Download className="w-3 h-3" />
+                {downloadMut.isPending ? "Lädt..." : "Herunterladen"}
+              </button>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -191,6 +461,11 @@ function SpreadsheetRow({
             >
               <Trash2 className="w-3 h-3" /> Entfernen
             </button>
+            {downloadMut.isError && (
+              <span className="text-xs text-red-400">
+                Fehler: {(downloadMut.error as Error).message}
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -203,11 +478,20 @@ export default function SpreadsheetConfigTab() {
   const uploadMut = useSpreadsheetUpload();
   const deleteMut = useSpreadsheetDelete();
   const toggleMut = useSpreadsheetToggle();
+  const [searchParams] = useSearchParams();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
 
   const spreadsheets = data?.spreadsheets ?? [];
+
+  // v4.36.0: Deep-Link aus MiniUI (?sheet=<id>) — bestimmen, welche Card initial expanded.
+  const deepLinkId = useMemo(() => {
+    const raw = searchParams.get("sheet");
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [searchParams]);
 
   const handleFile = async (file: File) => {
     if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
@@ -247,7 +531,8 @@ export default function SpreadsheetConfigTab() {
           <p>
             Lade Excel-Dateien hoch — UseEasy erkennt automatisch Spalten und ordnet sie semantisch
             zu (z.B. Mieter-Name, Wohnung, Datum). Bei eingehenden E-Mails wird die passende Datei
-            gefunden und Änderungen per Klick übertragen.
+            gefunden und Änderungen per Klick übertragen. Mit "Herunterladen" holst du dir
+            jederzeit die aktuelle Version mit allen UseEasy-Updates auf deinen Mac.
           </p>
         </div>
       </div>
@@ -337,6 +622,7 @@ export default function SpreadsheetConfigTab() {
               sheet={sheet}
               onDelete={(id) => deleteMut.mutate(id)}
               onToggle={(id, active) => toggleMut.mutate({ spreadsheetId: id, isActive: active })}
+              defaultExpanded={deepLinkId === sheet.id}
             />
           ))
         )}
