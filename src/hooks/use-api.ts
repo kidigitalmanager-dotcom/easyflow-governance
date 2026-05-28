@@ -19,6 +19,8 @@ import {
   deleteSpreadsheet,
   toggleSpreadsheet,
   downloadSpreadsheet,
+  listOneDriveFiles,
+  connectOneDrive,
   fetchVoiceReps,
   createVoiceRep,
   updateVoiceRep,
@@ -235,6 +237,31 @@ export function useSpreadsheetToggle() {
 export function useSpreadsheetDownload() {
   return useMutation({
     mutationFn: (spreadsheetId: number) => downloadSpreadsheet(spreadsheetId),
+  });
+}
+
+// ── OneDrive Live-Sync Hooks (v4.39.0) ─────────
+// useOneDriveFiles: lazy — lädt erst, wenn der Picker-Dialog geöffnet ist (enabled).
+// retry:false, damit ein reconnect_required-403 sofort als Fehler angezeigt wird.
+export function useOneDriveFiles(enabled: boolean, q?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["onedrive-files", q ?? ""],
+    queryFn: () => listOneDriveFiles(q),
+    enabled: !!session && enabled,
+    staleTime: 15_000,
+    retry: false,
+  });
+}
+
+export function useConnectOneDrive() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: connectOneDrive,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["spreadsheets"] });
+      qc.invalidateQueries({ queryKey: ["me"] }); // spreadsheet_enabled kann sich ändern
+    },
   });
 }
 

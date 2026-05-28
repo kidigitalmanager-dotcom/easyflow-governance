@@ -31,6 +31,7 @@ import type {
   SpreadsheetStyleRisk,
 } from "@/lib/api-client";
 import { Skeleton } from "@/components/ui/skeleton";
+import OneDriveConnectButton from "@/components/OneDriveConnectButton";
 import {
   FileSpreadsheet,
   Upload,
@@ -652,6 +653,20 @@ export default function SpreadsheetConfigTab() {
             Fehler: {(uploadMut.error as Error).message}
           </div>
         )}
+      </div>
+
+      {/* v4.39.0 — OneDrive Live-Sync: Alternative zum lokalen Upload */}
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-xs text-muted-foreground">oder</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+      <div className="flex flex-col items-center gap-2 text-center">
+        <OneDriveConnectButton />
+        <p className="text-xs text-muted-foreground/60 max-w-md">
+          Verbinde eine Excel-Datei direkt aus OneDrive — UseEasy schreibt Updates dann
+          automatisch dorthin (kein manueller Download nötig).
+        </p>
       </div>
 
       {/* Spreadsheet List */}

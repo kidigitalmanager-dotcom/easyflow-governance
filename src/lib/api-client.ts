@@ -68,6 +68,34 @@ async function apiPost<T>(path: string, body: Record<string, unknown>): Promise<
   return data;
 }
 
+// v4.39.0 — GET gegen die absolute /v1-Basis (außerhalb /dashboard), z.B.
+// /v1/spreadsheet/* . Spiegelt die Base-URL-Logik von apiPost (apiFetch kann das
+// nicht, weil es immer /dashboard voranstellt).
+async function apiGetV1<T>(path: string): Promise<T> {
+  const token = await getToken();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+
+  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet")
+    ? "https://api.useeasy.ai"
+    : API_BASE.replace("/dashboard", "");
+  const url = path.startsWith("/v1/") ? `${baseUrl}${path}` : `${API_BASE}${path}`;
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.status === 401) {
+    await supabase.auth.signOut();
+    throw new ApiError(401, "Sitzung abgelaufen");
+  }
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`);
+  }
+  return data;
+}
+
 async function apiDelete<T>(path: string): Promise<T> {
   const token = await getToken();
   if (!token) throw new ApiError(401, "Nicht authentifiziert");
@@ -379,6 +407,37 @@ export interface SpreadsheetDeleteResponse {
   deleted: boolean;
 }
 
+// ── OneDrive / SharePoint Live-Sync Types (v4.39.0) ──
+export interface SpreadsheetOneDriveFile {
+  drive_id: string;
+  item_id: string;
+  name: string;
+  size: number | null;
+  web_url: string | null;
+  last_modified: string | null;
+  parent_path: string | null;
+}
+
+export interface SpreadsheetOneDriveListResponse {
+  ok: boolean;
+  files: SpreadsheetOneDriveFile[];
+  total: number;
+  error?: string;
+  reconnect_required?: boolean;
+}
+
+export interface SpreadsheetConnectOneDriveResponse {
+  ok: boolean;
+  spreadsheet_id: number;
+  sheet_name: string;
+  provider: "microsoft_graph";
+  detected_headers: string[];
+  auto_mapped: boolean;
+  mappings_count?: number;
+  style_risk?: SpreadsheetStyleRisk | null;
+  message?: string;
+}
+
 // ── Provider Token Storage ─────────────────────────────
 
 let providerTokensStored = false;
@@ -505,6 +564,20 @@ export const toggleSpreadsheet = (spreadsheetId: number, isActive: boolean) =>
     spreadsheet_id: spreadsheetId,
     is_active: isActive,
   });
+
+// ── OneDrive / SharePoint Live-Sync Fetchers (v4.39.0) ──
+// listOneDriveFiles: .xlsx/.xlsm-Dateien im OneDrive des Tenants (Console-Picker).
+// connectOneDrive: ausgewählte Datei als Live-Sync-Quelle verbinden (kein S3-Upload).
+export const listOneDriveFiles = (q?: string) =>
+  apiGetV1<SpreadsheetOneDriveListResponse>(
+    `/v1/spreadsheet/onedrive/list${q ? `?q=${encodeURIComponent(q)}` : ""}`
+  );
+
+export const connectOneDrive = (payload: {
+  drive_id: string;
+  item_id: string;
+  name?: string;
+}) => apiPost<SpreadsheetConnectOneDriveResponse>("/v1/spreadsheet/connect/onedrive", payload);
 
 /**
  * v4.36.0 — Download S3-Version der Tenant-Spreadsheet als .xlsx-Blob.
