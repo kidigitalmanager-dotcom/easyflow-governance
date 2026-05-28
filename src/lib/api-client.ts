@@ -277,6 +277,24 @@ export interface KnowledgeDeleteResponse {
 
 // ── Spreadsheet / Excel Live-Sync Types (v4.4.1) ────
 
+export interface SpreadsheetStyleRiskFeature {
+  type: string;
+  count: number;
+  label: string;
+}
+
+export interface SpreadsheetStyleRisk {
+  risk_score: "green" | "yellow" | "red" | "blocked" | "unknown";
+  features: {
+    red: SpreadsheetStyleRiskFeature[];
+    yellow: SpreadsheetStyleRiskFeature[];
+    green: SpreadsheetStyleRiskFeature[];
+  };
+  summary_de: string;
+  warnings: string[];
+  inspected_at: string;
+}
+
 export interface SpreadsheetConnection {
   id: number;
   sheet_name: string;
@@ -290,6 +308,8 @@ export interface SpreadsheetConnection {
   created_at: string;
   updated_at: string;
   mappings_count?: number;
+  // v4.38.0 — XLSX-Diff-Tool: Style-Risk-Score auf Upload
+  style_risk?: SpreadsheetStyleRisk | null;
 }
 
 export interface SpreadsheetColumnMapping {

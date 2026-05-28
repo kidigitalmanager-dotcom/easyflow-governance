@@ -28,6 +28,7 @@ import {
 import type {
   SpreadsheetConnection,
   SpreadsheetAuditEntry,
+  SpreadsheetStyleRisk,
 } from "@/lib/api-client";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -298,6 +299,66 @@ function InlineFileAudit({ spreadsheetId }: { spreadsheetId: number }) {
   );
 }
 
+// ─── Style-Risk-Badge (v4.38.0 XLSX-Diff-Tool) ───────────────────────────
+type StyleRiskScore = "green" | "yellow" | "red" | "blocked" | "unknown";
+
+const RISK_DISPLAY: Record<StyleRiskScore, { label: string; emoji: string; cls: string }> = {
+  green:   { label: "Live-Sync ready",        emoji: "🟢", cls: "text-emerald-400 bg-emerald-400/10" },
+  yellow:  { label: "Mit Hinweisen",          emoji: "🟡", cls: "text-amber-400 bg-amber-400/10" },
+  red:     { label: "Datenverlust-Risiko",    emoji: "🔴", cls: "text-red-400 bg-red-400/10" },
+  blocked: { label: "Live-Sync nicht möglich", emoji: "⛔", cls: "text-red-500 bg-red-500/20" },
+  unknown: { label: "Risiko unbekannt",       emoji: "❓", cls: "text-muted-foreground bg-muted/30" },
+};
+
+function StyleRiskBadge({ risk }: { risk?: SpreadsheetStyleRisk | null }) {
+  if (!risk) {
+    return (
+      <span
+        title="Style-Risk noch nicht analysiert (Datei vor v4.38.0 hochgeladen)"
+        className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-md text-muted-foreground bg-muted/30"
+      >
+        ❓ Nicht analysiert
+      </span>
+    );
+  }
+  const d = RISK_DISPLAY[risk.risk_score] ?? RISK_DISPLAY.unknown;
+  const allFeatures = [
+    ...(risk.features.red || []).map(f => `🔴 ${f.label}`),
+    ...(risk.features.yellow || []).map(f => `🟡 ${f.label}`),
+    ...(risk.features.green || []).map(f => `🟢 ${f.label}`),
+  ].join("\n");
+  return (
+    <span
+      title={`${risk.summary_de}\n\n${allFeatures || "Keine Features erkannt."}`}
+      className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-md font-medium ${d.cls}`}
+    >
+      <span>{d.emoji}</span>
+      <span>{d.label}</span>
+    </span>
+  );
+}
+
+function StyleRiskBanner({ risk }: { risk?: SpreadsheetStyleRisk | null }) {
+  if (!risk) return null;
+  if (risk.risk_score !== "red" && risk.risk_score !== "blocked") return null;
+  return (
+    <div className="flex items-start gap-2 text-xs text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2.5">
+      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
+      <div className="flex-1 space-y-1">
+        <p className="font-medium text-red-200">{risk.summary_de}</p>
+        {risk.warnings.length > 0 && (
+          <ul className="list-disc list-inside space-y-0.5 text-red-300/80">
+            {risk.warnings.slice(0, 5).map((w, i) => <li key={i}>{w}</li>)}
+          </ul>
+        )}
+        <p className="text-red-400/60 pt-1">
+          ↳ Live-Sync funktioniert trotzdem, aber genannte Features gehen beim ersten Update verloren.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function SpreadsheetRow({
   sheet,
   onDelete,
@@ -359,6 +420,8 @@ function SpreadsheetRow({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {/* v4.38.0 — XLSX-Diff-Tool Style-Risk-Badge */}
+          <StyleRiskBadge risk={sheet.style_risk} />
           {sheet.is_active ? (
             <span className="flex items-center gap-1 text-xs text-emerald-400">
               <CheckCircle2 className="w-3.5 h-3.5" /> Aktiv
@@ -374,6 +437,8 @@ function SpreadsheetRow({
       {/* Expanded: Mappings + Audit + Actions */}
       {expanded && (
         <div className="border-t border-border px-4 py-3 space-y-4 bg-muted/10">
+          {/* v4.38.0 — XLSX-Diff-Tool Warn-Banner bei red/blocked */}
+          <StyleRiskBanner risk={sheet.style_risk} />
           {/* Keywords */}
           {sheet.purpose_keywords.length > 0 && (
             <div>
