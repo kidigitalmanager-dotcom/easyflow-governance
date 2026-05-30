@@ -21,6 +21,9 @@ import {
   downloadSpreadsheet,
   listOneDriveFiles,
   connectOneDrive,
+  listSharePointSites,
+  listSharePointDrives,
+  listSharePointFiles,
   fetchVoiceReps,
   createVoiceRep,
   updateVoiceRep,
@@ -262,6 +265,42 @@ export function useConnectOneDrive() {
       qc.invalidateQueries({ queryKey: ["spreadsheets"] });
       qc.invalidateQueries({ queryKey: ["me"] }); // spreadsheet_enabled kann sich ändern
     },
+  });
+}
+
+// ── SharePoint Site-Browser Hooks (v4.42.0) ──
+// Alle lazy + retry:false (reconnect_required-403 sofort sichtbar). Verbinden läuft
+// über useConnectOneDrive (provider-agnostisch — SharePoint-Datei wird zur Live-Sync-Quelle).
+export function useSharePointSites(enabled: boolean, q?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["sharepoint-sites", q ?? ""],
+    queryFn: () => listSharePointSites(q),
+    enabled: !!session && enabled,
+    staleTime: 15_000,
+    retry: false,
+  });
+}
+
+export function useSharePointDrives(siteId: string | null) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["sharepoint-drives", siteId ?? ""],
+    queryFn: () => listSharePointDrives(siteId as string),
+    enabled: !!session && !!siteId,
+    staleTime: 15_000,
+    retry: false,
+  });
+}
+
+export function useSharePointFiles(driveId: string | null, q?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["sharepoint-files", driveId ?? "", q ?? ""],
+    queryFn: () => listSharePointFiles(driveId as string, q),
+    enabled: !!session && !!driveId,
+    staleTime: 15_000,
+    retry: false,
   });
 }
 

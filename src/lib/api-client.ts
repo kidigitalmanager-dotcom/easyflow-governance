@@ -438,6 +438,42 @@ export interface SpreadsheetConnectOneDriveResponse {
   message?: string;
 }
 
+// ── SharePoint Site-Browser Types (v4.42.0) ──
+export interface SpreadsheetSharePointSite {
+  site_id: string;
+  name: string;
+  web_url: string | null;
+}
+export interface SpreadsheetSharePointSitesResponse {
+  ok: boolean;
+  sites: SpreadsheetSharePointSite[];
+  total: number;
+  error?: string;
+  reconnect_required?: boolean;
+}
+export interface SpreadsheetSharePointDrive {
+  drive_id: string;
+  name: string;
+  web_url: string | null;
+  drive_type: string | null;
+}
+export interface SpreadsheetSharePointDrivesResponse {
+  ok: boolean;
+  drives: SpreadsheetSharePointDrive[];
+  total: number;
+  error?: string;
+  reconnect_required?: boolean;
+}
+// SharePoint-Datei = identische Shape wie OneDrive (drive_id:item_id) → connectOneDrive verbindet sie direkt.
+export type SpreadsheetSharePointFile = SpreadsheetOneDriveFile;
+export interface SpreadsheetSharePointFilesResponse {
+  ok: boolean;
+  files: SpreadsheetSharePointFile[];
+  total: number;
+  error?: string;
+  reconnect_required?: boolean;
+}
+
 // ── Provider Token Storage ─────────────────────────────
 
 let providerTokensStored = false;
@@ -578,6 +614,24 @@ export const connectOneDrive = (payload: {
   item_id: string;
   name?: string;
 }) => apiPost<SpreadsheetConnectOneDriveResponse>("/v1/spreadsheet/connect/onedrive", payload);
+
+// ── SharePoint Site-Browser Fetchers (v4.42.0) ──
+// 3-stufig: Site suchen → Dokumentbibliothek → Datei. Verbinden danach über connectOneDrive
+// (provider-agnostisch, sheet_ref = driveId:itemId — für SharePoint-Bibliotheken kanonisch).
+export const listSharePointSites = (q?: string) =>
+  apiGetV1<SpreadsheetSharePointSitesResponse>(
+    `/v1/spreadsheet/sharepoint/sites${q ? `?q=${encodeURIComponent(q)}` : ""}`
+  );
+
+export const listSharePointDrives = (siteId: string) =>
+  apiGetV1<SpreadsheetSharePointDrivesResponse>(
+    `/v1/spreadsheet/sharepoint/drives?site_id=${encodeURIComponent(siteId)}`
+  );
+
+export const listSharePointFiles = (driveId: string, q?: string) =>
+  apiGetV1<SpreadsheetSharePointFilesResponse>(
+    `/v1/spreadsheet/sharepoint/files?drive_id=${encodeURIComponent(driveId)}${q ? `&q=${encodeURIComponent(q)}` : ""}`
+  );
 
 /**
  * v4.36.0 — Download S3-Version der Tenant-Spreadsheet als .xlsx-Blob.

@@ -32,6 +32,7 @@ import type {
 } from "@/lib/api-client";
 import { Skeleton } from "@/components/ui/skeleton";
 import OneDriveConnectButton from "@/components/OneDriveConnectButton";
+import SharePointConnectButton from "@/components/SharePointConnectButton";
 import {
   FileSpreadsheet,
   Upload,
@@ -666,6 +667,13 @@ export default function SpreadsheetConfigTab() {
         <p className="text-xs text-muted-foreground/60 max-w-md">
           Verbinde eine Excel-Datei direkt aus OneDrive — UseEasy schreibt Updates dann
           automatisch dorthin (kein manueller Download nötig).
+        </p>
+      </div>
+      <div className="flex flex-col items-center gap-2 text-center">
+        <SharePointConnectButton />
+        <p className="text-xs text-muted-foreground/60 max-w-md">
+          Oder durchsuche eine SharePoint-Site, wähle eine Dokumentbibliothek und verbinde
+          eine Excel-Datei direkt von dort.
         </p>
       </div>
 
