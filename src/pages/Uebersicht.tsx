@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Clock, Mail, CheckCircle, AlertTriangle, TrendingUp, ChevronRight, Inbox } from "lucide-react";
+import { Clock, Mail, CheckCircle, AlertTriangle, TrendingUp, ChevronRight, Inbox, Bot } from "lucide-react";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { ResponseTypeBadge } from "@/components/ResponseTypeBadge";
 import { responseType } from "@/data/humanize";
@@ -150,8 +150,35 @@ export default function Uebersicht() {
           )}
         </div>
 
-        {/* Right column – Priority Breakdown */}
+        {/* Right column – Autopilot + Priority Breakdown */}
         <div className="space-y-6">
+          {/* v4.43.0: "Heute hätte UseEasy autonom: N" — Shadow-Aggregat, Drill-down → Audit-Trail */}
+          <Link to="/audit?shadow=1" className="glass-card p-6 block hover:border-primary/40 transition-colors">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-base font-semibold">Autopilot heute</h2>
+              <Bot className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">Was UseEasy autonom erledigt hätte.</p>
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-2xl font-semibold text-emerald-500">{Number(stats?.shadow_would_send_today ?? 0)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">würde senden</p>
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-amber-500">{Number(stats?.shadow_would_hold_today ?? 0)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">würde halten</p>
+              </div>
+              {Number(stats?.autopilot_queued_today ?? 0) > 0 && (
+                <div>
+                  <p className="text-2xl font-semibold text-primary">{Number(stats?.autopilot_queued_today ?? 0)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">automatisch</p>
+                </div>
+              )}
+            </div>
+            <span className="text-xs text-primary hover:underline mt-4 inline-flex items-center gap-1">
+              Im Audit-Trail ansehen <ChevronRight className="w-3 h-3" />
+            </span>
+          </Link>
           <div className="glass-card p-6">
             <h2 className="text-base font-semibold mb-4">Prioritäts-Verteilung</h2>
             {statsLoading ? (

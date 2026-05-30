@@ -3,6 +3,7 @@ import { PriorityBadge } from "@/components/PriorityBadge";
 import { ResponseTypeBadge } from "@/components/ResponseTypeBadge";
 import { useRecentEmails, useGenerateDraft, useDismissReview } from "@/hooks/use-api";
 import ReviewVerdictButtons from "@/components/ReviewVerdictButtons";
+import { ShadowModePill, ShadowWouldDoLine } from "@/components/ShadowHint";
 import { REVIEW } from "@/data/strings.de";
 import { humanizeCategory, responseType } from "@/data/humanize";
 import { Eye, Inbox, Sparkles, Loader2, Info, X, Trash2 } from "lucide-react";
@@ -127,11 +128,13 @@ export default function ReviewQueue() {
                           Entwurf
                         </span>
                       )}
+                      <ShadowModePill mode={item.autopilot_mode} />
                     </div>
                     <p className="text-sm font-medium mt-2">{item.subject}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {item.sender} · {new Date(item.created_at).toLocaleString("de-DE")}
                     </p>
+                    <ShadowWouldDoLine mode={item.autopilot_mode} decision={item.shadow_decision} />
                   </div>
 
                   <div className="flex items-center gap-2 flex-shrink-0">

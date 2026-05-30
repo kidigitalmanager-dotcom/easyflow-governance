@@ -220,6 +220,32 @@ export function humanizeShadow(decision?: string | null): string {
   return SHADOW_LABELS[k] || prettify(k);
 }
 
+// ── v4.43.0: Autopilot-Modus → Klartext + Pille ("Would-Do"-Anzeige) ────────
+// Bestätigte Copy (Leon, 2026-05-30): shadow=Vorschau, assisted=Vorbereitet,
+// autonomous=Automatisch. Voller Satz fuer Tooltip/Zeile.
+export type AutopilotMode = "shadow" | "assisted" | "autonomous" | "off";
+const MODE_PILL: Record<string, string> = {
+  shadow: "Vorschau",
+  assisted: "Vorbereitet",
+  autonomous: "Automatisch",
+};
+export function modePillLabel(mode?: string | null): string {
+  return MODE_PILL[String(mode || "").trim()] || "";
+}
+const MODE_SENTENCE: Record<string, string> = {
+  shadow: "So würde UseEasy das erledigen",
+  assisted: "UseEasy hat das vorbereitet — du gibst frei",
+  autonomous: "UseEasy erledigt das automatisch",
+};
+export function modeSentence(mode?: string | null): string {
+  return MODE_SENTENCE[String(mode || "").trim()] || "";
+}
+export function modeTone(mode?: string | null): "shadow" | "assisted" | "autonomous" | "off" {
+  const m = String(mode || "").trim();
+  if (m === "shadow" || m === "assisted" || m === "autonomous") return m;
+  return "off";
+}
+
 
 // ── v4.18.7/v4.18.8: Antwort-Typ (reply | action | info) ────────────────────
 // Primär aus dem Backend-Feld response_type (v4.18.8, read-time abgeleitet).

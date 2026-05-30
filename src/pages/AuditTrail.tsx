@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { ResponseTypeBadge } from "@/components/ResponseTypeBadge";
 import { useAuditLog, useUndoAction, useCorrectLabel, useMe } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getCurrentPlan } from "@/data/plan";
-import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2, RotateCcw, Ban, Tag } from "lucide-react";
+import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2, RotateCcw, Ban, Tag, Bot } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence, responseLabel, responseType } from "@/data/humanize";
 import DecisionStory from "@/components/DecisionStory";
@@ -37,11 +38,15 @@ export default function AuditTrail() {
   const [correctKey, setCorrectKey] = useState<string>("");
   const [selectedPriority, setSelectedPriority] = useState<string>("Alle");
   const [selectedEntry, setSelectedEntry] = useState<string | null>(null);
+  // v4.43.0: Shadow-only Drill-down (von der Uebersicht-Kachel ?shadow=1).
+  const [searchParams] = useSearchParams();
+  const [shadowOnly, setShadowOnly] = useState(searchParams.get("shadow") === "1");
 
   const entries = auditData ?? [];
 
   const filtered = entries.filter((entry) => {
     if (selectedPriority !== "Alle" && entry.priority !== selectedPriority) return false;
+    if (shadowOnly && !entry.shadow_decision) return false;
     return true;
   });
 
@@ -71,6 +76,17 @@ export default function AuditTrail() {
             </button>
           ))}
         </div>
+        <button
+          onClick={() => setShadowOnly((v) => !v)}
+          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+            shadowOnly
+              ? "bg-sky-500/15 text-sky-500 border border-sky-500/30"
+              : "text-muted-foreground hover:text-foreground border border-border hover:bg-muted/30"
+          }`}
+          title="Nur Mails zeigen, für die der Autopilot einen Vorschlag hätte"
+        >
+          <Bot className="w-3 h-3" /> Nur Autopilot-Vorschläge
+        </button>
       </div>
 
       {isLoading ? (

@@ -210,6 +210,10 @@ export interface DashboardStatsResponse {
   priority_breakdown?: Record<string, number>;
   drafts_created_week?: number;
   resolved_week?: number;
+  // v4.43.0: Shadow-Aggregat (flat)
+  shadow_would_send_today?: number;
+  shadow_would_hold_today?: number;
+  autopilot_queued_today?: number;
   [key: string]: unknown;
 }
 
@@ -220,6 +224,10 @@ export interface DashboardStats {
   priority_breakdown: Record<string, number>;
   drafts_created_week: number;
   resolved_week: number;
+  // v4.43.0: Shadow-Aggregat fuer die Uebersicht-Kachel ("Heute haette UseEasy autonom: N").
+  shadow_would_send_today?: number;
+  shadow_would_hold_today?: number;
+  autopilot_queued_today?: number;
 }
 
 export interface RecentEmail {
@@ -235,6 +243,10 @@ export interface RecentEmail {
   draft_body?: string | null; // v4.18.0: Draft-Text für Vorschau + Edit-Vorbefüllung
   response_type?: "reply" | "action" | "info"; // v4.18.8: empfohlene Reaktion (read-time)
   response_type_reason?: string;               // v4.18.8: Begründung der Ableitung
+  // v4.43.0: Shadow/Assisted "Would-Do" (Review-Queue). Aus autopilot_log + maturity.
+  shadow_decision?: string | null;
+  shadow_reasons?: unknown;
+  autopilot_mode?: "shadow" | "assisted" | "autonomous" | null;
   [key: string]: unknown;
 }
 
@@ -520,6 +532,10 @@ export const fetchStats = async (): Promise<DashboardStats> => {
     priority_breakdown: s?.priority_breakdown ?? raw.priority_breakdown ?? {},
     drafts_created_week: s?.drafts_created_week ?? raw.drafts_created_week ?? 0,
     resolved_week: s?.resolved_week ?? raw.resolved_week ?? 0,
+    // v4.43.0 Shadow-Aggregat
+    shadow_would_send_today: s?.shadow_would_send_today ?? raw.shadow_would_send_today ?? 0,
+    shadow_would_hold_today: s?.shadow_would_hold_today ?? raw.shadow_would_hold_today ?? 0,
+    autopilot_queued_today: s?.autopilot_queued_today ?? raw.autopilot_queued_today ?? 0,
   };
 };
 export const fetchRecentEmails = () => apiFetch<RecentEmail[]>("/emails/recent");
