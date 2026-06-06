@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -11,6 +13,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { toast } = useToast();
+  const { session, loading: authLoading } = useAuth();
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -36,7 +39,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "azure",
       options: {
-        scopes: "openid email profile offline_access https://graph.microsoft.com/Mail.ReadWrite",
+        scopes: "openid email profile",
         redirectTo: window.location.origin + "/",
         queryParams: {
           access_type: "offline",
@@ -56,9 +59,17 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       toast({ title: "Login fehlgeschlagen", description: error.message, variant: "destructive" });
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+    // Erfolg: Full-Reload — AuthProvider mountet neu und liest die Session deterministisch.
+    window.location.href = "/";
   };
+
+  // Bereits eingeloggt? Dann hat /login nichts zu zeigen (behebt die Reload-Falle auf /login).
+  if (!authLoading && session) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
