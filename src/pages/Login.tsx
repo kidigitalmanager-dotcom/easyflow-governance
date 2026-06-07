@@ -6,17 +6,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { needsMfaChallenge } from "@/lib/mfa";
+import MfaChallengeCard from "@/components/MfaChallengeCard";
 import logo from "@/assets/useeasy-logo.jpg";
 
 export default function Login() {
-  const [loading, setLoading] = useState(false);
+  // Quick-Win 2026-06: per-Button-Loading — `loading` bleibt abgeleitet erhalten,
+  // damit alle bestehenden disabled={loading}-Stellen unverändert funktionieren.
+  const [loadingBtn, setLoadingBtn] = useState<null | "google" | "azure" | "email">(null);
+  const loading = loadingBtn !== null;
+  // 2FA (Paket A): Code-Abfrage nach signInWithPassword, NUR wenn ein Faktor existiert.
+  const [mfaPending, setMfaPending] = useState(false);
+  // Quick-Win: Passwort-vergessen-Flow
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { toast } = useToast();
   const { session, loading: authLoading } = useAuth();
 
   const handleGoogleLogin = async () => {
-    setLoading(true);
+    setLoadingBtn("google");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -30,12 +42,12 @@ export default function Login() {
     });
     if (error) {
       toast({ title: "Login fehlgeschlagen", description: error.message, variant: "destructive" });
-      setLoading(false);
+      setLoadingBtn(null);
     }
   };
 
   const handleMicrosoftLogin = async () => {
-    setLoading(true);
+    setLoadingBtn("azure");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "azure",
       options: {
@@ -49,26 +61,150 @@ export default function Login() {
     });
     if (error) {
       toast({ title: "Login fehlgeschlagen", description: error.message, variant: "destructive" });
-      setLoading(false);
+      setLoadingBtn(null);
     }
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setLoadingBtn("email");
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       toast({ title: "Login fehlgeschlagen", description: error.message, variant: "destructive" });
-      setLoading(false);
+      setLoadingBtn(null);
       return;
+    }
+    // 2FA (Paket A, additiv): Hat der User einen verifizierten Faktor, kommt ZUERST
+    // die 6-stellige Code-Abfrage. User OHNE Faktor: nextLevel bleibt aal1 →
+    // needsMfaChallenge=false → identisches Verhalten wie bisher (Fix 83c1375).
+    try {
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal && needsMfaChallenge(aal.currentLevel, aal.nextLevel)) {
+        setMfaPending(true);
+        setLoadingBtn(null);
+        return;
+      }
+    } catch {
+      // fail-open: ohne AAL-Info normal weiter (MFA ist optional)
     }
     // Erfolg: Full-Reload — AuthProvider mountet neu und liest die Session deterministisch.
     window.location.href = "/";
   };
 
+  // Quick-Win: Passwort-vergessen — Recovery-Link an die E-Mail-Adresse senden.
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail || forgotBusy) return;
+    setForgotBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: window.location.origin + "/reset-password",
+    });
+    setForgotBusy(false);
+    if (error) {
+      toast({ title: "Senden fehlgeschlagen", description: error.message, variant: "destructive" });
+      return;
+    }
+    setForgotSent(true);
+  };
+
   // Bereits eingeloggt? Dann hat /login nichts zu zeigen (behebt die Reload-Falle auf /login).
-  if (!authLoading && session) {
+  // 2026-06 (Paket A): && !mfaPending — während der laufenden Code-Abfrage existiert bereits
+  // eine aal1-Session; ohne die Ausnahme würde der Guard den Code-Screen wegredirecten.
+  // Für User ohne MFA-Faktor ist mfaPending immer false → Verhalten unverändert (83c1375).
+  if (!authLoading && session && !mfaPending) {
     return <Navigate to="/" replace />;
+  }
+
+  // 2FA-Code-Screen (nur nach erfolgreichem Passwort-Login MIT eingerichtetem Faktor)
+  if (mfaPending) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="flex flex-col items-center gap-3">
+            <img src={logo} alt="UseEasy" className="w-12 h-12 rounded-xl" />
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Use<span className="text-primary">Easy</span>
+            </h1>
+          </div>
+          <MfaChallengeCard
+            onVerified={() => {
+              // Gleicher deterministischer Einstieg wie der normale Login-Erfolg.
+              window.location.href = "/";
+            }}
+            onCancel={async () => {
+              await supabase.auth.signOut();
+              setMfaPending(false);
+            }}
+            cancelLabel="Zurück zum Login"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Passwort-vergessen-Ansicht (Quick-Win)
+  if (forgotMode) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm space-y-8">
+          <div className="flex flex-col items-center gap-3">
+            <img src={logo} alt="UseEasy" className="w-12 h-12 rounded-xl" />
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Use<span className="text-primary">Easy</span>
+            </h1>
+            <p className="text-sm text-muted-foreground">Passwort zurücksetzen</p>
+          </div>
+          <div className="glass-card p-6 space-y-4">
+            {forgotSent ? (
+              <div className="space-y-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Wenn ein Konto mit dieser Adresse existiert, ist jetzt ein Link zum
+                  Zurücksetzen unterwegs. Bitte prüfe deinen Posteingang (und Spam-Ordner).
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setForgotMode(false);
+                    setForgotSent(false);
+                    setForgotEmail("");
+                  }}
+                >
+                  Zurück zum Login
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword} className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Gib deine E-Mail-Adresse ein — wir senden dir einen Link zum Zurücksetzen.
+                </p>
+                <Input
+                  type="email"
+                  placeholder="E-Mail-Adresse"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  required
+                  disabled={forgotBusy}
+                  autoFocus
+                />
+                <Button type="submit" disabled={forgotBusy} className="w-full h-12 text-base font-medium">
+                  {forgotBusy ? "Sende Link..." : "Link senden"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => setForgotMode(false)}
+                  disabled={forgotBusy}
+                >
+                  Zurück zum Login
+                </Button>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -101,7 +237,7 @@ export default function Login() {
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
               </svg>
-              {loading ? "Wird verbunden..." : "Mit Google anmelden"}
+              {loadingBtn === "google" ? "Wird verbunden..." : "Mit Google anmelden"}
             </Button>
 
             <Button
@@ -116,7 +252,7 @@ export default function Login() {
                 <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
                 <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
               </svg>
-              {loading ? "Wird verbunden..." : "Mit Microsoft anmelden"}
+              {loadingBtn === "azure" ? "Wird verbunden..." : "Mit Microsoft anmelden"}
             </Button>
           </div>
 
@@ -146,8 +282,18 @@ export default function Login() {
               disabled={loading}
             />
             <Button type="submit" disabled={loading} className="w-full h-12 text-base font-medium">
-              {loading ? "Wird angemeldet..." : "Anmelden"}
+              {loadingBtn === "email" ? "Wird angemeldet..." : "Anmelden"}
             </Button>
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+                onClick={() => setForgotMode(true)}
+                disabled={loading}
+              >
+                Passwort vergessen?
+              </button>
+            </div>
           </form>
         </div>
       </div>

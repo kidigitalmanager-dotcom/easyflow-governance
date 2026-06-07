@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import AutopilotMaturityCard from "@/components/AutopilotMaturityCard";
 import { toast } from "sonner";
 import { useAutopilotPolicy, useSaveAutopilotPolicy } from "@/hooks/use-api";
 import type { AutopilotCoreKey, AutopilotPolicyPutInput, AutopilotMode } from "@/lib/api-client";
@@ -65,7 +67,14 @@ export default function EmailAutopilotTab() {
     }
   }, [data]);
 
-  if (isLoading) return <div className="p-4 text-muted-foreground">Lade…</div>;
+  if (isLoading)
+    return (
+      <div className="space-y-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-40 rounded-[var(--radius)]" />
+        ))}
+      </div>
+    );
 
   const policy = data?.policy;
   const maturity = data?.maturity || [];
@@ -161,6 +170,13 @@ export default function EmailAutopilotTab() {
           );
         })}
       </div>
+
+      <AutopilotMaturityCard
+        maturity={maturity}
+        intents={hardCeiling.intents}
+        whitelist={(local?.intent_whitelist as string[]) || []}
+        legalAck={policy?.legal_basis_ack === true}
+      />
 
       <div className="glass-card p-6 space-y-4">
         <h3 className="font-semibold flex items-center gap-2"><Activity className="h-4 w-4" /> Sicherheitsnetze</h3>

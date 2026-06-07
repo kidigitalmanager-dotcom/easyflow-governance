@@ -13,6 +13,7 @@ import TelegramIntegration from "@/components/TelegramIntegration";
 import AssistantConfigCard from "@/components/AssistantConfigCard";
 import TenantSetupSelfCard from "@/components/TenantSetupSelfCard";
 import SpreadsheetConfigTab from "@/components/SpreadsheetConfigTab";
+import SecurityMfaCard from "@/components/SecurityMfaCard";
 import JanaAutopilotTab from "@/components/JanaAutopilotTab";
 import EmailAutopilotTab from "@/components/EmailAutopilotTab";
 import EmailAutopilotAuditView from "@/components/EmailAutopilotAuditView";
@@ -311,6 +312,8 @@ export default function Einstellungen() {
               <ExternalLink className="w-3.5 h-3.5" /> {isActive ? "Plan upgraden" : "Plan aktivieren"}
             </a>
           </div>
+
+          <SecurityMfaCard />
         </TabsContent>
 
         <TabsContent value="knowledge" className="mt-6">

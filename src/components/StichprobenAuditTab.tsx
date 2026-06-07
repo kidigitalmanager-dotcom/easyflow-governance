@@ -6,7 +6,8 @@ import { useState } from "react";
 import { useAutopilotAuditSamples, useSubmitAutopilotFeedback } from "@/hooks/use-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, AlertCircle } from "lucide-react";
+import { CheckCircle, AlertCircle, Inbox } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
 export default function StichprobenAuditTab() {
@@ -38,10 +39,21 @@ export default function StichprobenAuditTab() {
         </p>
       </div>
 
-      {isLoading && <div className="p-4 text-muted-foreground">Lade…</div>}
+      {isLoading && (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 rounded-[var(--radius)]" />
+          ))}
+        </div>
+      )}
       {data?.rows.length === 0 && (
-        <div className="p-4 text-muted-foreground">
-          Noch keine Stichproben. Entweder Autopilot noch im SHADOW-Mode oder Audit-Sample-Rate = 0.
+        <div className="glass-card p-12 text-center">
+          <Inbox className="w-10 h-10 text-primary mx-auto mb-3" />
+          <p className="text-lg font-medium">Noch keine Stichproben</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Hier landen automatisch versendete Mails zur nachträglichen Kontrolle — sobald der
+            Autopilot aktiv sendet und die Stichproben-Rate über 0 liegt.
+          </p>
         </div>
       )}
 

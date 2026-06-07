@@ -3,7 +3,9 @@
  * Backend: GET /v1/dashboard/autopilot/log
  */
 import { useState } from "react";
+import { Inbox } from "lucide-react";
 import { useAutopilotLog } from "@/hooks/use-api";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -55,10 +57,21 @@ export default function EmailAutopilotAuditView() {
         </div>
       </div>
 
-      {isLoading && <div className="p-4 text-muted-foreground">Lade…</div>}
+      {isLoading && (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 rounded-[var(--radius)]" />
+          ))}
+        </div>
+      )}
       {data?.rows.length === 0 && (
-        <div className="p-4 text-muted-foreground">
-          Keine Autopilot-Entscheidungen für diesen Filter. Engine schreibt erst Einträge ab dem ersten eingehenden Mail im SHADOW-Mode.
+        <div className="glass-card p-12 text-center">
+          <Inbox className="w-10 h-10 text-primary mx-auto mb-3" />
+          <p className="text-lg font-medium">Noch keine Autopilot-Entscheidungen</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Sobald die erste E-Mail im Schatten-Modus eingeht, erscheinen die Entscheidungen hier
+            — für diesen Filter ist noch nichts protokolliert.
+          </p>
         </div>
       )}
 

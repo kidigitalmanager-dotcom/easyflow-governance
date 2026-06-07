@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import Connect from "./pages/Connect";
 import Uebersicht from "./pages/Uebersicht";
 import ReviewQueue from "./pages/ReviewQueue";
@@ -32,6 +33,7 @@ const App = () => (
           <Routes>
             <Route path="/connect" element={<Connect />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/*"
               element={

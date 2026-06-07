@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { MfaGate } from "@/components/MfaGate";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
@@ -16,5 +17,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  return <>{children}</>;
+  // 2026-06 (Paket A): AAL2-Gate — greift NUR bei Usern mit eingerichtetem MFA-Faktor
+  // (deckt Passwort- UND OAuth-Logins). Ohne Faktor: sofortiger Pass-Through, fail-open.
+  return <MfaGate>{children}</MfaGate>;
 }
