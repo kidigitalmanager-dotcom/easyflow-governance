@@ -757,3 +757,65 @@ export function useSaveTenantSetupSelf() {
     },
   });
 }
+
+import {
+  fetchVoiceProfiles, createVoiceProfile, updateVoiceProfile, deleteVoiceProfile,
+  voiceProfileTestCall, createVoiceLine, updateVoiceLine, deleteVoiceLine,
+} from "@/lib/api-client";
+import type { VoiceProfileWriteBody, VoiceLineWriteBody } from "@/lib/api-client";
+
+// ── v4.54.0: Multi-Agent Voice-Profile + Rufnummern (Super-Admin) ──
+export function useVoiceProfiles(tenantId: string | null) {
+  return useQuery({
+    queryKey: ["voice-profiles", tenantId],
+    queryFn: () => fetchVoiceProfiles(tenantId as string),
+    enabled: !!tenantId,
+  });
+}
+export function useCreateVoiceProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: VoiceProfileWriteBody) => createVoiceProfile(body),
+    onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ["voice-profiles", vars.tenant_id] }),
+  });
+}
+export function useUpdateVoiceProfile(tenantId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: VoiceProfileWriteBody }) => updateVoiceProfile(id, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["voice-profiles", tenantId] }),
+  });
+}
+export function useDeleteVoiceProfile(tenantId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteVoiceProfile(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["voice-profiles", tenantId] }),
+  });
+}
+export function useVoiceProfileTestCall() {
+  return useMutation({
+    mutationFn: (body: { tenant_id: string; profile_id: number; to_number: string }) => voiceProfileTestCall(body),
+  });
+}
+export function useCreateVoiceLine() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: VoiceLineWriteBody) => createVoiceLine(body),
+    onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ["voice-profiles", vars.tenant_id] }),
+  });
+}
+export function useUpdateVoiceLine(tenantId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: VoiceLineWriteBody }) => updateVoiceLine(id, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["voice-profiles", tenantId] }),
+  });
+}
+export function useDeleteVoiceLine(tenantId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteVoiceLine(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["voice-profiles", tenantId] }),
+  });
+}

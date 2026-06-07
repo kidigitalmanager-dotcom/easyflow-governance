@@ -1602,3 +1602,124 @@ export const saveTenantSetupSelf = async (body: TenantSetupWriteBody): Promise<T
   if (!res.ok) { const e = await res.json().catch(() => ({})); throw new ApiError(res.status, (e as { error?: string }).error || `tenant_setup_${res.status}`); }
   return res.json();
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v4.54.0 — Multi-Agent Voice-Profile + Rufnummern (Super-Admin, Migration v1.36)
+// "Agents sind Daten": governance.voice_agent_profiles + governance.voice_lines.
+// Endpunkte unter /v1/admin/ops/voice-profiles* (Super-Admin via Supabase-JWT).
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface VoiceAgentProfile {
+  id: number;
+  tenant_id: string;
+  profile_key: string;
+  display_name: string;
+  description: string | null;
+  system_prompt: string;
+  first_message: string;
+  language: string | null;
+  voice: { provider?: string; voiceId?: string; model?: string } | null;
+  model: { provider?: string; model?: string; temperature?: number } | null;
+  tools: string[] | null;
+  transfer_number: string | null;
+  is_active: boolean;
+  sort_order: number;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface VoiceLine {
+  id: number;
+  tenant_id: string;
+  phone_number: string;
+  vapi_phone_number_id: string | null;
+  label: string | null;
+  routing_mode: "single" | "triage_squad" | "forward_human";
+  default_profile_key: string | null;
+  triage_profile_key: string | null;
+  member_profile_keys: string[] | null;
+  business_hours: { days: number[]; from: string; to: string; tz?: string } | null;
+  after_hours: "assistant" | "forward" | "reject_message";
+  after_hours_number: string | null;
+  forward_number: string | null;
+  is_active: boolean;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface VoiceProfileTemplate {
+  template_key: string;
+  profile_key: string;
+  display_name: string;
+  badge: string | null;
+  description: string;
+  first_message: string;
+  system_prompt: string;
+  tools: string[];
+  sort_order: number;
+}
+
+export interface VoiceProfilesResponse {
+  ok: boolean;
+  tenant_id: string;
+  profiles: VoiceAgentProfile[];
+  lines: VoiceLine[];
+  catalogs: {
+    templates: VoiceProfileTemplate[];
+    tool_options: { key: string; label: string; required?: boolean }[];
+    routing_modes: { value: string; label: string }[];
+    after_hours_modes: { value: string; label: string }[];
+    recording_consent_enabled: boolean;
+    guardrails_info: string;
+  };
+}
+
+export interface VoiceProfileWriteBody {
+  tenant_id?: string;
+  template_key?: string;
+  profile_key?: string;
+  display_name?: string;
+  description?: string | null;
+  system_prompt?: string;
+  first_message?: string;
+  language?: string;
+  voice?: { provider?: string; voiceId?: string; model?: string } | null;
+  model?: { provider?: string; model?: string; temperature?: number } | null;
+  tools?: string[];
+  transfer_number?: string | null;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
+export interface VoiceLineWriteBody {
+  tenant_id?: string;
+  phone_number?: string;
+  vapi_phone_number_id?: string | null;
+  label?: string | null;
+  routing_mode?: string;
+  default_profile_key?: string | null;
+  triage_profile_key?: string | null;
+  member_profile_keys?: string[];
+  business_hours?: { days: number[]; from: string; to: string; tz?: string } | null;
+  after_hours?: string;
+  after_hours_number?: string | null;
+  forward_number?: string | null;
+  is_active?: boolean;
+}
+
+export const fetchVoiceProfiles = (tenantId: string) =>
+  _adminTsFetch<VoiceProfilesResponse>("GET", `/v1/admin/ops/voice-profiles?tenant_id=${encodeURIComponent(tenantId)}`);
+export const createVoiceProfile = (body: VoiceProfileWriteBody) =>
+  _adminTsFetch<{ ok: boolean; profile: VoiceAgentProfile }>("POST", "/v1/admin/ops/voice-profiles", body);
+export const updateVoiceProfile = (id: number, body: VoiceProfileWriteBody) =>
+  _adminTsFetch<{ ok: boolean; profile: VoiceAgentProfile }>("PUT", `/v1/admin/ops/voice-profiles/${id}`, body);
+export const deleteVoiceProfile = (id: number) =>
+  _adminTsFetch<{ ok: boolean; deleted: { id: number; profile_key: string } }>("DELETE", `/v1/admin/ops/voice-profiles/${id}`);
+export const voiceProfileTestCall = (body: { tenant_id: string; profile_id: number; to_number: string }) =>
+  _adminTsFetch<{ ok: boolean; call_id: string; profile_key: string }>("POST", "/v1/admin/ops/voice-profiles/test-call", body);
+export const createVoiceLine = (body: VoiceLineWriteBody) =>
+  _adminTsFetch<{ ok: boolean; line: VoiceLine }>("POST", "/v1/admin/ops/voice-profiles/lines", body);
+export const updateVoiceLine = (id: number, body: VoiceLineWriteBody) =>
+  _adminTsFetch<{ ok: boolean; line: VoiceLine }>("PUT", `/v1/admin/ops/voice-profiles/lines/${id}`, body);
+export const deleteVoiceLine = (id: number) =>
+  _adminTsFetch<{ ok: boolean; deleted: { id: number; phone_number: string } }>("DELETE", `/v1/admin/ops/voice-profiles/lines/${id}`);

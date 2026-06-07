@@ -12,6 +12,8 @@ import {
   Building2, Mail, ToggleLeft,
 } from "lucide-react";
 import type { TenantSetup, TenantSetupWriteBody } from "@/lib/api-client";
+import VoiceAgentsTab from "@/components/VoiceAgentsTab";
+import VoiceLinesTab from "@/components/VoiceLinesTab";
 
 // v4.32.0/v4.33.0 — Super-Admin Tenant-Setup: Voice/Assistenz + Tenant-Verwaltung
 // (Archivieren/Löschen) + erweitertes Setup (Status/Tarif, Pack/Branche, Postfach-
@@ -125,6 +127,7 @@ export default function AdminTenantSetup() {
 
   const [form, setForm] = useState<FormState | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [tab, setTab] = useState<"setup" | "agents" | "lines">("setup"); // v4.54.0 Voice-Agents/Rufnummern
   const [newT, setNewT] = useState({ tenant_id: "", tenant_name: "", pack_key: "ecom_core", provider: "gmail", plan: "", admin_email: "" });
 
   useEffect(() => { if (setup?.ok) setForm(initForm(setup)); }, [setup]);
@@ -297,7 +300,21 @@ export default function AdminTenantSetup() {
 
       {selected && setupLoading && <div className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Setup lädt …</div>}
 
-      {selected && form && setup && (
+      {/* v4.54.0 — Tabs: Setup | Voice-Agents | Rufnummern */}
+      {selected && (
+        <div className="flex gap-1 border-b border-border">
+          {([["setup", "Setup"], ["agents", "Voice-Agents"], ["lines", "Rufnummern"]] as const).map(([k, l]) => (
+            <button key={k} type="button" onClick={() => setTab(k)}
+              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === k ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+      )}
+      {selected && tab === "agents" && <VoiceAgentsTab tenantId={selected} />}
+      {selected && tab === "lines" && <VoiceLinesTab tenantId={selected} />}
+
+      {tab === "setup" && selected && form && setup && (
         <>
           {/* Voice-Readiness */}
           <div className={`rounded-lg border p-4 ${setup.voice_ready ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`}>
