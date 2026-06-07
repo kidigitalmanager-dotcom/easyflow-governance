@@ -25,6 +25,11 @@ import {
   listSharePointDrives,
   listSharePointFiles,
   fetchVoiceReps,
+  fetchCopilotVertriebler,
+  createCopilotVertriebler,
+  updateCopilotVertriebler,
+  redeployCopilotVertriebler,
+  deleteCopilotVertriebler,
   createVoiceRep,
   updateVoiceRep,
   deleteVoiceRep,
@@ -817,5 +822,44 @@ export function useDeleteVoiceLine(tenantId: string | null) {
   return useMutation({
     mutationFn: (id: number) => deleteVoiceLine(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["voice-profiles", tenantId] }),
+  });
+}
+
+// ── Co-Pilot Vertriebler-Verwaltung (leads-sync Admin-API) ──────────────────
+
+export function useCopilotVertriebler() {
+  return useQuery({
+    queryKey: ["copilot-vertriebler"],
+    queryFn: fetchCopilotVertriebler,
+    retry: false,
+  });
+}
+
+export function useCopilotVertrieblerCreate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createCopilotVertriebler,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["copilot-vertriebler"] }),
+  });
+}
+
+export function useCopilotVertrieblerUpdate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ vId, body }: { vId: string; body: { display_name?: string; email?: string | null; status?: string } }) =>
+      updateCopilotVertriebler(vId, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["copilot-vertriebler"] }),
+  });
+}
+
+export function useCopilotVertrieblerRedeploy() {
+  return useMutation({ mutationFn: redeployCopilotVertriebler });
+}
+
+export function useCopilotVertrieblerDelete() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteCopilotVertriebler,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["copilot-vertriebler"] }),
   });
 }

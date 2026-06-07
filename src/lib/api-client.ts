@@ -1723,3 +1723,97 @@ export const updateVoiceLine = (id: number, body: VoiceLineWriteBody) =>
   _adminTsFetch<{ ok: boolean; line: VoiceLine }>("PUT", `/v1/admin/ops/voice-profiles/lines/${id}`, body);
 export const deleteVoiceLine = (id: number) =>
   _adminTsFetch<{ ok: boolean; deleted: { id: number; phone_number: string } }>("DELETE", `/v1/admin/ops/voice-profiles/lines/${id}`);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Co-Pilot Vertriebler-Verwaltung (leads-sync Admin-API, Auth = Konsolen-JWT)
+// Backend: useeasy-leads-sync v1.10.0 — adminSessionAuth akzeptiert den
+// Supabase-Bearer der Konsole (Mapping Login-E-Mail → copilot_tenants.admin_email).
+// WICHTIG: bei 401 hier KEIN signOut — 401 kann "kein Co-Pilot-Workspace
+// verknüpft" bedeuten (no_copilot_tenant_for_email) und wird als Zustand gerendert.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const COPILOT_ADMIN_BASE = "https://api.useeasy.ai/v1/admin";
+
+export interface CopilotVertriebler {
+  vertriebler_id: string;
+  client_id: string;
+  display_name: string;
+  email: string | null;
+  status: string; // 'active' | 'inactive'
+  deployed_url: string | null;
+  created_at?: string;
+  stats?: { termine?: number; total_actions?: number } | null;
+}
+
+export interface CopilotVertrieblerListResponse {
+  ok?: boolean;
+  vertriebler: CopilotVertriebler[];
+}
+
+export interface CopilotAutoDeployResult {
+  ok: boolean;
+  url?: string;
+  bytes?: number;
+  invalidationId?: string | null;
+  error?: string;
+}
+
+export interface CopilotRedeployResponse {
+  ok: boolean;
+  redeployed?: boolean;
+  client_id?: string;
+  auto_deploy?: CopilotAutoDeployResult;
+}
+
+export interface CopilotCreateResponse {
+  ok: boolean;
+  vertriebler: CopilotVertriebler;
+  worker_secret?: string | null;
+  auto_deploy?: CopilotAutoDeployResult;
+}
+
+async function copilotFetch<T>(
+  path: string,
+  opts: { method?: string; body?: Record<string, unknown> } = {},
+): Promise<T> {
+  const token = await getToken();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+
+  const res = await fetch(`${COPILOT_ADMIN_BASE}${path}`, {
+    method: opts.method ?? "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(opts.body ? { "Content-Type": "application/json" } : {}),
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+
+  let data: { error?: string } | null = null;
+  try { data = await res.json(); } catch { /* leere Antwort */ }
+
+  if (!res.ok) {
+    throw new ApiError(res.status, data?.error || `API Fehler ${res.status}`);
+  }
+  return data as T;
+}
+
+export const fetchCopilotVertriebler = () =>
+  copilotFetch<CopilotVertrieblerListResponse>("/me/vertriebler");
+
+export const createCopilotVertriebler = (body: { client_id: string; display_name: string; email?: string | null }) =>
+  copilotFetch<CopilotCreateResponse>("/me/vertriebler", {
+    method: "POST",
+    body: { ...body, variant: "jana" },
+  });
+
+export const updateCopilotVertriebler = (vId: string, body: { display_name?: string; email?: string | null; status?: string }) =>
+  copilotFetch<{ ok: boolean }>(`/me/vertriebler/${encodeURIComponent(vId)}`, { method: "PATCH", body });
+
+export const redeployCopilotVertriebler = (vId: string) =>
+  copilotFetch<CopilotRedeployResponse>(`/me/vertriebler/${encodeURIComponent(vId)}`, {
+    method: "PATCH",
+    body: { redeploy: true },
+  });
+
+export const deleteCopilotVertriebler = (vId: string) =>
+  copilotFetch<{ ok: boolean }>(`/me/vertriebler/${encodeURIComponent(vId)}`, { method: "DELETE" });

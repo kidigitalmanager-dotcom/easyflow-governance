@@ -1,6 +1,7 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Users, PhoneCall, ShieldCheck } from "lucide-react";
+import { Users, PhoneCall, ShieldCheck, Rocket } from "lucide-react";
 import VoiceRepsTab from "@/components/VoiceRepsTab";
+import CoPilotRepsTab from "@/components/CoPilotRepsTab";
 import SalesCallsAuditTab from "@/components/SalesCallsAuditTab";
 import RecordingConsentTab from "@/components/RecordingConsentTab";
 
@@ -8,7 +9,7 @@ export default function VoiceCalls() {
   const initialTab = (() => {
     if (typeof window === "undefined") return "reps";
     const t = new URLSearchParams(window.location.search).get("tab");
-    return t === "calls" || t === "consent" ? t : "reps";
+    return t === "calls" || t === "consent" || t === "copilot" ? t : "reps";
   })();
 
   return (
@@ -34,6 +35,10 @@ export default function VoiceCalls() {
             <ShieldCheck className="w-3.5 h-3.5" />
             DSGVO-Consent
           </TabsTrigger>
+          <TabsTrigger value="copilot" className="gap-1.5">
+            <Rocket className="w-3.5 h-3.5" />
+            Co-Pilot
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="reps" className="mt-6">
@@ -46,6 +51,10 @@ export default function VoiceCalls() {
 
         <TabsContent value="consent" className="mt-6">
           <RecordingConsentTab />
+        </TabsContent>
+
+        <TabsContent value="copilot" className="mt-6">
+          <CoPilotRepsTab />
         </TabsContent>
       </Tabs>
     </div>
