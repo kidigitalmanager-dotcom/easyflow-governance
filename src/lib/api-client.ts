@@ -173,7 +173,20 @@ export interface UserInfo {
   // v4.19.0 (Stufe 1): 7 Core-Keys mit DOMAIN-korrekten Anzeigenamen fuer den
   // "Richtiges Label setzen"-Picker (ecom-Default vs. real_estate/HV vs. ...).
   core_labels?: Array<{ core_key: string; display: string }>;
+  // v4.55: Poller-Health-Ampel — Backend schreibt last_poll_success_at/last_poll_error
+  // pro Tick; /me liefert pro verbundenem Postfach einen Status (ok|stale|error|unknown).
+  mailbox_health?: MailboxHealth[];
   [key: string]: unknown;
+}
+
+// v4.55: ein Eintrag pro verbundenem Postfach (provider_credentials)
+export interface MailboxHealth {
+  provider: string;
+  email: string | null;
+  status: "ok" | "stale" | "error" | "unknown";
+  last_success_at: string | null;
+  last_poll_at: string | null;
+  last_error: string | null;
 }
 
 export interface PlaybookRule {

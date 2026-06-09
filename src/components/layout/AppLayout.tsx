@@ -2,6 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
+import { MailboxHealthBanner } from "@/components/MailboxHealthBanner";
 import logo from "@/assets/useeasy-logo.jpg";
 import { useMe } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -114,6 +115,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <DashboardTopBar />
+        {/* v4.55: Postfach-Health-Ampel — sichtbar nur bei stale/error */}
+        <MailboxHealthBanner />
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-6xl mx-auto px-8 py-8">
             {children}
