@@ -260,6 +260,11 @@ export interface RecentEmail {
   shadow_decision?: string | null;
   shadow_reasons?: unknown;
   autopilot_mode?: "shadow" | "assisted" | "autonomous" | null;
+  // v4.57.0 (J4): "Warum dieses Label?" — read-time Begründung (eine Backend-Quelle)
+  label_reason?: string | null;
+  label_reason_source?: string | null;
+  label_reason_kind?: "rule" | "ki" | "risk" | "optout" | "noise" | null;
+  label_reason_confidence_pct?: number | null;
   [key: string]: unknown;
 }
 
@@ -285,6 +290,11 @@ export interface AuditLogEntry {
   response_type_reason?: string;               // v4.18.8
   applied_label?: string | null;               // v4.21.0: tatsächlich gesetztes UE-Label (Display)
   applied_core_key?: string | null;            // v4.21.0: Core-Key des gesetzten Labels (Picker-Markierung)
+  // v4.57.0 (J4): "Warum dieses Label?" — read-time Begründung (eine Backend-Quelle)
+  label_reason?: string | null;
+  label_reason_source?: string | null;
+  label_reason_kind?: "rule" | "ki" | "risk" | "optout" | "noise" | null;
+  label_reason_confidence_pct?: number | null;
   [key: string]: unknown;
 }
 

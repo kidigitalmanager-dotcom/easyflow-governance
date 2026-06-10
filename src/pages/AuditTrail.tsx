@@ -10,6 +10,7 @@ import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2, 
 import { Skeleton } from "@/components/ui/skeleton";
 import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence, responseLabel, responseType } from "@/data/humanize";
 import DecisionStory from "@/components/DecisionStory";
+import { LabelReasonLine } from "@/components/LabelReasonLine";
 
 const priorities = ["Alle", "P0", "P1", "P2", "P3"] as const;
 
@@ -247,6 +248,19 @@ export default function AuditTrail() {
                       <Ban className="w-3.5 h-3.5 mr-1" /> Autonomen Versand abbrechen
                     </Button>
                   )}
+                </div>
+              )}
+
+              {/* v4.57.0 (J4): Warum dieses Label? — gleiche Backend-Quelle wie MiniUI/Review-Queue */}
+              {detail.label_reason && (
+                <div className="pt-3 border-t border-border space-y-1">
+                  <p className="text-xs text-muted-foreground">Warum dieses Label?</p>
+                  <LabelReasonLine
+                    text={detail.label_reason}
+                    kind={detail.label_reason_kind}
+                    source={detail.label_reason_source}
+                    confidencePct={detail.label_reason_confidence_pct}
+                  />
                 </div>
               )}
 

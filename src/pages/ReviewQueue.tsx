@@ -4,6 +4,7 @@ import { ResponseTypeBadge } from "@/components/ResponseTypeBadge";
 import { useRecentEmails, useGenerateDraft, useDismissReview } from "@/hooks/use-api";
 import ReviewVerdictButtons from "@/components/ReviewVerdictButtons";
 import { ShadowModePill, ShadowWouldDoLine } from "@/components/ShadowHint";
+import { LabelReasonLine } from "@/components/LabelReasonLine";
 import { REVIEW } from "@/data/strings.de";
 import { humanizeCategory, responseType } from "@/data/humanize";
 import { Eye, Inbox, Sparkles, Loader2, Info, X, Trash2 } from "lucide-react";
@@ -135,6 +136,13 @@ export default function ReviewQueue() {
                       {item.sender} · {new Date(item.created_at).toLocaleString("de-DE")}
                     </p>
                     <ShadowWouldDoLine mode={item.autopilot_mode} decision={item.shadow_decision} />
+                    {/* v4.57.0 (J4): Warum dieses Label? — Quelle-Badge + Klartext-Satz */}
+                    <LabelReasonLine
+                      text={item.label_reason}
+                      kind={item.label_reason_kind}
+                      source={item.label_reason_source}
+                      confidencePct={item.label_reason_confidence_pct}
+                    />
                   </div>
 
                   <div className="flex items-center gap-2 flex-shrink-0">
