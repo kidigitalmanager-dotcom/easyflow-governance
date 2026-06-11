@@ -172,7 +172,7 @@ export default function Connect() {
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img src={logo} alt="UseEasy" className="h-12 w-12 rounded" />
+            <img src={logo} alt="UseEasy Logo" className="h-12 w-12 rounded" />
           </div>
           <CardTitle className="text-2xl">Postfach verbinden</CardTitle>
           {stage === "ready" && tenant?.company_name && (

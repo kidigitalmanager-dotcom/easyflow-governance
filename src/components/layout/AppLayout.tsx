@@ -39,7 +39,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="w-64 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col">
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-6 border-b border-sidebar-border">
-          <img src={logo} alt="UseEasy" className="w-9 h-9 rounded-lg" />
+          <img src={logo} alt="UseEasy Logo" className="w-9 h-9 rounded-lg" />
           <div>
             <span className="text-lg font-semibold tracking-tight text-sidebar-foreground">
               Use<span className="text-primary">Easy</span>

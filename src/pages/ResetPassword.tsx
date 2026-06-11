@@ -50,7 +50,7 @@ export default function ResetPassword() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-8">
         <div className="flex flex-col items-center gap-3">
-          <img src={logo} alt="UseEasy" className="w-12 h-12 rounded-xl" />
+          <img src={logo} alt="UseEasy Logo" className="w-12 h-12 rounded-xl" />
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Use<span className="text-primary">Easy</span>
           </h1>
