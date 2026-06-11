@@ -1,0 +1,8 @@
+# UseEasy
+
+> UseEasy Console — Konfiguration und Steuerung des UseEasy E-Mail-Autopiloten. UseEasy erstellt KI-Entwürfe für Kunden-E-Mails; der Versand erfolgt immer durch den Nutzer.
+
+## Pages
+
+- [Login](/login): Anmeldung zur UseEasy Console (Google, Microsoft oder E-Mail).
+- [Postfach verbinden](/connect): Öffentlicher Self-Serve-Onboarding-Flow zum Verbinden eines Gmail- oder Outlook-Postfachs per OAuth.
