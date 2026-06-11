@@ -17,7 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Helmet } from "react-helmet-async";
 import logo from "@/assets/useeasy-logo.jpg";
+
 
 /**
  * Öffentliche Self-Serve-Onboarding-Landingpage (Phase 1).
@@ -168,19 +170,29 @@ export default function Connect() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-8">
+    <main className="min-h-screen bg-background flex items-center justify-center px-4 py-8">
+      <Helmet>
+        <title>Postfach verbinden — UseEasy</title>
+        <meta name="description" content="Verbinde dein Gmail- oder Outlook-Postfach per OAuth mit UseEasy. Sichere Verbindung, keine Passwörter, jederzeit widerrufbar." />
+        <link rel="canonical" href="https://app.useeasy.ai/connect" />
+        <meta property="og:url" content="https://app.useeasy.ai/connect" />
+        <meta property="og:title" content="Postfach verbinden — UseEasy" />
+        <meta property="og:description" content="Verbinde dein Gmail- oder Outlook-Postfach per OAuth mit UseEasy." />
+      </Helmet>
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img src={logo} alt="UseEasy" className="h-12 w-12 rounded" />
+            <img src={logo} alt="UseEasy Logo" className="h-12 w-12 rounded" />
           </div>
-          <CardTitle className="text-2xl">Postfach verbinden</CardTitle>
+          <h1 className="text-2xl font-semibold leading-none tracking-tight">Postfach verbinden</h1>
+
           {stage === "ready" && tenant?.company_name && (
             <CardDescription>
               für <span className="font-medium text-foreground">{tenant.company_name}</span>
             </CardDescription>
           )}
         </CardHeader>
+
 
         <CardContent className="space-y-6">
           {stage === "loading" && (
@@ -250,6 +262,7 @@ export default function Connect() {
           Bei Fragen: support@useeasy.ai · Verarbeitung in Frankfurt (eu-central-1)
         </CardFooter>
       </Card>
-    </div>
+    </main>
+
   );
 }

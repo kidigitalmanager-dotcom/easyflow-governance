@@ -147,9 +147,10 @@ export default function ReviewQueue() {
 
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {hasRealDraft && item.draft_body && (
-                      <Button size="sm" variant="ghost" onClick={() => setExpandedId(isOpen ? null : item.id)} title="Entwurf anzeigen">
+                      <Button size="sm" variant="ghost" aria-label="Entwurf anzeigen" onClick={() => setExpandedId(isOpen ? null : item.id)} title="Entwurf anzeigen">
                         <Eye className="h-3.5 w-3.5" />
                       </Button>
+
                     )}
                     {hasRealDraft ? (
                       <ReviewVerdictButtons draftId={draftId!} originalBody={item.draft_body ?? ""} />

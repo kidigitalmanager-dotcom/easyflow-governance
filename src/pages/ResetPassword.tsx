@@ -14,7 +14,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { Helmet } from "react-helmet-async";
 import logo from "@/assets/useeasy-logo.jpg";
+
 
 export default function ResetPassword() {
   const { session, loading: authLoading } = useAuth();
@@ -47,15 +49,23 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
+      <Helmet>
+        <title>UseEasy — Passwort zurücksetzen</title>
+        <meta name="description" content="Setze dein Passwort für die UseEasy Console zurück. Gib ein neues, sicheres Passwort ein, um wieder auf den E-Mail-Autopiloten zuzugreifen." />
+        <link rel="canonical" href="https://app.useeasy.ai/reset-password" />
+        <meta property="og:url" content="https://app.useeasy.ai/reset-password" />
+        <meta name="robots" content="noindex,nofollow" />
+      </Helmet>
       <div className="w-full max-w-sm space-y-8">
         <div className="flex flex-col items-center gap-3">
-          <img src={logo} alt="UseEasy" className="w-12 h-12 rounded-xl" />
+          <img src={logo} alt="UseEasy Logo" className="w-12 h-12 rounded-xl" />
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Use<span className="text-primary">Easy</span>
+            Use<span className="text-primary">Easy</span> — Passwort zurücksetzen
           </h1>
           <p className="text-sm text-muted-foreground">Neues Passwort festlegen</p>
         </div>
+
 
         <div className="glass-card p-6 space-y-4">
           {authLoading ? (
@@ -110,6 +120,7 @@ export default function ResetPassword() {
           )}
         </div>
       </div>
-    </div>
+    </main>
+
   );
 }

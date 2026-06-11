@@ -8,7 +8,9 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { needsMfaChallenge } from "@/lib/mfa";
 import MfaChallengeCard from "@/components/MfaChallengeCard";
+import { Helmet } from "react-helmet-async";
 import logo from "@/assets/useeasy-logo.jpg";
+
 
 export default function Login() {
   // Quick-Win 2026-06: per-Button-Loading — `loading` bleibt abgeleitet erhalten,
@@ -121,7 +123,7 @@ export default function Login() {
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="w-full max-w-sm space-y-6">
           <div className="flex flex-col items-center gap-3">
-            <img src={logo} alt="UseEasy" className="w-12 h-12 rounded-xl" />
+            <img src={logo} alt="UseEasy Logo" className="w-12 h-12 rounded-xl" />
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               Use<span className="text-primary">Easy</span>
             </h1>
@@ -148,7 +150,7 @@ export default function Login() {
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="w-full max-w-sm space-y-8">
           <div className="flex flex-col items-center gap-3">
-            <img src={logo} alt="UseEasy" className="w-12 h-12 rounded-xl" />
+            <img src={logo} alt="UseEasy Logo" className="w-12 h-12 rounded-xl" />
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               Use<span className="text-primary">Easy</span>
             </h1>
@@ -208,18 +210,27 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
+      <Helmet>
+        <title>UseEasy — Login zur Console</title>
+        <meta name="description" content="Melde dich bei der UseEasy Console an, um deinen KI-E-Mail-Autopiloten zu konfigurieren. Login mit Google, Microsoft oder E-Mail." />
+        <link rel="canonical" href="https://app.useeasy.ai/login" />
+        <meta property="og:url" content="https://app.useeasy.ai/login" />
+        <meta property="og:title" content="UseEasy — Login zur Console" />
+        <meta property="og:description" content="Melde dich bei der UseEasy Console an, um deinen KI-E-Mail-Autopiloten zu konfigurieren." />
+      </Helmet>
       <div className="w-full max-w-sm space-y-8">
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
-          <img src={logo} alt="UseEasy" className="w-12 h-12 rounded-xl" />
+          <img src={logo} alt="UseEasy Logo" className="w-12 h-12 rounded-xl" />
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Use<span className="text-primary">Easy</span>
+            Use<span className="text-primary">Easy</span> — Login
           </h1>
           <p className="text-sm text-muted-foreground">
             Melde dich an, um fortzufahren
           </p>
         </div>
+
 
         {/* Login Card */}
         <div className="glass-card p-6 space-y-4">
@@ -297,6 +308,7 @@ export default function Login() {
           </form>
         </div>
       </div>
-    </div>
+    </main>
+
   );
 }
