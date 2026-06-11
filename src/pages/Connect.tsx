@@ -263,6 +263,7 @@ export default function Connect() {
           Bei Fragen: support@useeasy.ai · Verarbeitung in Frankfurt (eu-central-1)
         </CardFooter>
       </Card>
-    </div>
+    </main>
+
   );
 }
