@@ -184,9 +184,8 @@ export default function Connect() {
           <div className="flex justify-center mb-4">
             <img src={logo} alt="UseEasy Logo" className="h-12 w-12 rounded" />
           </div>
-          <CardTitle asChild className="text-2xl">
-            <h1>Postfach verbinden</h1>
-          </CardTitle>
+          <h1 className="text-2xl font-semibold leading-none tracking-tight">Postfach verbinden</h1>
+
           {stage === "ready" && tenant?.company_name && (
             <CardDescription>
               für <span className="font-medium text-foreground">{tenant.company_name}</span>
