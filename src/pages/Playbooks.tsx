@@ -228,6 +228,17 @@ export default function Playbooks() {
                         {pack.description}
                       </p>
                     )}
+                    {/* Paket 5 (2026-06-11): Ehrliche Bau-Kachel — die Engine wählt Packs
+                        DOMAIN-basiert (getPackKeysForDomain); 'bau' kommt erst mit api-router
+                        v4.59 + Branchen-Zuordnung dazu. Toggle ist erlaubt (schreibt
+                        active_pack_keys, heute ohne Klassifikations-Wirkung). */}
+                    {pack.domain === "bau" && (
+                      <p className="rounded-md border border-amber-400/40 bg-amber-50 px-2.5 py-1.5 text-[11px] leading-relaxed text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                        Branchen-Paket Bau — wird wirksam, sobald dein Workspace der Branche
+                        „Bau &amp; Handwerk" zugeordnet ist (Freischaltung läuft). Die 30
+                        VOB-Regeln sind vorbereitet.
+                      </p>
+                    )}
                     <div className="flex items-center justify-end gap-2 mt-auto pt-2">
                       {checked ? (
                         <span className="text-xs text-primary font-medium">Aktiv</span>

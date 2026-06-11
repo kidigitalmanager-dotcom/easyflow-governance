@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import KnowledgeBaseTab from "@/components/KnowledgeBaseTab";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
 import MicrosoftIntegration from "@/components/MicrosoftIntegration";
+import MailboxReconnectCard from "@/components/MailboxReconnectCard";
 import TelegramIntegration from "@/components/TelegramIntegration";
 import AssistantConfigCard from "@/components/AssistantConfigCard";
 import TenantSetupSelfCard from "@/components/TenantSetupSelfCard";
@@ -325,6 +326,7 @@ export default function Einstellungen() {
         </TabsContent>
 
         <TabsContent value="integrations" className="mt-6 space-y-6">
+          <MailboxReconnectCard />
           <MicrosoftIntegration />
           <HubSpotIntegration />
           <TelegramIntegration />

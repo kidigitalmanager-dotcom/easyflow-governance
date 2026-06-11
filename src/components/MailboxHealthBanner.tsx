@@ -4,11 +4,18 @@
 // (letzter Tick fehlgeschlagen, z. B. token_refresh_failed) ist — also genau dann,
 // wenn die Klassifikation für diesen Tenant STILL gestorben wäre (Gmail-Billing-
 // Blackout 06.06., Token-Rotation 06.06.). Im Normalfall: unsichtbar.
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { useMe } from "@/hooks/use-api";
-import type { MailboxHealth } from "@/lib/api-client";
+import { fetchReconnectUrl, ApiError, type MailboxHealth } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+
+// Paket 2 (2026-06-11): Banner-Button öffnet jetzt den ECHTEN OAuth-Reconnect
+// (GET /v1/dashboard/reconnect/{provider}, v4.58.2 — State aus Ist-DB-Werten).
+// Gmail degradiert bis GCP-Billing bezahlt (Google-Client disabled).
+const GMAIL_OAUTH_DEGRADED = true;
 
 function fmtAge(iso: string | null | undefined): string {
   if (!iso) return "noch nie";
@@ -23,6 +30,23 @@ const PROVIDER_LABEL: Record<string, string> = { gmail: "Gmail", outlook: "Outlo
 
 export function MailboxHealthBanner() {
   const { data: me } = useMe();
+  const { toast } = useToast();
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const onReconnect = async (provider: "gmail" | "outlook") => {
+    setBusy(provider);
+    try {
+      const r = await fetchReconnectUrl(provider);
+      if (r?.oauth_url) { window.location.href = r.oauth_url; return; }
+      throw new Error("Antwort ohne oauth_url");
+    } catch (e) {
+      const msg = e instanceof ApiError && e.status === 404
+        ? "Backend-Update (v4.58.2) noch nicht deployt."
+        : e instanceof Error ? e.message : "Unbekannter Fehler";
+      toast({ title: "Neu verbinden fehlgeschlagen", description: msg, variant: "destructive" });
+      setBusy(null);
+    }
+  };
   const health = (me?.mailbox_health ?? []) as MailboxHealth[];
   const problems = health.filter((h) => h.status === "error" || h.status === "stale");
   if (problems.length === 0) return null;
@@ -47,21 +71,41 @@ export function MailboxHealthBanner() {
               ? "Ein Postfach wird gerade nicht verarbeitet"
               : `${problems.length} Postfächer werden gerade nicht verarbeitet`}
           </p>
-          {problems.map((p) => (
-            <p key={`${p.provider}:${p.email ?? ""}`} className="text-[13px] leading-relaxed opacity-90">
-              <strong>{PROVIDER_LABEL[p.provider] ?? p.provider}</strong>
-              {p.email ? ` (${p.email})` : ""} —{" "}
-              {p.status === "error"
-                ? `Fehler beim letzten Abruf: ${p.last_error || "unbekannt"}`
-                : `kein erfolgreicher Abruf seit ${fmtAge(p.last_success_at)}`}
-              . Eingehende E-Mails werden evtl. nicht klassifiziert.
-            </p>
-          ))}
+          {problems.map((p) => {
+            const degraded = p.provider === "gmail" && GMAIL_OAUTH_DEGRADED;
+            return (
+              <div key={`${p.provider}:${p.email ?? ""}`} className="text-[13px] leading-relaxed opacity-90">
+                <p>
+                  <strong>{PROVIDER_LABEL[p.provider] ?? p.provider}</strong>
+                  {p.email ? ` (${p.email})` : ""} —{" "}
+                  {p.status === "error"
+                    ? `Fehler beim letzten Abruf: ${p.last_error || "unbekannt"}`
+                    : `kein erfolgreicher Abruf seit ${fmtAge(p.last_success_at)}`}
+                  . Eingehende E-Mails werden evtl. nicht klassifiziert.
+                </p>
+                {degraded ? (
+                  <p className="mt-0.5 text-[12px] opacity-80">
+                    Google-Anmeldung derzeit gestört — Neu-Verbinden ist vorübergehend nicht möglich. Wir arbeiten daran.
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={busy !== null}
+                    onClick={() => onReconnect(p.provider as "gmail" | "outlook")}
+                    className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-current/30 px-2.5 py-1 text-[13px] font-semibold hover:bg-black/5 disabled:opacity-50"
+                  >
+                    {busy === p.provider ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    {PROVIDER_LABEL[p.provider] ?? p.provider} neu verbinden
+                  </button>
+                )}
+              </div>
+            );
+          })}
           <Link
             to="/einstellungen?tab=integrations"
             className="inline-block text-[13px] font-semibold underline underline-offset-2"
           >
-            → Postfach prüfen / neu verbinden
+            → Alle Postfächer & Integrationen verwalten
           </Link>
         </div>
       </div>

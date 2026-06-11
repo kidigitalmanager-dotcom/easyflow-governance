@@ -114,6 +114,19 @@ function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange
   );
 }
 
+// Paket 5 (2026-06-11): 'bau' als wählbare Branche — Backend-KNOWN_PACKS kennt bau noch
+// nicht (Frontend-only-Erweiterung lt. Addendum-Briefing). Der Write-Endpoint nimmt freie
+// Werte: _writePack leitet domain via deriveDomainFromMailboxProfile('bau_core_v1') → 'bau'
+// ab und schreibt active_pack_keys=['bau_core_v1']. Regeln bleiben dormant bis W2-Abschluss.
+const EXTRA_PACK_OPTIONS = [
+  { pack_key: "bau_core_v1", label: "Bau & Handwerk", domain: "bau" },
+];
+function mergePackOptions(packs?: { pack_key: string; label: string; domain: string }[]) {
+  const base = packs ?? [];
+  const known = new Set(base.map((p) => p.pack_key));
+  return [...base, ...EXTRA_PACK_OPTIONS.filter((p) => !known.has(p.pack_key))];
+}
+
 export default function AdminTenantSetup() {
   const { data: me, isLoading: meLoading } = useMe();
   const [showArchived, setShowArchived] = useState(false);
@@ -243,7 +256,7 @@ export default function AdminTenantSetup() {
             </label>
             <label className="text-xs text-muted-foreground">Branche / Pack
               <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={newT.pack_key} onChange={(e) => setNewT({ ...newT, pack_key: e.target.value })}>
-                {(kv?.packs ?? [{ pack_key: "ecom_core", label: "E-Commerce", domain: "ecom" }]).map((p) => <option key={p.pack_key} value={p.pack_key}>{p.label}</option>)}
+                {mergePackOptions(kv?.packs ?? [{ pack_key: "ecom_core", label: "E-Commerce", domain: "ecom" }]).map((p) => <option key={p.pack_key} value={p.pack_key}>{p.label}</option>)}
               </select>
             </label>
             <label className="text-xs text-muted-foreground">E-Mail-Anbieter
@@ -361,7 +374,7 @@ export default function AdminTenantSetup() {
             <label className="text-xs text-muted-foreground block">Pack
               <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.mailbox_profile} onChange={(e) => upd({ mailbox_profile: e.target.value })}>
                 <option value="">{setup.tenant.mailbox_profile ? `aktuell: ${setup.tenant.mailbox_profile}` : "— wählen —"}</option>
-                {(kv?.packs ?? []).map((p) => <option key={p.pack_key} value={p.pack_key}>{p.label} ({p.domain})</option>)}
+                {mergePackOptions(kv?.packs).map((p) => <option key={p.pack_key} value={p.pack_key}>{p.label} ({p.domain})</option>)}
               </select>
             </label>
             <p className="text-[11px] text-muted-foreground">Aktuelle Domain: {setup.tenant.domain ?? "—"} · Packs: {(setup.tenant.active_pack_keys ?? []).join(", ") || "—"}</p>

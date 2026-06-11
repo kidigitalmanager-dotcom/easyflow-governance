@@ -8,6 +8,7 @@ const PLAYBOOK_LABELS: Record<string, string> = {
   ecom_core_v1: "E-Commerce (Standard)",
   ecom_core: "E-Commerce (Standard)",
   real_estate_core_v1: "Hausverwaltung",
+  bau_core_v1: "Bau & Handwerk",
   hv_real_estate_v1: "Hausverwaltung",
   global_core: "Allgemein",
   coaching_core_v1: "Coaching",

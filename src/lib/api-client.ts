@@ -180,6 +180,21 @@ export interface UserInfo {
 }
 
 // v4.55: ein Eintrag pro verbundenem Postfach (provider_credentials)
+// v4.58.2 (Paket 2, 2026-06-11): Reconnect-URL kommt SERVERSEITIG — der State trägt die
+// IST-Tenant-Werte aus der DB (Callback-Footgun: handleAuthCallback überschreibt sonst
+// governance.tenants.domain/active_pack_keys + public.tenants.plan/company aus dem State).
+export interface ReconnectUrlResponse {
+  ok: boolean;
+  provider: "gmail" | "outlook";
+  oauth_url: string;
+  mailbox?: string | null;
+  state_preview?: { tenant_id: string; plan: string; packs: string[]; domain_derived: string };
+}
+
+export function fetchReconnectUrl(provider: "gmail" | "outlook"): Promise<ReconnectUrlResponse> {
+  return apiFetch<ReconnectUrlResponse>(`/reconnect/${provider}`);
+}
+
 export interface MailboxHealth {
   provider: string;
   email: string | null;
