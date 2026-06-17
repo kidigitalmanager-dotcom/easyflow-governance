@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMe } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
-import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug, FileSpreadsheet, Phone } from "lucide-react";
+import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug, FileSpreadsheet, Phone, CreditCard } from "lucide-react";
 import { ChipDomainInput } from "@/components/ChipDomainInput";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +19,7 @@ import JanaAutopilotTab from "@/components/JanaAutopilotTab";
 import EmailAutopilotTab from "@/components/EmailAutopilotTab";
 import EmailAutopilotAuditView from "@/components/EmailAutopilotAuditView";
 import StichprobenAuditTab from "@/components/StichprobenAuditTab";
+import BillingTab from "@/components/BillingTab";
 
 function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [state, setState] = useState<T>(() => {
@@ -141,6 +142,10 @@ export default function Einstellungen() {
           <TabsTrigger value="autopilot" className="gap-1.5">
             <Phone className="w-3.5 h-3.5" />
             Jana-Autopilot
+          </TabsTrigger>
+          <TabsTrigger value="billing" className="gap-1.5">
+            <CreditCard className="w-3.5 h-3.5" />
+            Abo & Zusatz
           </TabsTrigger>
         </TabsList>
 
@@ -348,6 +353,10 @@ export default function Einstellungen() {
 
         <TabsContent value="autopilot" className="mt-6 space-y-6">
           <JanaAutopilotTab />
+        </TabsContent>
+
+        <TabsContent value="billing" className="mt-6 space-y-6">
+          <BillingTab />
         </TabsContent>
       </Tabs>
     </div>

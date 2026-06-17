@@ -1855,3 +1855,51 @@ export const redeployCopilotVertriebler = (vId: string) =>
 
 export const deleteCopilotVertriebler = (vId: string) =>
   copilotFetch<{ ok: boolean }>(`/me/vertriebler/${encodeURIComponent(vId)}`, { method: "DELETE" });
+
+// ── v4.61.0 Billing (In-Console-Kauf) — /v1/billing/* liegt außerhalb /dashboard ──
+export interface BillingEntitlements {
+  base_plan: string | null;
+  base_mailboxes: number; mail_quota: number; extra_mailboxes: number; copilot_seats: number;
+  volume_packs: number; autopilot_mailboxes: number; erp_data_sources: number; branch_packs: number;
+  phone_local: number; phone_mobile: number; voice_enabled: boolean;
+  billing_status?: string | null; current_period_end?: string | null;
+}
+export interface BillingSummaryResponse { ok: boolean; entitlements: BillingEntitlements; derived: { total_mailboxes: number; mail_quota_total: number }; }
+export interface BillingCheckoutResponse { ok: boolean; mode?: "checkout" | "subscription_updated" | "plan_changed"; url?: string; subscription?: string; error?: string; reason?: string; }
+
+const BILLING_BASE = API_BASE.replace("/dashboard", ""); // https://api.useeasy.ai/v1
+
+export async function fetchBillingSummary(): Promise<BillingSummaryResponse> {
+  const token = await getToken();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+  const res = await fetch(`${BILLING_BASE}/billing/summary`, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await res.json();
+  if (!res.ok) throw new ApiError(res.status, data.error || `API Fehler ${res.status}`);
+  return data;
+}
+
+export async function startBillingCheckout(lookup_key: string, quantity?: number): Promise<BillingCheckoutResponse> {
+  const token = await getToken();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+  const res = await fetch(`${BILLING_BASE}/billing/checkout`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ lookup_key, quantity }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new ApiError(res.status, data.reason || data.error || `API Fehler ${res.status}`);
+  return data;
+}
+
+export async function openBillingPortal(): Promise<{ ok: boolean; url?: string; error?: string }> {
+  const token = await getToken();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+  const res = await fetch(`${BILLING_BASE}/billing/portal`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: "{}",
+  });
+  const data = await res.json();
+  if (!res.ok) throw new ApiError(res.status, data.error || `API Fehler ${res.status}`);
+  return data;
+}

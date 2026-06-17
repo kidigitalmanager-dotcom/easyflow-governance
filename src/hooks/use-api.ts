@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchBillingSummary, startBillingCheckout, openBillingPortal } from "@/lib/api-client";
 import {
   fetchMe,
   fetchStats,
@@ -862,4 +863,19 @@ export function useCopilotVertrieblerDelete() {
     mutationFn: deleteCopilotVertriebler,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["copilot-vertriebler"] }),
   });
+}
+
+// ── v4.61.0 Billing (In-Console-Kauf) ──
+export function useBillingSummary() {
+  return useQuery({ queryKey: ["billing-summary"], queryFn: fetchBillingSummary });
+}
+export function useBillingCheckout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ lookup_key, quantity }: { lookup_key: string; quantity?: number }) => startBillingCheckout(lookup_key, quantity),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["billing-summary"] }); qc.invalidateQueries({ queryKey: ["me"] }); },
+  });
+}
+export function useBillingPortal() {
+  return useMutation({ mutationFn: openBillingPortal });
 }
