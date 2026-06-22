@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useMe } from "@/hooks/use-api";
-import { ShieldAlert, Sparkles, Lightbulb, PhoneCall } from "lucide-react";
+import { ShieldAlert, Sparkles, Lightbulb, PhoneCall, TrendingUp } from "lucide-react";
 
 // v4.23.0 (Stufe 3B-0): Super-Admin-Index. Nur fuer Super-Admins (Backend /me
 // is_super_admin + Nav-Gate). Kunden sehen weder Nav-Eintrag noch diese Seite.
@@ -25,6 +25,7 @@ export default function Admin() {
     { to: "/admin/tenant-setup", icon: PhoneCall, title: "Tenant-Setup", desc: "Kunden visuell verwalten & einrichten — ohne SQL: Status, Tarif, Branche, Postfach, Telefonie, DSGVO, Assistenz & Feature-Flags." },
     { to: "/admin/rule-suggestions", icon: Lightbulb, title: "Regel-Vorschläge", desc: "Aus Nutzer-Korrekturen aggregierte Muster prüfen und als feste Regeln freigeben." },
     { to: "/admin/autopilot/promotion", icon: Sparkles, title: "Autopilot-Promotion", desc: "Reifegate-Anfragen prüfen und Autopilot-Modus pro Tenant freigeben." },
+    { to: "/admin/onboarding", icon: TrendingUp, title: "Onboarding-Funnel", desc: "Self-Serve-Käufer im Blick: gekauft → Link verschickt → verbunden, plus hängende Käufer (gekauft, nicht verbunden)." },
   ];
   return (
     <div className="space-y-6">

@@ -21,6 +21,7 @@ import AdminPromotion from "./pages/AdminPromotion";
 import Admin from "./pages/Admin";
 import AdminRuleSuggestions from "./pages/AdminRuleSuggestions";
 import AdminTenantSetup from "./pages/AdminTenantSetup";
+import AdminOnboardingFunnel from "./pages/AdminOnboardingFunnel";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
                       <Route path="/admin/rule-suggestions" element={<AdminRuleSuggestions />} />
                       <Route path="/admin/autopilot/promotion" element={<AdminPromotion />} />
                       <Route path="/admin/tenant-setup" element={<AdminTenantSetup />} />
+                      <Route path="/admin/onboarding" element={<AdminOnboardingFunnel />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppLayout>
