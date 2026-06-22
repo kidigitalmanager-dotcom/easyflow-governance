@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   useVoiceReps,
-  useVoiceRepCreate,
   useVoiceRepUpdate,
   useVoiceRepDelete,
 } from "@/hooks/use-api";
@@ -10,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle, DialogTrigger,
+  DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -18,7 +17,7 @@ import {
   AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Phone, PhoneOff, UserPlus, Pencil, CheckCircle2, Clock, XCircle,
+  Phone, PhoneOff, Pencil, CheckCircle2, Clock, XCircle,
   Loader2, PhoneCall, RotateCcw, Info,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -54,7 +53,6 @@ const EMPTY_FORM: RepFormState = {
 
 export default function VoiceRepsTab() {
   const { data, isLoading, error } = useVoiceReps();
-  const createMut = useVoiceRepCreate();
   const updateMut = useVoiceRepUpdate();
   const deleteMut = useVoiceRepDelete();
 
@@ -63,12 +61,6 @@ export default function VoiceRepsTab() {
   const [form, setForm] = useState<RepFormState>(EMPTY_FORM);
 
   const reps = data?.reps ?? [];
-
-  const openCreate = () => {
-    setEditing(null);
-    setForm(EMPTY_FORM);
-    setDialogOpen(true);
-  };
 
   const openEdit = (rep: VoiceRep) => {
     setEditing(rep);
@@ -84,30 +76,17 @@ export default function VoiceRepsTab() {
 
   const submit = async () => {
     try {
-      if (editing) {
-        await updateMut.mutateAsync({
-          repId: editing.rep_id,
-          payload: {
-            name: form.name.trim(),
-            email: form.email.trim() || null,
-            twilio_number: form.twilio_number.trim() || null,
-            caller_id_status: form.caller_id_status,
-          },
-        });
-        toast.success(`${form.name} aktualisiert`);
-      } else {
-        const res = await createMut.mutateAsync({
-          rep_id: form.rep_id.trim().toLowerCase(),
+      if (!editing) return;
+      await updateMut.mutateAsync({
+        repId: editing.rep_id,
+        payload: {
           name: form.name.trim(),
-          email: form.email.trim() || undefined,
-          twilio_number: form.twilio_number.trim() || undefined,
+          email: form.email.trim() || null,
+          twilio_number: form.twilio_number.trim() || null,
           caller_id_status: form.caller_id_status,
-        });
-        toast.success(`${form.name} angelegt`);
-        if (res.provisioning_hint) {
-          toast.info("Co-Pilot-Deploy läuft separat über admin.useeasy.ai", { duration: 7000 });
-        }
-      }
+        },
+      });
+      toast.success(`${form.name} aktualisiert`);
       setDialogOpen(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Speichern fehlgeschlagen");
@@ -139,40 +118,18 @@ export default function VoiceRepsTab() {
           <div>
             <h2 className="text-base font-semibold">Vertriebler & Telefonnummern</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Twilio-Caller-IDs und Status deiner Vertriebler. Anlegen, bearbeiten, deaktivieren.
+              Twilio-Caller-IDs und Status deiner Vertriebler. Vertriebler werden im Co-Pilot-Tab angelegt — hier setzt du Rufnummer & Status.
             </p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" onClick={openCreate}>
-                <UserPlus className="w-3.5 h-3.5" />
-                Vertriebler anlegen
-              </Button>
-            </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editing ? `${editing.name} bearbeiten` : "Neuen Vertriebler anlegen"}</DialogTitle>
+                <DialogTitle>{editing ? `${editing.name} bearbeiten` : "Vertriebler bearbeiten"}</DialogTitle>
                 <DialogDescription>
-                  {editing
-                    ? "Name, E-Mail, Twilio-Nummer und Caller-ID-Status anpassen."
-                    : "Legt einen Vertriebler-Datensatz an. Das vollständige Co-Pilot-Deploy erfolgt separat über admin.useeasy.ai."}
+                  Name, E-Mail, Twilio-Nummer und Caller-ID-Status anpassen.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
-                {!editing && (
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium">Vertriebler-ID (Slug)</label>
-                    <input
-                      value={form.rep_id}
-                      onChange={(e) => setForm((f) => ({ ...f, rep_id: e.target.value }))}
-                      placeholder="z.B. michi-sales-set-up"
-                      className="w-full bg-muted/50 border border-border rounded-md px-3 py-1.5 text-sm"
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      Kleinbuchstaben, Zahlen und Bindestriche. Stabil, nicht änderbar.
-                    </p>
-                  </div>
-                )}
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Name</label>
                   <input
@@ -218,13 +175,10 @@ export default function VoiceRepsTab() {
                 <Button variant="ghost" onClick={() => setDialogOpen(false)}>Abbrechen</Button>
                 <Button
                   onClick={submit}
-                  disabled={
-                    createMut.isPending || updateMut.isPending ||
-                    !form.name.trim() || (!editing && !form.rep_id.trim())
-                  }
+                  disabled={updateMut.isPending || !form.name.trim()}
                 >
-                  {(createMut.isPending || updateMut.isPending) && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  {editing ? "Speichern" : "Anlegen"}
+                  {updateMut.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Speichern
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -246,7 +200,7 @@ export default function VoiceRepsTab() {
             <p className="text-xs text-muted-foreground/70">
               {data?.note === "voice_tables_not_migrated"
                 ? "Voice-Tabellen sind noch nicht migriert (migration_v1.13)."
-                : "Lege deinen ersten Vertriebler über den Button oben an."}
+                : "Vertriebler werden im Co-Pilot-Tab angelegt und erscheinen dann hier."}
             </p>
           </div>
         ) : (
