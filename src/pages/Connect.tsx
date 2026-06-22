@@ -32,6 +32,11 @@ import logo from "@/assets/useeasy-logo.jpg";
  *   4) Postfach verbinden — Redirect auf /v1/onboarding/connect/{google|outlook}/start?token=…
  *
  * PRE-LOGIN: keine Supabase-Auth, kein apiFetch — direkter fetch zur api.useeasy.ai.
+ *
+ * v4.62 (B4): Branche-Wahl ist PFLICHT. Vorbelegt wird nur, wenn die Branche aus
+ * der Tenant-Domain ableitbar ist (z.B. HV-Bundle → real_estate); sonst bleibt das
+ * Feld leer und die "Postfach verbinden"-Buttons sind inaktiv, bis der Kunde bewusst
+ * eine Branche wählt — verhindert die stille ecom-Default-Fehlklassifikation.
  */
 
 const API_BASE = "https://api.useeasy.ai";
@@ -93,15 +98,13 @@ export default function Connect() {
         if (cancelled) return;
         setTenant(vJson);
         setPacks(Array.isArray(pJson.packs) ? pJson.packs : []);
-        // Pack vorbelegen: aus Tenant-Domain ableiten, sonst ecom-Default, sonst erste Option.
+        // Pack NUR vorbelegen, wenn aus der Tenant-Domain ableitbar (z.B. HV-Bundle
+        // → real_estate, vom Stripe-Webhook gesetzt). Sonst leer lassen → der Kunde
+        // MUSS die Branche bewusst wählen, sonst bleiben die Verbinden-Buttons inaktiv.
         const byDomain = (Array.isArray(pJson.packs) ? pJson.packs : []).find(
-          (p: Pack) => vJson.domain && (p.domain === vJson.domain || p.pack_key.startsWith(`${vJson.domain}_`)),
+          (p: Pack) => vJson.domain && vJson.domain !== "ecom" && (p.domain === vJson.domain || p.pack_key.startsWith(`${vJson.domain}_`)),
         );
-        const ecomDefault = (Array.isArray(pJson.packs) ? pJson.packs : []).find(
-          (p: Pack) => p.pack_key === "ecom_core_v1",
-        );
-        const fallback = (Array.isArray(pJson.packs) && pJson.packs[0]) || null;
-        setSelectedPack((byDomain || ecomDefault || fallback)?.pack_key || "");
+        setSelectedPack(byDomain?.pack_key || "");
         setStage("ready");
       } catch (e: unknown) {
         if (cancelled) return;
@@ -159,12 +162,19 @@ export default function Connect() {
   }
 
   async function connectMailbox(provider: "google" | "outlook") {
+    // Branche ist Pflicht — ohne Auswahl kein Connect (Buttons sind ohnehin inaktiv).
+    if (!selectedPack) {
+      toast({
+        title: "Bitte zuerst Branche wählen",
+        description: "Damit UseEasy Ihre E-Mails korrekt kategorisiert, wählen Sie bitte Ihre Branche aus.",
+        variant: "destructive",
+      });
+      return;
+    }
     // Branche vorher persistieren — auch falls der Nutzer dasselbe Pack lässt,
     // ist der Roundtrip harmlos (Backend ist idempotent).
-    if (selectedPack) {
-      const ok = await persistPackSelection(selectedPack);
-      if (!ok) return;
-    }
+    const ok = await persistPackSelection(selectedPack);
+    if (!ok) return;
     const url = `${API_BASE}/v1/onboarding/connect/${provider}/start?token=${encodeURIComponent(token)}`;
     window.location.href = url;
   }
@@ -209,7 +219,9 @@ export default function Connect() {
           {stage === "ready" && (
             <>
               <div>
-                <label className="block text-sm font-medium mb-2">Branche</label>
+                <label className="block text-sm font-medium mb-2">
+                  Branche <span className="text-destructive">*</span>
+                </label>
                 <Select
                   value={selectedPack}
                   onValueChange={(v) => setSelectedPack(v)}
@@ -236,7 +248,7 @@ export default function Connect() {
                 <Button
                   onClick={() => connectMailbox("google")}
                   className="w-full"
-                  disabled={saving}
+                  disabled={saving || !selectedPack}
                   size="lg"
                 >
                   Gmail / Google Workspace verbinden
@@ -245,11 +257,16 @@ export default function Connect() {
                   onClick={() => connectMailbox("outlook")}
                   variant="outline"
                   className="w-full"
-                  disabled={saving}
+                  disabled={saving || !selectedPack}
                   size="lg"
                 >
                   Outlook / Microsoft 365 verbinden
                 </Button>
+                {!selectedPack && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Bitte wählen Sie zuerst Ihre Branche, um fortzufahren.
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground text-center pt-2">
                   Sichere OAuth 2.0-Verbindung. Keine Passwörter — Sie können den Zugriff jederzeit widerrufen.
                 </p>

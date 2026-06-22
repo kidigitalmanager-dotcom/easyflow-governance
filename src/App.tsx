@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import Connect from "./pages/Connect";
+import Willkommen from "./pages/Willkommen";
 import Uebersicht from "./pages/Uebersicht";
 import ReviewQueue from "./pages/ReviewQueue";
 import AuditTrail from "./pages/AuditTrail";
@@ -32,6 +33,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/connect" element={<Connect />} />
+            <Route path="/willkommen" element={<Willkommen />} />
             <Route path="/login" element={<Login />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route
