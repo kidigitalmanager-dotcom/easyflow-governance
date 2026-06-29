@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { capital } from "@/integrations/capital/client";
+import { supabase as authClient } from "@/integrations/supabase/client";
 import type {
   CapAccount, CapCategory, CapMetric, CapSource,
   HealthPoint, CategoryPoint, MetricValue,
@@ -103,14 +104,29 @@ export function useCapAccountBySlug(slug: string) {
   });
 }
 
+const CAPITAL_CONSENT_URL = "https://vunhcexnwbvxrwecymiy.functions.supabase.co/consent";
+const CAPITAL_ANON = "sb_publishable_FXGJwwQt69sfmWS3cuF37g_hYALbbe2";
+
+// Consent goes through the verified 'consent' edge function: it validates the console
+// session (auth project) via x-console-token and writes with service-role. The anon RPC
+// path was revoked server-side.
+async function callConsent(slug: string, action: "grant" | "revoke", version: string) {
+  const { data: { session } } = await authClient.auth.getSession();
+  const token = session?.access_token ?? "";
+  const res = await fetch(CAPITAL_CONSENT_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", apikey: CAPITAL_ANON, "x-console-token": token },
+    body: JSON.stringify({ slug, action, version }),
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || !j.ok) throw new Error(j.error || ("consent_failed_" + res.status));
+  return j;
+}
+
 export function useRecordConsent() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (v: { slug: string; email: string; version: string }) => {
-      const { data, error } = await capital.rpc("cap_record_consent", { p_slug: v.slug, p_email: v.email, p_version: v.version });
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: async (v: { slug: string; email?: string; version: string }) => callConsent(v.slug, "grant", v.version),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
   });
 }
@@ -118,10 +134,7 @@ export function useRecordConsent() {
 export function useRevokeConsent() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (v: { slug: string }) => {
-      const { error } = await capital.rpc("cap_revoke_consent", { p_slug: v.slug });
-      if (error) throw error;
-    },
+    mutationFn: async (v: { slug: string }) => callConsent(v.slug, "revoke", "v1.0"),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
   });
 }
