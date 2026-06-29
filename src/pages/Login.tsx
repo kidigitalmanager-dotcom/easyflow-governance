@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Building2, Landmark } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,6 +28,8 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { toast } = useToast();
+  const [role, setRole] = useState<string | null>(() => (typeof window !== "undefined" ? localStorage.getItem("ue_role") : null));
+  const chooseRole = (r: string) => { localStorage.setItem("ue_role", r); setRole(r); };
   const { session, loading: authLoading } = useAuth();
 
   const handleGoogleLogin = async () => {
@@ -229,6 +232,20 @@ export default function Login() {
           <p className="text-sm text-muted-foreground">
             Melde dich an, um fortzufahren
           </p>
+        </div>
+
+        {/* Rolle: 2 Kacheln */}
+        <div className="grid grid-cols-2 gap-3">
+          <button type="button" onClick={() => chooseRole("company")}
+            className={"flex flex-col items-center gap-2 rounded-xl border p-4 transition-colors " + (role === "company" ? "border-primary/50 bg-primary/10" : "border-border hover:bg-muted/40")}>
+            <Building2 className={"w-6 h-6 " + (role === "company" ? "text-primary" : "text-muted-foreground")} />
+            <span className="text-sm font-medium text-foreground">Unternehmen</span>
+          </button>
+          <button type="button" onClick={() => chooseRole("investor")}
+            className={"flex flex-col items-center gap-2 rounded-xl border p-4 transition-colors " + (role === "investor" ? "border-primary/50 bg-primary/10" : "border-border hover:bg-muted/40")}>
+            <Landmark className={"w-6 h-6 " + (role === "investor" ? "text-primary" : "text-muted-foreground")} />
+            <span className="text-sm font-medium text-foreground">Investor</span>
+          </button>
         </div>
 
 

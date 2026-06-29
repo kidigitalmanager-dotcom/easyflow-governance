@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -16,6 +16,8 @@ import AuditTrail from "./pages/AuditTrail";
 import Playbooks from "./pages/Playbooks";
 import Einstellungen from "./pages/Einstellungen";
 import VoiceCalls from "./pages/VoiceCalls";
+import Signale from "./pages/Signale";
+import Investoren from "./pages/Investoren";
 import NotFound from "./pages/NotFound";
 import AdminPromotion from "./pages/AdminPromotion";
 import Admin from "./pages/Admin";
@@ -24,6 +26,13 @@ import AdminTenantSetup from "./pages/AdminTenantSetup";
 import AdminOnboardingFunnel from "./pages/AdminOnboardingFunnel";
 
 const queryClient = new QueryClient();
+
+// "/" lands per role chosen at login (2 Kacheln: Unternehmen / Investor).
+function RoleHome() {
+  const role = typeof window !== "undefined" ? localStorage.getItem("ue_role") : null;
+  if (role === "investor") return <Navigate to="/investoren" replace />;
+  return <Uebersicht />;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -43,7 +52,9 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <Routes>
-                      <Route path="/" element={<Uebersicht />} />
+                      <Route path="/" element={<RoleHome />} />
+                      <Route path="/signale" element={<Signale />} />
+                      <Route path="/investoren" element={<Investoren />} />
                       <Route path="/review" element={<ReviewQueue />} />
                       <Route path="/audit" element={<AuditTrail />} />
                       <Route path="/playbooks" element={<Playbooks />} />
