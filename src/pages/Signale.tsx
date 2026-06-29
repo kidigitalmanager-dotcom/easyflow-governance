@@ -10,6 +10,7 @@ import { useCapAccountBySlug, useRecordConsent, useRevokeConsent } from "@/hooks
 import { AccountDashboard } from "@/components/capital/AccountDashboard";
 import { IllustrativeBadge } from "@/components/capital/CapitalBits";
 import { CapitalStatementUpload } from "@/components/capital/CapitalStatementUpload";
+import { CapitalBankConnect } from "@/components/capital/CapitalBankConnect";
 
 const SELF_SLUG = "self_demo";
 const TERMS_VERSION = "v1.0";
@@ -104,6 +105,7 @@ export default function Signale() {
         </Card>
       )}
 
+      {account && <CapitalBankConnect />}
       {account && <CapitalStatementUpload />}
 
       {account && (

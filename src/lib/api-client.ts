@@ -75,7 +75,7 @@ async function apiGetV1<T>(path: string): Promise<T> {
   const token = await getToken();
   if (!token) throw new ApiError(401, "Nicht authentifiziert");
 
-  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet")
+  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital")
     ? "https://api.useeasy.ai"
     : API_BASE.replace("/dashboard", "");
   const url = path.startsWith("/v1/") ? `${baseUrl}${path}` : `${API_BASE}${path}`;
@@ -662,6 +662,64 @@ export const uploadCapitalStatement = (payload: {
   file_name: string;
   file_content_base64: string;
 }) => apiPost<CapitalStatementUploadResponse>("/v1/capital/statement/upload", payload);
+
+// ── Capital-Layer F3: Live-Bank-Connect via finAPI (AISP, BaFin-lizenziert) → fin_*-Indizes ──
+export interface CapitalBankStatus {
+  ok: boolean;
+  configured: boolean;
+  connected: boolean;
+  status: string;            // not_connected|pending|connected|reauth_required|aborted|error
+  provider?: string;
+  accounts_count?: number;
+  consent_at?: string | null;
+  last_sync_at?: string | null;
+  last_error?: string | null;
+}
+export interface CapitalBankSyncResponse {
+  ok: boolean;
+  status?: string;
+  accounts?: number;
+  txns?: number;
+  period?: string | null;
+  metrics?: { key: string; value: number; coverage: number }[];
+  skipped_keys?: string[];
+  sources_used?: string[];
+  has_balance?: boolean;
+  posted?: boolean;
+  ingest_status?: number;
+  error?: string;
+}
+export interface CapitalBankConnectResponse {
+  ok: boolean;
+  redirect_url?: string;     // finAPI Web Form URL (Browser dorthin leiten → SCA)
+  web_form_id?: string;
+  state?: string;
+  expires_in_seconds?: number;
+  account_types?: string[];
+  provider?: string;
+  error?: string;
+  hint?: string;
+}
+export interface CapitalBankCallbackResponse {
+  ok: boolean;
+  status?: string;           // connected|pending|aborted|error
+  bank_connection_id?: string | null;
+  web_form_status?: string;
+  sync?: CapitalBankSyncResponse | null;
+  error?: string;
+}
+
+export const getCapitalBankStatus = () =>
+  apiGetV1<CapitalBankStatus>("/v1/capital/bank/status");
+
+export const connectCapitalBank = () =>
+  apiPost<CapitalBankConnectResponse>("/v1/capital/bank/connect", {});
+
+export const callbackCapitalBank = (state: string) =>
+  apiPost<CapitalBankCallbackResponse>("/v1/capital/bank/callback", { state });
+
+export const syncCapitalBank = () =>
+  apiPost<CapitalBankSyncResponse>("/v1/capital/bank/sync", {});
 
 export const revertSpreadsheetAction = (bulkId: string) =>
   apiPost<SpreadsheetRevertResponse>("/v1/spreadsheet/revert", { bulk_id: bulkId });

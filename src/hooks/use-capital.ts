@@ -5,7 +5,7 @@ import type {
   CapAccount, CapCategory, CapMetric, CapSource,
   HealthPoint, CategoryPoint, MetricValue,
 } from "@/lib/capital";
-import { uploadCapitalStatement } from "@/lib/api-client";
+import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank } from "@/lib/api-client";
 
 export function useCapCatalog() {
   return useQuery({
@@ -145,6 +145,32 @@ export function useUploadCapitalStatement() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: { file_name: string; file_content_base64: string }) => uploadCapitalStatement(payload),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+
+// ── Capital-Layer F3: Live-Bank-Connect (finAPI) ──
+export function useCapitalBankStatus() {
+  return useQuery({
+    queryKey: ["cap", "bank", "status"],
+    queryFn: () => getCapitalBankStatus(),
+    retry: false,
+  });
+}
+export function useConnectCapitalBank() {
+  return useMutation({ mutationFn: () => connectCapitalBank() });
+}
+export function useCapitalBankCallback() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { state: string }) => callbackCapitalBank(vars.state),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+export function useSyncCapitalBank() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => syncCapitalBank(),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
   });
 }
