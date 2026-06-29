@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield, Activity, Landmark } from "lucide-react";
+import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
 import { MailboxHealthBanner } from "@/components/MailboxHealthBanner";
@@ -10,7 +10,6 @@ import { useAuth } from "@/contexts/AuthContext";
 const navItems = [
   { to: "/", label: "Übersicht", icon: LayoutDashboard },
   { to: "/signale", label: "Signale", icon: Activity },
-  { to: "/investoren", label: "Investoren", icon: Landmark },
   { to: "/review", label: "Review Queue", icon: ListChecks },
   { to: "/audit", label: "Audit Trail", icon: History },
   { to: "/playbooks", label: "Playbooks", icon: BookOpen },
