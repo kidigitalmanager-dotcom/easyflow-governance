@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCapAccountBySlug, useRecordConsent, useRevokeConsent } from "@/hooks/use-capital";
 import { AccountDashboard } from "@/components/capital/AccountDashboard";
 import { IllustrativeBadge } from "@/components/capital/CapitalBits";
+import { CapitalStatementUpload } from "@/components/capital/CapitalStatementUpload";
 
 const SELF_SLUG = "self_demo";
 const TERMS_VERSION = "v1.0";
@@ -102,6 +103,8 @@ export default function Signale() {
           </CardContent>
         </Card>
       )}
+
+      {account && <CapitalStatementUpload />}
 
       {account && (
         <section className="space-y-3">

@@ -5,6 +5,7 @@ import type {
   CapAccount, CapCategory, CapMetric, CapSource,
   HealthPoint, CategoryPoint, MetricValue,
 } from "@/lib/capital";
+import { uploadCapitalStatement } from "@/lib/api-client";
 
 export function useCapCatalog() {
   return useQuery({
@@ -135,6 +136,15 @@ export function useRevokeConsent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (v: { slug: string }) => callConsent(v.slug, "revoke", "v1.0"),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+
+// Capital-Layer F2 — Finanz-Export hochladen → fin_*-Indizes neu berechnen.
+export function useUploadCapitalStatement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { file_name: string; file_content_base64: string }) => uploadCapitalStatement(payload),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
   });
 }

@@ -41,8 +41,8 @@ async function apiPost<T>(path: string, body: Record<string, unknown>): Promise<
   const token = await getToken();
   if (!token) throw new ApiError(401, "Nicht authentifiziert");
 
-  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet")
-    ? "https://api.useeasy.ai"   // knowledge + spreadsheet endpoints sit outside /dashboard
+  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital")
+    ? "https://api.useeasy.ai"   // knowledge + spreadsheet + capital endpoints sit outside /dashboard
     : API_BASE.replace("/dashboard", "");
 
   const url = path.startsWith("/v1/") ? `${baseUrl}${path}` : `${API_BASE}${path}`;
@@ -642,6 +642,26 @@ export const uploadSpreadsheetFile = (payload: {
   file_name: string;
   file_content_base64: string;
 }) => apiPost<SpreadsheetUploadResponse>("/v1/spreadsheet/upload", payload);
+
+// ── Capital-Layer F2: Finanz-Export-Upload (Bank/DATEV) → fin_*-Indizes ──
+export interface CapitalStatementUploadResponse {
+  ok: boolean;
+  format: string;
+  kind: string;
+  months_stored: number;
+  period: string | null;
+  metrics: { key: string; value: number; coverage: number }[];
+  skipped_keys: string[];
+  sources_used: string[];
+  posted: boolean;
+  ingest_status?: number;
+  note: string;
+}
+
+export const uploadCapitalStatement = (payload: {
+  file_name: string;
+  file_content_base64: string;
+}) => apiPost<CapitalStatementUploadResponse>("/v1/capital/statement/upload", payload);
 
 export const revertSpreadsheetAction = (bulkId: string) =>
   apiPost<SpreadsheetRevertResponse>("/v1/spreadsheet/revert", { bulk_id: bulkId });
