@@ -243,7 +243,7 @@ export function CapitalShopifyConnect() {
               </div>
             )}
 
-            {!st?.connected && (
+            {(!st?.connected || (st?.sync_state != null && st.sync_state !== "ok")) && (
               <div className="rounded-lg border border-border bg-muted/10 p-3 space-y-2">
                 <button
                   type="button"
