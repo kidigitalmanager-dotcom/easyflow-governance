@@ -832,6 +832,7 @@ export interface CapitalShopifyStatus {
   configured: boolean;
   connected: boolean;
   status: string;
+  sync_state?: string | null;
   provider?: string;
   shop?: string | null;
   consent_at?: string | null;

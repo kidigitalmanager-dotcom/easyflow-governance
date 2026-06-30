@@ -9,8 +9,8 @@ import {
   useCapitalShopifyCallback,
   useSyncCapitalShopify,
 } from "@/hooks/use-capital";
-import type { CapitalShopifySyncResponse } from "@/lib/api-client";
-import { ShoppingBag, ShieldCheck, Loader2, CheckCircle2, RefreshCw } from "lucide-react";
+import type { CapitalShopifySyncResponse, CapitalShopifyStatus } from "@/lib/api-client";
+import { ShoppingBag, ShieldCheck, Loader2, CheckCircle2, RefreshCw, AlertTriangle, Clock } from "lucide-react";
 
 // Capital-Layer Step 3: „Shopify verbinden" (Public-App-OAuth, Scope read_orders).
 // Speichert/zeigt nur aggregierte 0–100-Indizes — keine Kunden-/Bestelldetails.
@@ -30,6 +30,53 @@ const STATUS_LABEL: Record<string, { t: string; c: string }> = {
   reauth_required: { t: "Erneute Freigabe nötig", c: "text-amber-400" },
   error: { t: "Fehler", c: "text-red-400" },
 };
+
+function fmtDateTime(s?: string | null): string {
+  if (!s) return "";
+  try { return new Date(s).toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" }); } catch { return s; }
+}
+
+// Ehrliche Sync-Zeile unter „Verbunden". sync_state kommt aus getStatus (Backend v4.75.0):
+//   permission_required = verbunden, aber Bestellungen 403-gesperrt (read_orders / Protected Customer Data) → App neu installieren.
+//   pending = verbunden, erster Abgleich steht aus.  ok = zuletzt erfolgreich.  error = letzter Lauf mit Fehler.
+function buildSyncLine(st?: CapitalShopifyStatus | null):
+  | { text: string; cls: string; box: string; icon: JSX.Element }
+  | null {
+  if (!st || !st.connected) return null;
+  switch (st.sync_state) {
+    case "permission_required":
+      return {
+        text:
+          "Verbunden — der Bestell-Abgleich wartet noch auf die Shopify-Leseberechtigung (read_orders / Protected Customer Data). Bitte die App in deinem Shopify-Adminbereich einmal neu installieren; danach werden die Umsatz-Kennzahlen automatisch berechnet.",
+        cls: "text-amber-300",
+        box: "border-amber-500/20 bg-amber-500/5",
+        icon: <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />,
+      };
+    case "error":
+      return {
+        text: "Verbunden — der letzte Abgleich hatte einen Fehler. Wir versuchen es beim nächsten Lauf automatisch erneut.",
+        cls: "text-amber-300",
+        box: "border-amber-500/20 bg-amber-500/5",
+        icon: <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />,
+      };
+    case "pending":
+      return {
+        text: "Verbunden — der erste Abgleich läuft. Sobald Bestellungen im Auswertungszeitraum liegen, erscheinen hier die Umsatz-Kennzahlen.",
+        cls: "text-muted-foreground",
+        box: "border-border bg-muted/20",
+        icon: <Clock className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />,
+      };
+    case "ok":
+      return {
+        text: st.last_sync_at ? `Zuletzt aktualisiert: ${fmtDateTime(st.last_sync_at)}.` : "Zuletzt erfolgreich aktualisiert.",
+        cls: "text-muted-foreground",
+        box: "border-border bg-muted/20",
+        icon: <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />,
+      };
+    default:
+      return null;
+  }
+}
 
 export function CapitalShopifyConnect() {
   const { toast } = useToast();
@@ -73,6 +120,7 @@ export function CapitalShopifyConnect() {
   const configured = st?.configured !== false;
   const busy = connect.isPending || callback.isPending || sync.isPending;
   const sInfo = STATUS_LABEL[st?.status || "not_connected"] || STATUS_LABEL.not_connected;
+  const syncLine = buildSyncLine(st);
 
   const startConnect = () => {
     const s = shop.trim();
@@ -125,16 +173,24 @@ export function CapitalShopifyConnect() {
         ) : (
           <>
             {st?.connected ? (
-              <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2">
-                <div className="flex items-center gap-2 text-sm min-w-0">
-                  <span className="text-muted-foreground shrink-0">Status:</span>
-                  <span className={`font-medium ${sInfo.c}`}>{sInfo.t}</span>
-                  {st?.shop && <span className="text-[11px] text-muted-foreground truncate">· {st.shop}</span>}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2">
+                  <div className="flex items-center gap-2 text-sm min-w-0">
+                    <span className="text-muted-foreground shrink-0">Status:</span>
+                    <span className={`font-medium ${sInfo.c}`}>{sInfo.t}</span>
+                    {st?.shop && <span className="text-[11px] text-muted-foreground truncate">· {st.shop}</span>}
+                  </div>
+                  <Button size="sm" variant="outline" onClick={doSync} disabled={busy}>
+                    {sync.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    <span className="ml-1">Aktualisieren</span>
+                  </Button>
                 </div>
-                <Button size="sm" variant="outline" onClick={doSync} disabled={busy}>
-                  {sync.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                  <span className="ml-1">Aktualisieren</span>
-                </Button>
+                {syncLine && (
+                  <div className={`flex items-start gap-2 rounded-lg border px-3 py-2 ${syncLine.box}`}>
+                    {syncLine.icon}
+                    <span className={`text-xs leading-relaxed ${syncLine.cls}`}>{syncLine.text}</span>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex items-center gap-2">
