@@ -8,6 +8,7 @@ import {
   useConnectCapitalShopify,
   useCapitalShopifyCallback,
   useSyncCapitalShopify,
+  useConnectCapitalShopifyToken,
 } from "@/hooks/use-capital";
 import type { CapitalShopifySyncResponse, CapitalShopifyStatus } from "@/lib/api-client";
 import { ShoppingBag, ShieldCheck, Loader2, CheckCircle2, RefreshCw, AlertTriangle, Clock } from "lucide-react";
@@ -84,8 +85,12 @@ export function CapitalShopifyConnect() {
   const connect = useConnectCapitalShopify();
   const callback = useCapitalShopifyCallback();
   const sync = useSyncCapitalShopify();
+  const tokenConnect = useConnectCapitalShopifyToken();
   const [syncResult, setSyncResult] = useState<CapitalShopifySyncResponse | null>(null);
   const [shop, setShop] = useState("");
+  const [tokenOpen, setTokenOpen] = useState(false);
+  const [tokenShop, setTokenShop] = useState("");
+  const [tokenVal, setTokenVal] = useState("");
   const handled = useRef(false);
 
   // Nach dem Shopify-OAuth-Redirect: /signale?capital_shopify=callback&code=…&shop=…&state=…&hmac=… → ALLE Params durchreichen.
@@ -118,7 +123,7 @@ export function CapitalShopifyConnect() {
 
   const st = status.data;
   const configured = st?.configured !== false;
-  const busy = connect.isPending || callback.isPending || sync.isPending;
+  const busy = connect.isPending || callback.isPending || sync.isPending || tokenConnect.isPending;
   const sInfo = STATUS_LABEL[st?.status || "not_connected"] || STATUS_LABEL.not_connected;
   const syncLine = buildSyncLine(st);
 
@@ -134,6 +139,36 @@ export function CapitalShopifyConnect() {
         onSuccess: (d) => {
           if (d.ok && d.redirect_url) window.location.href = d.redirect_url; // → Shopify OAuth
           else toast({ title: "Konnte nicht starten", description: d.hint || d.error || "Unbekannt", variant: "destructive" });
+        },
+        onError: (e: any) => toast({ title: "Verbindung fehlgeschlagen", description: e?.message, variant: "destructive" }),
+      },
+    );
+  };
+
+  const startTokenConnect = () => {
+    const sh = tokenShop.trim();
+    if (!/\.myshopify\.com$/i.test(sh.replace(/^https?:\/\//, "").replace(/\/.*$/, ""))) {
+      toast({ title: "Shop-Adresse fehlt", description: "z. B. mein-shop.myshopify.com", variant: "destructive" });
+      return;
+    }
+    if (!tokenVal.trim()) {
+      toast({ title: "Token fehlt", description: "Admin-API-Token (shpat_…) einfügen.", variant: "destructive" });
+      return;
+    }
+    tokenConnect.mutate(
+      { shop: sh, token: tokenVal.trim() },
+      {
+        onSuccess: (d) => {
+          if (d.ok) {
+            status.refetch();
+            if (d.sync) setSyncResult(d.sync);
+            toast({ title: "Shopify verbunden", description: "Per Custom-App-Token — Bestellungen werden ausgewertet." });
+          } else {
+            const msg = d.error === "token_missing_read_orders" ? "Der Custom-App fehlt der Scope read_orders."
+              : d.error === "invalid_token" ? "Token ungültig oder Shop falsch."
+              : (d.hint || d.error || "Unbekannt");
+            toast({ title: "Verbindung fehlgeschlagen", description: msg, variant: "destructive" });
+          }
         },
         onError: (e: any) => toast({ title: "Verbindung fehlgeschlagen", description: e?.message, variant: "destructive" }),
       },
@@ -205,6 +240,47 @@ export function CapitalShopifyConnect() {
                   {connect.isPending || callback.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
                   <span className="ml-1">Verbinden</span>
                 </Button>
+              </div>
+            )}
+
+            {!st?.connected && (
+              <div className="rounded-lg border border-border bg-muted/10 p-3 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setTokenOpen((v) => !v)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {tokenOpen ? "▾ " : "▸ "}oder: mit Admin-API-Token verbinden (Custom App)
+                </button>
+                {tokenOpen && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Falls die Standard-Verbindung blockiert ist: im Shopify-Adminbereich eine Custom App anlegen
+                      (Einstellungen → Apps und Vertriebskanäle → <span className="text-foreground">Apps entwickeln</span> →
+                      App erstellen → Admin-API-Scopes <span className="text-foreground">read_orders</span>
+                      {" "}(+ <span className="text-foreground">read_all_orders</span>) → Installieren → Token kopieren) und hier einfügen.
+                    </p>
+                    <Input
+                      value={tokenShop}
+                      onChange={(e) => setTokenShop(e.target.value)}
+                      placeholder="mein-shop.myshopify.com"
+                      className="h-9 text-sm"
+                      disabled={busy}
+                    />
+                    <Input
+                      value={tokenVal}
+                      onChange={(e) => setTokenVal(e.target.value)}
+                      type="password"
+                      placeholder="shpat_…"
+                      className="h-9 text-sm"
+                      disabled={busy}
+                    />
+                    <Button size="sm" onClick={startTokenConnect} disabled={busy}>
+                      {tokenConnect.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
+                      <span className="ml-1">Mit Token verbinden</span>
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 

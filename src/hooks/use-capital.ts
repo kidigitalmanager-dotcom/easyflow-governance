@@ -6,7 +6,7 @@ import type {
   HealthPoint, CategoryPoint, MetricValue,
   CapAlert, CapHealthBenchmark, CapCategoryBenchmark,
 } from "@/lib/capital";
-import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify } from "@/lib/api-client";
+import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken } from "@/lib/api-client";
 
 export function useCapCatalog() {
   return useQuery({
@@ -245,6 +245,9 @@ export function useCapitalShopifyCallback() {
     mutationFn: (vars: { params: Record<string, string> }) => callbackCapitalShopify(vars.params),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
   });
+}
+export function useConnectCapitalShopifyToken() {
+  return useMutation({ mutationFn: (vars: { shop: string; token: string }) => connectCapitalShopifyToken(vars.shop, vars.token) });
 }
 export function useSyncCapitalShopify() {
   const qc = useQueryClient();

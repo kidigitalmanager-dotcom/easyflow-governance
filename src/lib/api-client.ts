@@ -876,6 +876,19 @@ export const callbackCapitalShopify = (params: Record<string, string>) =>
 export const syncCapitalShopify = () =>
   apiPost<CapitalShopifySyncResponse>("/v1/capital/shopify/sync", {});
 
+export interface CapitalShopifyTokenConnectResponse {
+  ok: boolean;
+  status?: string;
+  shop?: string;
+  method?: string;
+  sync?: CapitalShopifySyncResponse | null;
+  error?: string;
+  hint?: string;
+}
+// v4.76.0 — Custom-App Admin-API-Token Direkt-Verbindung (Fallback wenn Public-App-PCD blockiert).
+export const connectCapitalShopifyToken = (shop: string, token: string) =>
+  apiPost<CapitalShopifyTokenConnectResponse>("/v1/capital/shopify/connect-token", { shop, access_token: token });
+
 export const revertSpreadsheetAction = (bulkId: string) =>
   apiPost<SpreadsheetRevertResponse>("/v1/spreadsheet/revert", { bulk_id: bulkId });
 
