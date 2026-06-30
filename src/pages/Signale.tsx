@@ -11,6 +11,7 @@ import { AccountDashboard } from "@/components/capital/AccountDashboard";
 import { IllustrativeBadge } from "@/components/capital/CapitalBits";
 import { CapitalStatementUpload } from "@/components/capital/CapitalStatementUpload";
 import { CapitalBankConnect } from "@/components/capital/CapitalBankConnect";
+import { CapitalAccountingConnect } from "@/components/capital/CapitalAccountingConnect";
 
 const SELF_SLUG = "self_demo";
 const TERMS_VERSION = "v1.0";
@@ -106,6 +107,7 @@ export default function Signale() {
       )}
 
       {account && <CapitalBankConnect />}
+      {account && <CapitalAccountingConnect />}
       {account && <CapitalStatementUpload />}
 
       {account && (

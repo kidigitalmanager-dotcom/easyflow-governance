@@ -5,7 +5,7 @@ import type {
   CapAccount, CapCategory, CapMetric, CapSource,
   HealthPoint, CategoryPoint, MetricValue,
 } from "@/lib/capital";
-import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank } from "@/lib/api-client";
+import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting } from "@/lib/api-client";
 
 export function useCapCatalog() {
   return useQuery({
@@ -171,6 +171,32 @@ export function useSyncCapitalBank() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => syncCapitalBank(),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+
+// ── Capital-Layer Schicht 2: Buchhaltungs-Connector (Maesn) ──
+export function useCapitalAccountingStatus() {
+  return useQuery({
+    queryKey: ["cap", "accounting", "status"],
+    queryFn: () => getCapitalAccountingStatus(),
+    retry: false,
+  });
+}
+export function useConnectCapitalAccounting() {
+  return useMutation({ mutationFn: (vars: { target: string }) => connectCapitalAccounting(vars.target) });
+}
+export function useCapitalAccountingCallback() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { state: string; account_key?: string; ts?: string; signature?: string }) => callbackCapitalAccounting(vars),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+export function useSyncCapitalAccounting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => syncCapitalAccounting(),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
   });
 }

@@ -721,6 +721,62 @@ export const callbackCapitalBank = (state: string) =>
 export const syncCapitalBank = () =>
   apiPost<CapitalBankSyncResponse>("/v1/capital/bank/sync", {});
 
+// ── Capital-Layer Schicht 2: Buchhaltungs-Connector via Maesn Unified-API (DATEV-zertifiziert) → fin_*-Indizes ──
+export interface CapitalAccountingStatus {
+  ok: boolean;
+  configured: boolean;
+  connected: boolean;
+  status: string;            // not_connected|pending|connected|reauth_required|aborted|error
+  provider?: string;
+  target_system?: string | null;
+  consent_at?: string | null;
+  last_sync_at?: string | null;
+  last_error?: string | null;
+}
+export interface CapitalAccountingSyncResponse {
+  ok: boolean;
+  provider?: string;
+  open_items?: number;
+  accounts?: number;
+  period?: string | null;
+  metrics?: { key: string; value: number; coverage: number }[];
+  skipped?: string[];
+  classified_share?: number | null;
+  posted?: boolean;
+  ingest_status?: number;
+  error?: string;
+}
+export interface CapitalAccountingConnectResponse {
+  ok: boolean;
+  redirect_url?: string;     // Aggregator-Connect-URL (Browser dorthin leiten)
+  state?: string;
+  provider?: string;
+  target?: string;
+  expires_in_seconds?: number;
+  error?: string;
+  hint?: string;
+}
+export interface CapitalAccountingCallbackResponse {
+  ok: boolean;
+  status?: string;           // connected|pending|aborted|error
+  provider?: string;
+  verified?: boolean;
+  sync?: CapitalAccountingSyncResponse | null;
+  error?: string;
+}
+
+export const getCapitalAccountingStatus = () =>
+  apiGetV1<CapitalAccountingStatus>("/v1/capital/accounting/status");
+
+export const connectCapitalAccounting = (target: string) =>
+  apiPost<CapitalAccountingConnectResponse>("/v1/capital/accounting/connect", { target });
+
+export const callbackCapitalAccounting = (vars: { state: string; account_key?: string; ts?: string; signature?: string }) =>
+  apiPost<CapitalAccountingCallbackResponse>("/v1/capital/accounting/callback", vars);
+
+export const syncCapitalAccounting = () =>
+  apiPost<CapitalAccountingSyncResponse>("/v1/capital/accounting/sync", {});
+
 export const revertSpreadsheetAction = (bulkId: string) =>
   apiPost<SpreadsheetRevertResponse>("/v1/spreadsheet/revert", { bulk_id: bulkId });
 
