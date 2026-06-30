@@ -12,6 +12,8 @@ import { IllustrativeBadge } from "@/components/capital/CapitalBits";
 import { CapitalStatementUpload } from "@/components/capital/CapitalStatementUpload";
 import { CapitalBankConnect } from "@/components/capital/CapitalBankConnect";
 import { CapitalAccountingConnect } from "@/components/capital/CapitalAccountingConnect";
+import { CapitalStripeConnect } from "@/components/capital/CapitalStripeConnect";
+import { CapitalShopifyConnect } from "@/components/capital/CapitalShopifyConnect";
 
 const SELF_SLUG = "self_demo";
 const TERMS_VERSION = "v1.0";
@@ -108,6 +110,8 @@ export default function Signale() {
 
       {account && <CapitalBankConnect />}
       {account && <CapitalAccountingConnect />}
+      {account && <CapitalStripeConnect />}
+      {account && <CapitalShopifyConnect />}
       {account && <CapitalStatementUpload />}
 
       {account && (

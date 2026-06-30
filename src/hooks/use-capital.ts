@@ -6,7 +6,7 @@ import type {
   HealthPoint, CategoryPoint, MetricValue,
   CapAlert, CapHealthBenchmark, CapCategoryBenchmark,
 } from "@/lib/capital";
-import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting } from "@/lib/api-client";
+import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify } from "@/lib/api-client";
 
 export function useCapCatalog() {
   return useQuery({
@@ -198,6 +198,58 @@ export function useSyncCapitalAccounting() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => syncCapitalAccounting(),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+
+// ── Capital-Layer Step 3: Stripe ──
+export function useCapitalStripeStatus() {
+  return useQuery({
+    queryKey: ["cap", "stripe", "status"],
+    queryFn: () => getCapitalStripeStatus(),
+    retry: false,
+  });
+}
+export function useConnectCapitalStripe() {
+  return useMutation({ mutationFn: () => connectCapitalStripe() });
+}
+export function useCapitalStripeCallback() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { code: string; state: string }) => callbackCapitalStripe(vars.code, vars.state),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+export function useSyncCapitalStripe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => syncCapitalStripe(),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+
+// ── Capital-Layer Step 3: Shopify ──
+export function useCapitalShopifyStatus() {
+  return useQuery({
+    queryKey: ["cap", "shopify", "status"],
+    queryFn: () => getCapitalShopifyStatus(),
+    retry: false,
+  });
+}
+export function useConnectCapitalShopify() {
+  return useMutation({ mutationFn: (vars: { shop: string }) => connectCapitalShopify(vars.shop) });
+}
+export function useCapitalShopifyCallback() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { params: Record<string, string> }) => callbackCapitalShopify(vars.params),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+export function useSyncCapitalShopify() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => syncCapitalShopify(),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
   });
 }

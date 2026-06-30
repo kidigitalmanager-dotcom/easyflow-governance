@@ -777,6 +777,104 @@ export const callbackCapitalAccounting = (vars: { state: string; account_key?: s
 export const syncCapitalAccounting = () =>
   apiPost<CapitalAccountingSyncResponse>("/v1/capital/accounting/sync", {});
 
+// ── Capital-Layer Step 3: Stripe-Revenue-Connector (Connect-OAuth) → fin_*/rev_*-Indizes ──
+export interface CapitalStripeStatus {
+  ok: boolean;
+  configured: boolean;
+  connected: boolean;
+  status: string;
+  provider?: string;
+  stripe_account?: string | null;
+  consent_at?: string | null;
+  last_sync_at?: string | null;
+  last_error?: string | null;
+}
+export interface CapitalStripeSyncResponse {
+  ok: boolean;
+  status?: string;
+  subs?: number;
+  charge_points?: number;
+  period?: string | null;
+  metrics?: { metric_key: string; value: number; coverage: number }[];
+  emitted_keys?: string[];
+  skipped_keys?: string[];
+  posted?: boolean;
+  ingest_status?: number;
+  error?: string;
+}
+export interface CapitalStripeConnectResponse {
+  ok: boolean;
+  redirect_url?: string;
+  state?: string;
+  provider?: string;
+  error?: string;
+  hint?: string;
+}
+export interface CapitalStripeCallbackResponse {
+  ok: boolean;
+  status?: string;
+  stripe_user_id?: string;
+  sync?: CapitalStripeSyncResponse | null;
+  error?: string;
+}
+export const getCapitalStripeStatus = () =>
+  apiGetV1<CapitalStripeStatus>("/v1/capital/stripe/status");
+export const connectCapitalStripe = () =>
+  apiPost<CapitalStripeConnectResponse>("/v1/capital/stripe/connect", {});
+export const callbackCapitalStripe = (code: string, state: string) =>
+  apiPost<CapitalStripeCallbackResponse>("/v1/capital/stripe/callback", { code, state });
+export const syncCapitalStripe = () =>
+  apiPost<CapitalStripeSyncResponse>("/v1/capital/stripe/sync", {});
+
+// ── Capital-Layer Step 3: Shopify-Revenue-Connector (Public-App-OAuth) → rev_*-Indizes ──
+export interface CapitalShopifyStatus {
+  ok: boolean;
+  configured: boolean;
+  connected: boolean;
+  status: string;
+  provider?: string;
+  shop?: string | null;
+  consent_at?: string | null;
+  last_sync_at?: string | null;
+  last_error?: string | null;
+}
+export interface CapitalShopifySyncResponse {
+  ok: boolean;
+  status?: string;
+  orders?: number;
+  period?: string | null;
+  metrics?: { metric_key: string; value: number; coverage: number }[];
+  emitted_keys?: string[];
+  skipped_keys?: string[];
+  posted?: boolean;
+  ingest_status?: number;
+  error?: string;
+}
+export interface CapitalShopifyConnectResponse {
+  ok: boolean;
+  redirect_url?: string;
+  state?: string;
+  shop?: string;
+  provider?: string;
+  error?: string;
+  hint?: string;
+}
+export interface CapitalShopifyCallbackResponse {
+  ok: boolean;
+  status?: string;
+  shop?: string;
+  sync?: CapitalShopifySyncResponse | null;
+  error?: string;
+}
+export const getCapitalShopifyStatus = () =>
+  apiGetV1<CapitalShopifyStatus>("/v1/capital/shopify/status");
+export const connectCapitalShopify = (shop: string) =>
+  apiPost<CapitalShopifyConnectResponse>("/v1/capital/shopify/connect", { shop });
+export const callbackCapitalShopify = (params: Record<string, string>) =>
+  apiPost<CapitalShopifyCallbackResponse>("/v1/capital/shopify/callback", { params });
+export const syncCapitalShopify = () =>
+  apiPost<CapitalShopifySyncResponse>("/v1/capital/shopify/sync", {});
+
 export const revertSpreadsheetAction = (bulkId: string) =>
   apiPost<SpreadsheetRevertResponse>("/v1/spreadsheet/revert", { bulk_id: bulkId });
 
