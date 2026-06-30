@@ -1,12 +1,16 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingDown, Layers } from "lucide-react";
-import { useHealthSeries, useCategorySeries, useMetricValues, useCapCatalog } from "@/hooks/use-capital";
+import { TrendingDown, Layers, BellRing, BarChart3 } from "lucide-react";
+import {
+  useHealthSeries, useCategorySeries, useMetricValues, useCapCatalog,
+  useAccountAlerts, useHealthBenchmark,
+} from "@/hooks/use-capital";
 import {
   ScoreBadge, IllustrativeBadge, CoverageBadge, HealthTimeline, CategoryBars, KpiTable, ProvenancePanel,
 } from "@/components/capital/CapitalBits";
-import { fmtMonth, type CapAccount, type MetricValue } from "@/lib/capital";
+import { RiskBadge, AlertFeed, BenchmarkBand, NoBenchmarkHint } from "@/components/capital/CapitalAlerts";
+import { fmtMonth, trailingSlope, type CapAccount, type MetricValue } from "@/lib/capital";
 
 function monthsBetween(aIso: string, bIso: string): number {
   const [ay, am] = aIso.slice(0, 7).split("-").map(Number);
@@ -19,6 +23,8 @@ export function AccountDashboard({ account }: { account: CapAccount }) {
   const health = useHealthSeries(account.id);
   const cats = useCategorySeries(account.id);
   const values = useMetricValues(account.id);
+  const acctAlerts = useAccountAlerts(account.id);
+  const benchmarks = useHealthBenchmark();
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
 
   const loading = catalog.isLoading || health.isLoading || cats.isLoading || values.isLoading;
@@ -27,6 +33,7 @@ export function AccountDashboard({ account }: { account: CapAccount }) {
     const hs = health.data ?? [];
     const latestPeriod = hs.length ? hs[hs.length - 1].period : null;
     const latestHealth = hs.length ? hs[hs.length - 1] : null;
+    const slope = trailingSlope(hs.map((h) => h.health_score));
     const scoreByKey: Record<string, { score: number | null; coverage: number | null }> = {};
     (cats.data ?? []).filter((c) => c.period === latestPeriod).forEach((c) => {
       scoreByKey[c.category_key] = { score: c.category_score, coverage: c.coverage };
@@ -39,15 +46,19 @@ export function AccountDashboard({ account }: { account: CapAccount }) {
     const missing = (catalog.data?.sources ?? [])
       .filter((s) => !used.has(s.key) && ["comms_inbox", "stripe", "shopify", "insolvenz", "handelsregister", "bank_psp"].includes(s.key))
       .map((s) => s.name);
-    // lead time for demo failures
     let lead: number | null = null;
     let firstRed: string | null = null;
     if (account.failure_month) {
       const fr = hs.find((h) => h.health_score != null && (h.health_score as number) < 50);
       if (fr) { firstRed = fr.period; lead = monthsBetween(account.failure_month, fr.period); }
     }
-    return { latestPeriod, latestHealth, scoreByKey, latestByMetric, usedArr, missing, lead, firstRed };
+    return { latestPeriod, latestHealth, slope, points: hs.length, scoreByKey, latestByMetric, usedArr, missing, lead, firstRed };
   }, [health.data, cats.data, values.data, catalog.data, account.failure_month]);
+
+  const benchmark = useMemo(
+    () => (benchmarks.data ?? []).find((b) => b.vertical === account.vertical) ?? null,
+    [benchmarks.data, account.vertical],
+  );
 
   if (loading) return <Skeleton className="h-72 w-full" />;
 
@@ -67,9 +78,12 @@ export function AccountDashboard({ account }: { account: CapAccount }) {
               </div>
               <div className="mt-1 flex items-center gap-4">
                 <ScoreBadge value={model.latestHealth?.health_score} size="lg" />
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground space-y-1">
                   <div>Stand {fmtMonth(model.latestPeriod)}</div>
-                  <CoverageBadge coverage={model.latestHealth?.coverage} />
+                  <div className="flex items-center gap-2">
+                    <CoverageBadge coverage={model.latestHealth?.coverage} />
+                    <RiskBadge slope={model.slope} points={model.points} size="md" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -82,6 +96,37 @@ export function AccountDashboard({ account }: { account: CapAccount }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Frühwarn-Alerts + Benchmark */}
+      <div className="grid gap-5 lg:grid-cols-5">
+        <Card className="glass-card lg:col-span-3">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <BellRing className="w-4 h-4" /> Frühwarn-Alerts
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AlertFeed alerts={acctAlerts.data ?? []} loading={acctAlerts.isLoading} showAccount={false}
+              emptyText="Keine offenen Alerts für diese Firma." />
+          </CardContent>
+        </Card>
+        <Card className="glass-card lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" /> Sektor-Benchmark
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {benchmark && benchmark.n_accounts >= 2 ? (
+              <BenchmarkBand
+                value={model.latestHealth?.health_score ?? null}
+                median={benchmark.median_health} p25={benchmark.p25_health} p75={benchmark.p75_health}
+                n={benchmark.n_accounts} verticalLabel={account.vertical ?? undefined}
+              />
+            ) : <NoBenchmarkHint />}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Timeline */}
       <Card className="glass-card">

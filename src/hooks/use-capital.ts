@@ -4,6 +4,7 @@ import { supabase as authClient } from "@/integrations/supabase/client";
 import type {
   CapAccount, CapCategory, CapMetric, CapSource,
   HealthPoint, CategoryPoint, MetricValue,
+  CapAlert, CapHealthBenchmark, CapCategoryBenchmark,
 } from "@/lib/capital";
 import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting } from "@/lib/api-client";
 
@@ -198,5 +199,61 @@ export function useSyncCapitalAccounting() {
   return useMutation({
     mutationFn: () => syncCapitalAccounting(),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+
+// ── Forecast / alerts (Step 1) ───────────────────────────────────────────────
+// cap_alert_feed is a pre-joined, RLS-respecting view (anon sees demo+consented).
+export function useAlerts(opts?: { openOnly?: boolean }) {
+  const openOnly = opts?.openOnly ?? true;
+  return useQuery({
+    queryKey: ["cap", "alerts", { openOnly }],
+    queryFn: async () => {
+      let q = capital.from("cap_alert_feed").select("*")
+        .order("severity_rank", { ascending: false })
+        .order("last_evaluated_at", { ascending: false });
+      if (openOnly) q = q.eq("status", "open");
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as CapAlert[];
+    },
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useAccountAlerts(accountId?: string) {
+  return useQuery({
+    enabled: !!accountId,
+    queryKey: ["cap", "alerts", "account", accountId],
+    queryFn: async () => {
+      const { data, error } = await capital.from("cap_alert_feed").select("*")
+        .eq("account_id", accountId!).eq("status", "open")
+        .order("severity_rank", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as CapAlert[];
+    },
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useHealthBenchmark() {
+  return useQuery({
+    queryKey: ["cap", "benchmark", "health"],
+    queryFn: async () => {
+      const { data, error } = await capital.from("cap_health_benchmark").select("*");
+      if (error) throw error;
+      return (data ?? []) as CapHealthBenchmark[];
+    },
+  });
+}
+
+export function useCategoryBenchmark() {
+  return useQuery({
+    queryKey: ["cap", "benchmark", "category"],
+    queryFn: async () => {
+      const { data, error } = await capital.from("cap_category_benchmark").select("*");
+      if (error) throw error;
+      return (data ?? []) as CapCategoryBenchmark[];
+    },
   });
 }
