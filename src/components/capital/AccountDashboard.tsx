@@ -10,7 +10,10 @@ import {
   ScoreBadge, IllustrativeBadge, CoverageBadge, HealthTimeline, CategoryBars, KpiTable, ProvenancePanel,
 } from "@/components/capital/CapitalBits";
 import { RiskBadge, AlertFeed, BenchmarkBand, NoBenchmarkHint } from "@/components/capital/CapitalAlerts";
-import { fmtMonth, trailingSlope, type CapAccount, type MetricValue } from "@/lib/capital";
+import {
+  fmtMonth, trailingSlope,
+  type CapAccount, type MetricValue, type HealthPoint, type CategoryPoint, type CapAlert,
+} from "@/lib/capital";
 
 function monthsBetween(aIso: string, bIso: string): number {
   const [ay, am] = aIso.slice(0, 7).split("-").map(Number);
@@ -18,28 +21,45 @@ function monthsBetween(aIso: string, bIso: string): number {
   return (ay - by) * 12 + (am - bm);
 }
 
-export function AccountDashboard({ account }: { account: CapAccount }) {
+// Injected data comes from the authenticated my-signals edge function (own-tenant path).
+// When omitted, the component reads via the anon client as before (demo / investor path).
+export type AccountDashboardData = {
+  health: HealthPoint[];
+  categories: CategoryPoint[];
+  values: MetricValue[];
+  alerts: CapAlert[];
+};
+
+export function AccountDashboard({ account, data }: { account: CapAccount; data?: AccountDashboardData }) {
+  const injected = !!data;
   const catalog = useCapCatalog();
-  const health = useHealthSeries(account.id);
-  const cats = useCategorySeries(account.id);
-  const values = useMetricValues(account.id);
-  const acctAlerts = useAccountAlerts(account.id);
+  // Anon-client hooks can't read a consent=false tenant, so disable them when data is injected.
+  const healthHook = useHealthSeries(injected ? undefined : account.id);
+  const catsHook = useCategorySeries(injected ? undefined : account.id);
+  const valuesHook = useMetricValues(injected ? undefined : account.id);
+  const acctAlertsHook = useAccountAlerts(injected ? undefined : account.id);
   const benchmarks = useHealthBenchmark();
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
 
-  const loading = catalog.isLoading || health.isLoading || cats.isLoading || values.isLoading;
+  const healthData: HealthPoint[] = data?.health ?? healthHook.data ?? [];
+  const catsData: CategoryPoint[] = data?.categories ?? catsHook.data ?? [];
+  const valuesData: MetricValue[] = data?.values ?? valuesHook.data ?? [];
+  const alertsData: CapAlert[] = data?.alerts ?? acctAlertsHook.data ?? [];
+  const alertsLoading = injected ? false : acctAlertsHook.isLoading;
+
+  const loading = catalog.isLoading || (!injected && (healthHook.isLoading || catsHook.isLoading || valuesHook.isLoading));
 
   const model = useMemo(() => {
-    const hs = health.data ?? [];
+    const hs = healthData;
     const latestPeriod = hs.length ? hs[hs.length - 1].period : null;
     const latestHealth = hs.length ? hs[hs.length - 1] : null;
     const slope = trailingSlope(hs.map((h) => h.health_score));
     const scoreByKey: Record<string, { score: number | null; coverage: number | null }> = {};
-    (cats.data ?? []).filter((c) => c.period === latestPeriod).forEach((c) => {
+    catsData.filter((c) => c.period === latestPeriod).forEach((c) => {
       scoreByKey[c.category_key] = { score: c.category_score, coverage: c.coverage };
     });
     const latestByMetric: Record<string, MetricValue> = {};
-    (values.data ?? []).filter((v) => v.period === latestPeriod).forEach((v) => { latestByMetric[v.metric_key] = v; });
+    valuesData.filter((v) => v.period === latestPeriod).forEach((v) => { latestByMetric[v.metric_key] = v; });
     const used = new Set<string>();
     Object.values(latestByMetric).forEach((v) => (v.provenance?.sources_used ?? []).forEach((s: string) => used.add(s)));
     const usedArr = Array.from(used);
@@ -53,7 +73,7 @@ export function AccountDashboard({ account }: { account: CapAccount }) {
       if (fr) { firstRed = fr.period; lead = monthsBetween(account.failure_month, fr.period); }
     }
     return { latestPeriod, latestHealth, slope, points: hs.length, scoreByKey, latestByMetric, usedArr, missing, lead, firstRed };
-  }, [health.data, cats.data, values.data, catalog.data, account.failure_month]);
+  }, [healthData, catsData, valuesData, catalog.data, account.failure_month]);
 
   const benchmark = useMemo(
     () => (benchmarks.data ?? []).find((b) => b.vertical === account.vertical) ?? null,
@@ -107,7 +127,7 @@ export function AccountDashboard({ account }: { account: CapAccount }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <AlertFeed alerts={acctAlerts.data ?? []} loading={acctAlerts.isLoading} showAccount={false}
+            <AlertFeed alerts={alertsData} loading={alertsLoading} showAccount={false}
               emptyText="Keine offenen Alerts für diese Firma." />
           </CardContent>
         </Card>
@@ -132,7 +152,7 @@ export function AccountDashboard({ account }: { account: CapAccount }) {
       {/* Timeline */}
       <Card className="glass-card">
         <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Health-Verlauf (0–100, 100 = gesund)</CardTitle></CardHeader>
-        <CardContent><HealthTimeline data={health.data ?? []} failureMonth={account.failure_month} /></CardContent>
+        <CardContent><HealthTimeline data={healthData} failureMonth={account.failure_month} /></CardContent>
       </Card>
 
       {/* Categories + drill-down */}

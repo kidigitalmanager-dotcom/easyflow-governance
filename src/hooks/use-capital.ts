@@ -95,8 +95,9 @@ export function useMetricValues(accountId?: string) {
   });
 }
 
-export function useCapAccountBySlug(slug: string) {
+export function useCapAccountBySlug(slug: string, opts?: { enabled?: boolean }) {
   return useQuery({
+    enabled: opts?.enabled ?? true,
     queryKey: ["cap", "account", slug],
     queryFn: async () => {
       const { data, error } = await capital.from("cap_accounts").select("*").eq("slug", slug).maybeSingle();
@@ -309,6 +310,65 @@ export function useCategoryBenchmark() {
       const { data, error } = await capital.from("cap_category_benchmark").select("*");
       if (error) throw error;
       return (data ?? []) as CapCategoryBenchmark[];
+    },
+  });
+}
+
+
+// ── /signale: the logged-in tenant's OWN signals via the authenticated my-signals edge function ──
+// Mirrors callConsent: the console session (auth project) is validated with x-console-token; the edge
+// function reads with service_role, so a consent=false tenant still sees THEIR OWN 0–100 indices.
+// Consent (grant/revoke above) now only controls investor visibility, never this own-data view.
+const CAPITAL_MY_SIGNALS_URL = "https://vunhcexnwbvxrwecymiy.functions.supabase.co/my-signals";
+
+export type MySignalsDash = { health: HealthPoint[]; categories: CategoryPoint[]; values: MetricValue[]; alerts: CapAlert[] };
+export type MySignals = { has_own_account: boolean; owned_count: number; account: CapAccount | null; dash: MySignalsDash | null };
+
+export function useMySignals() {
+  return useQuery<MySignals>({
+    queryKey: ["cap", "my-signals"],
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const empty: MySignals = { has_own_account: false, owned_count: 0, account: null, dash: null };
+      const { data: { session } } = await authClient.auth.getSession();
+      const token = session?.access_token ?? "";
+      if (!token) return empty;
+      const res = await fetch(CAPITAL_MY_SIGNALS_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json", apikey: CAPITAL_ANON, "x-console-token": token },
+      });
+      if (res.status === 401) return empty; // not a resolvable tenant -> caller falls back to demo
+      const j = await res.json().catch(() => ({} as any));
+      if (!res.ok || !j.ok) throw new Error(j.error || ("my_signals_failed_" + res.status));
+      if (!j.has_own_account || !j.account) return { ...empty, owned_count: j.owned_count ?? 0 };
+
+      const aid = j.account.id as string;
+      const account: CapAccount = {
+        id: j.account.id, name: j.account.name, slug: j.account.slug, domain: j.account.domain ?? null,
+        vertical: j.account.vertical ?? null, account_type: j.account.account_type,
+        consent_data_sharing: !!j.account.consent_data_sharing, consent_at: j.account.consent_at ?? null,
+        status: j.account.status, failure_month: j.account.failure_month ?? null,
+      };
+      const health: HealthPoint[] = (j.health_series ?? []).map((h: any) => ({
+        account_id: aid, period: h.period, health_score: h.health_score,
+        confidence: h.confidence, coverage: h.coverage, is_illustrative: h.is_illustrative,
+      }));
+      const categories: CategoryPoint[] = (j.categories ?? []).map((c: any) => ({
+        account_id: aid, category_key: c.category_key, period: c.period, category_score: c.category_score,
+        confidence: c.confidence, coverage: c.coverage, kpis_with_data: c.kpis_with_data, is_illustrative: c.is_illustrative,
+      }));
+      const values: MetricValue[] = (j.metrics ?? []).map((m: any) => ({
+        account_id: aid, metric_key: m.metric_key, period: m.period, value: m.value,
+        confidence: m.confidence, coverage: m.coverage, provenance: m.provenance ?? {}, is_illustrative: m.is_illustrative,
+      }));
+      const alerts: CapAlert[] = (j.alerts ?? []).map((a: any) => ({
+        id: a.id ?? 0, account_id: aid, scope: a.scope, subject_key: a.subject_key, kind: a.kind,
+        severity: a.severity, severity_rank: a.severity_rank, status: a.status, message: a.message,
+        window_months: a.window_months, value_now: a.value_now, slope: a.slope, projection: a.projection ?? null,
+        period: a.period, confidence: a.confidence, coverage: a.coverage, is_illustrative: a.is_illustrative,
+        first_detected_at: a.first_detected_at ?? "", last_evaluated_at: a.last_evaluated_at ?? "",
+      }));
+      return { has_own_account: true, owned_count: j.owned_count ?? 1, account, dash: { health, categories, values, alerts } };
     },
   });
 }

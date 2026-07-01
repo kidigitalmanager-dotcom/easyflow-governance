@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Lock, ShieldCheck, Activity } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useCapAccountBySlug, useRecordConsent, useRevokeConsent } from "@/hooks/use-capital";
+import { useMySignals, useCapAccountBySlug, useRecordConsent, useRevokeConsent } from "@/hooks/use-capital";
 import { AccountDashboard } from "@/components/capital/AccountDashboard";
 import { IllustrativeBadge } from "@/components/capital/CapitalBits";
 import { CapitalStatementUpload } from "@/components/capital/CapitalStatementUpload";
@@ -21,18 +21,26 @@ const TERMS_VERSION = "v1.0";
 export default function Signale() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const self = useCapAccountBySlug(SELF_SLUG);
+
+  // Own signals via the authenticated my-signals edge function (tenant sees its OWN data even
+  // without consent). Fall back to the demo account only when the user owns no cap_account.
+  const mine = useMySignals();
+  const hasOwn = !!mine.data?.has_own_account;
+  const fallback = useCapAccountBySlug(SELF_SLUG, { enabled: !mine.isLoading && !hasOwn });
   const record = useRecordConsent();
   const revoke = useRevokeConsent();
   const [agree, setAgree] = useState(false);
 
-  const account = self.data;
+  const account = hasOwn ? mine.data!.account : (fallback.data ?? null);
+  const dash = hasOwn ? (mine.data!.dash ?? undefined) : undefined;
+  const slug = account?.slug ?? SELF_SLUG;
+  const isLoading = mine.isLoading || (!hasOwn && fallback.isLoading);
   const consented = !!account?.consent_data_sharing;
   const consentDate = account?.consent_at ? new Date(account.consent_at).toLocaleDateString("de-DE") : null;
 
   const confirm = () => {
     record.mutate(
-      { slug: SELF_SLUG, email: user?.email ?? "unknown", version: TERMS_VERSION },
+      { slug, email: user?.email ?? "unknown", version: TERMS_VERSION },
       {
         onSuccess: () => toast({ title: "Datenfreigabe gespeichert", description: "Dein Profil ist jetzt für die Investorenseite freigegeben." }),
         onError: (e: any) => toast({ title: "Fehler", description: e.message, variant: "destructive" }),
@@ -40,7 +48,7 @@ export default function Signale() {
     );
   };
   const doRevoke = () =>
-    revoke.mutate({ slug: SELF_SLUG }, { onSuccess: () => { setAgree(false); toast({ title: "Freigabe widerrufen" }); } });
+    revoke.mutate({ slug }, { onSuccess: () => { setAgree(false); toast({ title: "Freigabe widerrufen" }); } });
 
   return (
     <div className="space-y-6">
@@ -54,7 +62,7 @@ export default function Signale() {
         </p>
       </header>
 
-      {self.isLoading ? (
+      {isLoading ? (
         <Skeleton className="h-40 w-full" />
       ) : !account ? (
         <Card className="glass-card"><CardContent className="py-10 text-center text-sm text-muted-foreground">Kein Profil gefunden.</CardContent></Card>
@@ -122,7 +130,7 @@ export default function Signale() {
             </h2>
             {account.account_type === "demo" && <IllustrativeBadge />}
           </div>
-          <AccountDashboard account={account} />
+          <AccountDashboard account={account} data={dash} />
         </section>
       )}
     </div>
