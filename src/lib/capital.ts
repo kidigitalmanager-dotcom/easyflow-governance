@@ -2,7 +2,7 @@
 
 export type CapAccount = {
   id: string; name: string; slug: string; domain: string | null;
-  vertical: string | null; account_type: "demo" | "tenant";
+  vertical: string | null; account_type: "demo" | "tenant" | "external";
   consent_data_sharing: boolean; consent_at: string | null;
   status: string; failure_month: string | null;
 };
@@ -51,6 +51,17 @@ export function fmtPct(x: number | null | undefined): string {
 }
 export function fmtMonth(p: string | null | undefined): string {
   return p ? p.slice(0, 7) : "";
+}
+
+// Vertical / Branche → deutsches Label (Markt-Index-Filter + Karten).
+export function verticalLabelDe(v?: string | null): string {
+  if (!v) return "";
+  const m: Record<string, string> = {
+    ecom: "E-Commerce", finance: "Finanzen", insurance: "Versicherung",
+    real_estate: "Immobilien", b2b_sales: "B2B-Vertrieb", saas: "SaaS",
+    bau: "Bau", platform: "Plattform", global: "Allgemein",
+  };
+  return m[v] ?? v;
 }
 
 // ── Forecast / alerts (Step 1) ───────────────────────────────────────────────

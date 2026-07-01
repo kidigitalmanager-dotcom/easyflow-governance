@@ -29,7 +29,7 @@ export function useCapCatalog() {
   });
 }
 
-export function useCapAccounts(opts?: { consentedOnly?: boolean; type?: "demo" | "tenant" }) {
+export function useCapAccounts(opts?: { consentedOnly?: boolean; type?: "demo" | "tenant" | "external" }) {
   return useQuery({
     queryKey: ["cap", "accounts", opts],
     queryFn: async () => {
