@@ -64,6 +64,7 @@ export function AccountDashboard({ account }: { account: CapAccount }) {
 
   const cat = (catalog.data?.categories ?? []);
   const metricsForCat = (catalog.data?.metrics ?? []).filter((m) => m.category_key === selectedCat);
+  const sourceName = (k: string) => (catalog.data?.sources ?? []).find((s) => s.key === k)?.name ?? k;
 
   return (
     <div className="space-y-5">
@@ -153,7 +154,7 @@ export function AccountDashboard({ account }: { account: CapAccount }) {
           </CardHeader>
           <CardContent>
             {selectedCat
-              ? <KpiTable metrics={metricsForCat} latestByMetric={model.latestByMetric} />
+              ? <KpiTable metrics={metricsForCat} latestByMetric={model.latestByMetric} sourceName={sourceName} />
               : <p className="text-sm text-muted-foreground py-8 text-center">Links eine Kategorie anklicken, um die einzelnen KPIs und ihre Quellen zu sehen.</p>}
           </CardContent>
         </Card>

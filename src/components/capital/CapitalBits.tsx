@@ -2,12 +2,15 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   ReferenceLine, Tooltip as RTooltip, LineChart, Line,
 } from "recharts";
-import { ShieldCheck, TrendingUp, FlaskConical, CheckCircle2, AlertCircle } from "lucide-react";
+import { ShieldCheck, TrendingUp, FlaskConical, CheckCircle2, AlertCircle, ChevronDown, HelpCircle } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { Fragment, useState } from "react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { humanizeMetricValue, type MetricExplanation } from "@/data/capital-provenance";
 import {
   RED_THRESHOLD, scoreColor, scoreLabel, fmtMonth, fmtPct,
   type CapCategory, type CapMetric, type HealthPoint, type MetricValue,
@@ -153,9 +156,17 @@ export function CategoryBars({
   );
 }
 
-/* ---------- KPI drill-down table ---------- */
+/* ---------- KPI drill-down table + per-KPI "Warum dieser Wert?" ---------- */
 
-export function KpiTable({ metrics, latestByMetric }: { metrics: CapMetric[]; latestByMetric: Record<string, MetricValue> }) {
+export function KpiTable({
+  metrics, latestByMetric, sourceName,
+}: {
+  metrics: CapMetric[];
+  latestByMetric: Record<string, MetricValue>;
+  sourceName?: (key: string) => string;
+}) {
+  const [open, setOpen] = useState<string | null>(null);
+  const nameFor = sourceName ?? ((k: string) => k);
   return (
     <Table>
       <TableHeader>
@@ -172,38 +183,101 @@ export function KpiTable({ metrics, latestByMetric }: { metrics: CapMetric[]; la
           const val = v?.value ?? null;
           const used: string[] = v?.provenance?.sources_used ?? [];
           const planned = m.status === "planned" || !v;
+          const expandable = !planned && !!v;
+          const isOpen = open === m.key;
           return (
-            <TableRow key={m.key} className={planned ? "opacity-55" : ""}>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{m.short_code ?? m.key}</span>
-                  <span className="text-sm">{m.name}</span>
-                  {m.is_predictive && (
-                    <Tooltip>
-                      <TooltipTrigger asChild><TrendingUp className="w-3.5 h-3.5 text-primary" /></TooltipTrigger>
-                      <TooltipContent className="text-xs">Vorlaufend (Frühindikator{m.early_indicator_for ? `: ${m.early_indicator_for}` : ""})</TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-                {m.measures && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{m.measures}</p>}
-              </TableCell>
-              <TableCell>
-                {planned ? <span className="text-xs text-muted-foreground italic">geplant</span>
-                  : <span className="font-semibold tabular-nums" style={{ color: scoreColor(val) }}>{val == null ? "–" : Math.round(val)}</span>}
-              </TableCell>
-              <TableCell><CoverageBadge coverage={v?.coverage} /></TableCell>
-              <TableCell>
-                <div className="flex flex-wrap gap-1">
-                  {used.length ? used.map((s) => (
-                    <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{s}</span>
-                  )) : <span className="text-[11px] text-muted-foreground">–</span>}
-                </div>
-              </TableCell>
-            </TableRow>
+            <Fragment key={m.key}>
+              <TableRow
+                className={cn(planned ? "opacity-55" : "", expandable && "cursor-pointer")}
+                onClick={expandable ? () => setOpen(isOpen ? null : m.key) : undefined}
+                aria-expanded={expandable ? isOpen : undefined}
+              >
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{m.short_code ?? m.key}</span>
+                    <span className="text-sm">{m.name}</span>
+                    {m.is_predictive && (
+                      <Tooltip>
+                        <TooltipTrigger asChild><TrendingUp className="w-3.5 h-3.5 text-primary" /></TooltipTrigger>
+                        <TooltipContent className="text-xs">Vorlaufend (Frühindikator{m.early_indicator_for ? `: ${m.early_indicator_for}` : ""})</TooltipContent>
+                      </Tooltip>
+                    )}
+                    {expandable && (
+                      <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-primary/80 shrink-0">
+                        Warum?
+                        <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", isOpen && "rotate-180")} />
+                      </span>
+                    )}
+                  </div>
+                  {m.measures && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{m.measures}</p>}
+                </TableCell>
+                <TableCell>
+                  {planned ? <span className="text-xs text-muted-foreground italic">geplant</span>
+                    : <span className="font-semibold tabular-nums" style={{ color: scoreColor(val) }}>{val == null ? "–" : Math.round(val)}</span>}
+                </TableCell>
+                <TableCell><CoverageBadge coverage={v?.coverage} /></TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {used.length ? used.map((s) => (
+                      <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{nameFor(s)}</span>
+                    )) : <span className="text-[11px] text-muted-foreground">–</span>}
+                  </div>
+                </TableCell>
+              </TableRow>
+              {expandable && isOpen && (
+                <TableRow className="bg-muted/20 hover:bg-muted/20">
+                  <TableCell colSpan={4} className="py-3">
+                    <KpiWhy metric={m} value={val} provenance={v?.provenance} sourceName={nameFor} />
+                  </TableCell>
+                </TableRow>
+              )}
+            </Fragment>
           );
         })}
       </TableBody>
     </Table>
+  );
+}
+
+function KpiWhy({
+  metric, value, provenance, sourceName,
+}: {
+  metric: CapMetric; value: number | null; provenance: any; sourceName: (key: string) => string;
+}) {
+  const ex: MetricExplanation = humanizeMetricValue(metric, value, provenance, sourceName);
+  const col = scoreColor(value);
+  return (
+    <div className="space-y-2">
+      <div className="flex items-start gap-2">
+        <HelpCircle className="w-4 h-4 mt-0.5 shrink-0 text-primary" />
+        <div className="space-y-1 min-w-0">
+          <p className="text-sm text-foreground">
+            <span className="font-semibold">{ex.title}: </span>
+            <span className="font-semibold tabular-nums" style={{ color: col }}>{value == null ? "–" : Math.round(value)}/100</span>
+            {" — "}{ex.reason}
+          </p>
+          {ex.sourcesLabel && <p className="text-[11px] text-muted-foreground">{ex.sourcesLabel}</p>}
+        </div>
+      </div>
+      {ex.hasTechnical && (
+        <Collapsible>
+          <CollapsibleTrigger className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors ml-6">
+            <ChevronDown className="w-3 h-3" /> Details (technisch)
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-1.5 ml-6 space-y-1 rounded-md border border-border bg-background/60 p-2.5">
+            <p className="text-[11px] text-muted-foreground">Methode: <span className="text-foreground">{ex.methodLabel}</span></p>
+            {ex.formula && <p className="text-[11px] font-mono text-muted-foreground break-words">{ex.formula}</p>}
+            {ex.inputPairs.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {ex.inputPairs.map((p) => (
+                  <span key={p.k} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{p.k}: {p.v}</span>
+                ))}
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+    </div>
   );
 }
 
