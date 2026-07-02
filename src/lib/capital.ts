@@ -192,3 +192,22 @@ export function deriveKpiState(
   if (variant === "tenant") return { kind: "collecting", label: "wird erhoben", connectSource: cs, linkable: false };
   return { kind: "nodata", label: "—", connectSource: cs, linkable: false };
 }
+
+
+// ── Verifikations-Tier (P1 BP1.2): "offiziell bestätigt (First-Party)" vs "extern (Proxy)" ──
+export type VerificationTierKind =
+  | "first_party_verified" | "first_party_partial" | "first_party_stale"
+  | "external_proxy" | "illustrative" | "unrated";
+export type VerificationTierRow = {
+  account_id: string; slug: string; verification_tier: VerificationTierKind;
+  is_latest: boolean; n_fp_real: number; n_ext_real: number;
+};
+// Badge NUR für die First-Party-Abstufungen — external_proxy trägt bereits "Öffentliche Signale".
+export function verificationTierMeta(t?: VerificationTierKind | null): { label: string; color: string; hint: string } | null {
+  switch (t) {
+    case "first_party_verified": return { label: "Verifiziert · First-Party", color: "#10b981", hint: "Aus verbundenen Operationsdaten (Postfach/Bank/CRM) berechnet und bestätigt — keine Näherung." };
+    case "first_party_partial":  return { label: "Teil-verifiziert", color: "#E8A33D", hint: "First-Party-Quelle verbunden, aber dünn (nur wenige Kennzahlen)." };
+    case "first_party_stale":    return { label: "Verbindung inaktiv", color: "#E8A33D", hint: "First-Party-Quelle war aktiv, liefert aktuell keine frischen Werte." };
+    default: return null; // external_proxy / illustrative / unrated → kein eigenes Badge
+  }
+}

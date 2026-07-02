@@ -4,14 +4,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Landmark, ShieldCheck, Star, Globe } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useCapAccounts, useHealthSeries, useAlerts } from "@/hooks/use-capital";
+import { useCapAccounts, useHealthSeries, useAlerts, useVerificationTiers } from "@/hooks/use-capital";
 import { AccountDashboard } from "@/components/capital/AccountDashboard";
-import { ScoreBadge, Sparkline, IllustrativeBadge, CoverageBadge } from "@/components/capital/CapitalBits";
+import { ScoreBadge, Sparkline, IllustrativeBadge, CoverageBadge, VerificationBadge } from "@/components/capital/CapitalBits";
 import { RiskBadge, WatchButton, TieredAlertFeed, FeedHeader } from "@/components/capital/CapitalAlerts";
 import { useWatchlist, syncWatchlistFromServer } from "@/lib/watchlist";
 import { trailingSlope, verticalLabelDe, type CapAccount } from "@/lib/capital";
 
-function AccountCard({ account, active, onClick }: { account: CapAccount; active: boolean; onClick: () => void }) {
+function AccountCard({ account, active, onClick, tier }: { account: CapAccount; active: boolean; onClick: () => void; tier?: string | null }) {
   const health = useHealthSeries(account.id);
   const series = health.data ?? [];
   const latest = series.length ? series[series.length - 1] : null;
@@ -30,6 +30,7 @@ function AccountCard({ account, active, onClick }: { account: CapAccount; active
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-foreground truncate">{account.name}</span>
             {latest?.is_illustrative && <IllustrativeBadge />}
+            <VerificationBadge tier={tier as any} />
             {isExternal && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -77,11 +78,11 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
   );
 }
 
-function FirmGrid({ accounts, selectedId, onSelect }: { accounts: CapAccount[]; selectedId: string | null; onSelect: (id: string) => void }) {
+function FirmGrid({ accounts, selectedId, onSelect, tierMap }: { accounts: CapAccount[]; selectedId: string | null; onSelect: (id: string) => void; tierMap: Record<string, { verification_tier: string }> }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {accounts.map((a) => (
-        <AccountCard key={a.id} account={a} active={selectedId === a.id} onClick={() => onSelect(a.id)} />
+        <AccountCard key={a.id} account={a} active={selectedId === a.id} onClick={() => onSelect(a.id)} tier={tierMap[a.id]?.verification_tier ?? null} />
       ))}
     </div>
   );
@@ -95,6 +96,8 @@ export default function Investoren() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [watchOnly, setWatchOnly] = useState(false);
   const [marketVertical, setMarketVertical] = useState<string | null>(null);
+  const tiers = useVerificationTiers();
+  const tierMap = (tiers.data ?? {}) as Record<string, { verification_tier: string }>;
 
   // one-time cross-device merge (logged-in investors); anon → localStorage only
   useEffect(() => { void syncWatchlistFromServer(); }, []);
@@ -171,7 +174,7 @@ export default function Investoren() {
             {watchOnly ? "Keine beobachteten Firmen mit Datenfreigabe." : "Noch keine Firmen mit Datenfreigabe."}
           </CardContent></Card>
         ) : (
-          <FirmGrid accounts={visibleConsented} selectedId={selectedId} onSelect={setSelectedId} />
+          <FirmGrid accounts={visibleConsented} selectedId={selectedId} onSelect={setSelectedId} tierMap={tierMap} />
         )}
       </section>
 
@@ -202,7 +205,7 @@ export default function Investoren() {
             {watchOnly ? "Keine beobachteten Firmen im Markt-Index." : "Noch keine externen Firmen im Markt-Index."}
           </CardContent></Card>
         ) : (
-          <FirmGrid accounts={visibleExternal} selectedId={selectedId} onSelect={setSelectedId} />
+          <FirmGrid accounts={visibleExternal} selectedId={selectedId} onSelect={setSelectedId} tierMap={tierMap} />
         )}
       </section>
 

@@ -12,8 +12,8 @@ import { Fragment, useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { humanizeMetricValue, type MetricExplanation } from "@/data/capital-provenance";
 import {
-  RED_THRESHOLD, scoreColor, scoreLabel, fmtMonth, fmtPct, deriveKpiState,
-  type CapCategory, type CapMetric, type HealthPoint, type MetricValue,
+  RED_THRESHOLD, scoreColor, scoreLabel, fmtMonth, fmtPct, deriveKpiState, verificationTierMeta,
+  type CapCategory, type CapMetric, type HealthPoint, type MetricValue, type VerificationTierKind,
 } from "@/lib/capital";
 
 /* ---------- small badges ---------- */
@@ -330,5 +330,22 @@ export function ProvenancePanel({ used, missing, illustrative }: { used: string[
         {illustrative && " Demo-Daten sind als illustrativ gekennzeichnet."}
       </p>
     </div>
+  );
+}
+
+
+export function VerificationBadge({ tier }: { tier?: VerificationTierKind | null }) {
+  const meta = verificationTierMeta(tier);
+  if (!meta) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+          style={{ color: meta.color, backgroundColor: meta.color + "1f", border: `1px solid ${meta.color}33` }}>
+          <ShieldCheck className="w-2.5 h-2.5" /> {meta.label}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs text-xs">{meta.hint}</TooltipContent>
+    </Tooltip>
   );
 }

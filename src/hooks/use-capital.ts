@@ -5,6 +5,7 @@ import type {
   CapAccount, CapCategory, CapMetric, CapSource,
   HealthPoint, CategoryPoint, MetricValue,
   CapAlert, CapHealthBenchmark, CapCategoryBenchmark, FreshnessRow,
+  VerificationTierRow,
 } from "@/lib/capital";
 import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds, getCapitalTicketingStatus, connectCapitalTicketing, syncCapitalTicketing } from "@/lib/api-client";
 import type { CapitalTicketingConnectInput } from "@/lib/api-client";
@@ -431,6 +432,24 @@ export function useMySignals() {
       }));
       const freshness: FreshnessRow[] = (j.freshness ?? []) as FreshnessRow[];
       return { has_own_account: true, owned_count: j.owned_count ?? 1, account, dash: { health, categories, values, alerts, freshness } };
+    },
+  });
+}
+
+
+// P1 BP1.2 — Verifikations-Tier je Konto (neuestes Period). security_invoker-View → RLS-gated.
+export function useVerificationTiers() {
+  return useQuery({
+    queryKey: ["cap", "verification-tier"],
+    queryFn: async () => {
+      const { data, error } = await capital
+        .from("cap_verification_tier")
+        .select("account_id,slug,verification_tier,is_latest,n_fp_real,n_ext_real")
+        .eq("is_latest", true);
+      if (error) throw error;
+      const map: Record<string, VerificationTierRow> = {};
+      for (const r of (data ?? []) as VerificationTierRow[]) map[r.account_id] = r;
+      return map;
     },
   });
 }
