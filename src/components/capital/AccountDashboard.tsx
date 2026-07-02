@@ -13,7 +13,7 @@ import { RiskBadge, TieredAlertFeed, BenchmarkBand, NoBenchmarkHint } from "@/co
 import { DataFreshnessBadge, SignalBasisBadge } from "@/components/capital/CapitalFreshness";
 import {
   fmtMonth, trailingSlope,
-  type CapAccount, type MetricValue, type HealthPoint, type CategoryPoint, type CapAlert,
+  type CapAccount, type MetricValue, type HealthPoint, type CategoryPoint, type CapAlert, type FreshnessRow,
 } from "@/lib/capital";
 
 function monthsBetween(aIso: string, bIso: string): number {
@@ -29,6 +29,7 @@ export type AccountDashboardData = {
   categories: CategoryPoint[];
   values: MetricValue[];
   alerts: CapAlert[];
+  freshness?: FreshnessRow[];
 };
 
 export function AccountDashboard({ account, data }: { account: CapAccount; data?: AccountDashboardData }) {
@@ -40,7 +41,7 @@ export function AccountDashboard({ account, data }: { account: CapAccount; data?
   const valuesHook = useMetricValues(injected ? undefined : account.id);
   const acctAlertsHook = useAccountAlerts(injected ? undefined : account.id);
   const benchmarks = useHealthBenchmark();
-  const freshness = useFreshness(account.id);
+  const freshness = useFreshness(injected ? undefined : account.id);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
 
   const healthData: HealthPoint[] = data?.health ?? healthHook.data ?? [];
@@ -48,6 +49,8 @@ export function AccountDashboard({ account, data }: { account: CapAccount; data?
   const valuesData: MetricValue[] = data?.values ?? valuesHook.data ?? [];
   const alertsData: CapAlert[] = data?.alerts ?? acctAlertsHook.data ?? [];
   const alertsLoading = injected ? false : acctAlertsHook.isLoading;
+  // Injected (my-signals) path carries its own freshness (anon client can't read a tenant); external/demo use the hook.
+  const freshnessRows: FreshnessRow[] = injected ? (data?.freshness ?? []) : (freshness.data ?? []);
 
   const loading = catalog.isLoading || (!injected && (healthHook.isLoading || catsHook.isLoading || valuesHook.isLoading));
 
@@ -106,7 +109,7 @@ export function AccountDashboard({ account, data }: { account: CapAccount; data?
                   <div className="flex items-center gap-2 flex-wrap">
                     <CoverageBadge coverage={model.latestHealth?.coverage} />
                     <RiskBadge slope={model.slope} points={model.points} size="md" />
-                    <DataFreshnessBadge rows={freshness.data ?? []} loading={freshness.isLoading} />
+                    <DataFreshnessBadge rows={freshnessRows} loading={injected ? false : freshness.isLoading} />
                     <SignalBasisBadge values={valuesData} />
                   </div>
                 </div>

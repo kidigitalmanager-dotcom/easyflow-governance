@@ -336,7 +336,7 @@ export function useCategoryBenchmark() {
 // Consent (grant/revoke above) now only controls investor visibility, never this own-data view.
 const CAPITAL_MY_SIGNALS_URL = "https://vunhcexnwbvxrwecymiy.functions.supabase.co/my-signals";
 
-export type MySignalsDash = { health: HealthPoint[]; categories: CategoryPoint[]; values: MetricValue[]; alerts: CapAlert[] };
+export type MySignalsDash = { health: HealthPoint[]; categories: CategoryPoint[]; values: MetricValue[]; alerts: CapAlert[]; freshness: FreshnessRow[] };
 export type MySignals = { has_own_account: boolean; owned_count: number; account: CapAccount | null; dash: MySignalsDash | null };
 
 export function useMySignals() {
@@ -383,7 +383,8 @@ export function useMySignals() {
         period: a.period, confidence: a.confidence, coverage: a.coverage, is_illustrative: a.is_illustrative,
         first_detected_at: a.first_detected_at ?? "", last_evaluated_at: a.last_evaluated_at ?? "",
       }));
-      return { has_own_account: true, owned_count: j.owned_count ?? 1, account, dash: { health, categories, values, alerts } };
+      const freshness: FreshnessRow[] = (j.freshness ?? []) as FreshnessRow[];
+      return { has_own_account: true, owned_count: j.owned_count ?? 1, account, dash: { health, categories, values, alerts, freshness } };
     },
   });
 }
