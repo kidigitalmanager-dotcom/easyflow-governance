@@ -79,6 +79,21 @@ export type CapAlert = {
   first_detected_at: string; last_evaluated_at: string;
 };
 
+export type FreshnessRow = {
+  slug: string;
+  account_type: string;
+  account_id: string;
+  metric_key: string;
+  source_key: string;
+  last_observed_at: string | null;
+  last_period: string | null;
+  expected_cadence_hours: number | null;
+  staleness_ratio: number | null;
+  status: "fresh" | "stale" | "dead" | "no_sla";
+  suggested_confidence_penalty: number | null;
+};
+
+
 export type CapHealthBenchmark = {
   vertical: string; median_health: number | null; p25_health: number | null; p75_health: number | null;
   n_accounts: number; has_illustrative: boolean;

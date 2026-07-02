@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useCapAccounts, useHealthSeries, useAlerts } from "@/hooks/use-capital";
 import { AccountDashboard } from "@/components/capital/AccountDashboard";
 import { ScoreBadge, Sparkline, IllustrativeBadge, CoverageBadge } from "@/components/capital/CapitalBits";
-import { RiskBadge, WatchButton, AlertFeed, FeedHeader } from "@/components/capital/CapitalAlerts";
+import { RiskBadge, WatchButton, TieredAlertFeed, FeedHeader } from "@/components/capital/CapitalAlerts";
 import { useWatchlist, syncWatchlistFromServer } from "@/lib/watchlist";
 import { trailingSlope, verticalLabelDe, type CapAccount } from "@/lib/capital";
 
@@ -156,15 +156,7 @@ export default function Investoren() {
       {/* Frühwarn-Alert-Feed (Datenfreigabe-Firmen + Markt-Index) */}
       <section className="space-y-3">
         <FeedHeader count={criticalCount} />
-        <AlertFeed
-          alerts={feed}
-          loading={alerts.isLoading}
-          emptyText={watchOnly ? "Keine offenen Alerts in deiner Watchlist." : "Keine offenen Alerts — alle überwachten Firmen stabil."}
-          max={8}
-        />
-        {(alerts.data?.length ?? 0) > 8 && !watchOnly && (
-          <p className="text-[11px] text-muted-foreground text-center">Zeigt die 8 schwersten Alerts · Detailprofil je Firma unten.</p>
-        )}
+        <TieredAlertFeed alerts={feed} loading={alerts.isLoading} max={8} />
       </section>
 
       {/* Firmen mit Datenfreigabe */}

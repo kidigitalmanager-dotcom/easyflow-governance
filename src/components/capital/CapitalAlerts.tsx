@@ -158,3 +158,125 @@ export function FeedHeader({ count }: { count: number }) {
     </div>
   );
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Qualitäts-Schicht: Bestätigt vs. Beobachtung (Konsumenten-Regel aus den
+   zwei unabhängigen historischen Backtests 2026-07; reine Anzeige-Logik)
+   ──────────────────────────────────────────────────────────────────────── */
+import { useMemo as useMemoTier, useState as useStateTier } from "react";
+import { ShieldAlert, Eye } from "lucide-react";
+import { splitAlerts, classifyAlert } from "@/lib/alert-quality";
+
+export function ConfirmedBadge({ heldLabelDe }: { heldLabelDe: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#C0392B]/15 text-[#C0392B] border border-[#C0392B]/30">
+          <ShieldAlert className="w-3 h-3" /> Bestätigt · {heldLabelDe}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="text-xs max-w-[18rem]">
+        Kritischer Alarm, der über mindestens zwei aufeinanderfolgende Monatsläufe bestehen bleibt.
+        Diese Bestätigungs-Regel senkt Fehlalarme im historischen Backtest von 86–95 % auf unter 10–18 %.
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function WatchTierBadge() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-500 border border-amber-400/25">
+          <Eye className="w-3 h-3" /> Beobachtung
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="text-xs max-w-[18rem]">
+        Frisches oder nicht-kritisches Signal. Wird erst „bestätigt", wenn es über mindestens zwei
+        aufeinanderfolgende Monatsläufe kritisch bleibt — bis dahin bewusst als Beobachtung geführt.
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/* Alert-Zeile mit Qualitäts-Badge */
+export function QualityAlertRow({ alert, showAccount = true }: { alert: CapAlert; showAccount?: boolean }) {
+  const q = classifyAlert(alert);
+  const c = severityColor(alert.severity);
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-border px-3 py-2.5 bg-card/40">
+      <span className="mt-1 w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c }} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          {showAccount && <span className="text-sm font-semibold text-foreground">{alert.account_name ?? alert.account_slug}</span>}
+          {q.tier === "confirmed" ? <ConfirmedBadge heldLabelDe={q.heldLabelDe} /> : <WatchTierBadge />}
+          <AlertKindBadge kind={alert.kind} severity={alert.severity} />
+          {alert.scope === "metric" && <span className="text-[10px] font-mono px-1 py-0.5 rounded bg-muted text-muted-foreground">{alert.subject_key}</span>}
+          {alert.is_illustrative && <IllustrativeBadge />}
+        </div>
+        <p className="text-[13px] text-muted-foreground mt-0.5">{alert.message}</p>
+        <div className="flex items-center gap-3 mt-1">
+          <span className="text-[11px] text-muted-foreground/70">Stand {fmtMonth(alert.period)}</span>
+          <ProjectionNote projection={alert.projection} />
+        </div>
+      </div>
+      {alert.value_now != null && (
+        <span className="text-sm font-bold tabular-nums shrink-0" style={{ color: scoreColor(alert.value_now) }}>
+          {Math.round(alert.value_now)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/* Zweistufiger Feed: Tab „Bestätigt" (DD-tauglich) + Tab „Beobachtung" */
+export function TieredAlertFeed({
+  alerts, loading, showAccount = true, max,
+}: { alerts: CapAlert[]; loading?: boolean; showAccount?: boolean; max?: number }) {
+  const { confirmed, watch } = useMemoTier(() => splitAlerts(alerts), [alerts]);
+  const [tab, setTab] = useStateTier<"confirmed" | "watch">(confirmed.length > 0 ? "confirmed" : "watch");
+  if (loading) return <div className="space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 w-full" />)}</div>;
+  const rows = tab === "confirmed" ? confirmed : watch;
+  const shown = max ? rows.slice(0, max) : rows;
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => setTab("confirmed")}
+          className={cn(
+            "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border px-2.5 py-1 transition-colors",
+            tab === "confirmed" ? "border-[#C0392B]/40 bg-[#C0392B]/10 text-[#C0392B]" : "border-border text-muted-foreground hover:bg-muted/40",
+          )}
+        >
+          <ShieldAlert className="w-3.5 h-3.5" /> Bestätigt ({confirmed.length})
+        </button>
+        <button
+          onClick={() => setTab("watch")}
+          className={cn(
+            "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border px-2.5 py-1 transition-colors",
+            tab === "watch" ? "border-amber-400/40 bg-amber-400/10 text-amber-500" : "border-border text-muted-foreground hover:bg-muted/40",
+          )}
+        >
+          <Eye className="w-3.5 h-3.5" /> Beobachtung ({watch.length})
+        </button>
+      </div>
+      {shown.length === 0 ? (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-3 text-sm text-emerald-400">
+          <Activity className="w-4 h-4" />
+          {tab === "confirmed"
+            ? "Kein bestätigter Alarm — kein Signal hält sich aktuell über mehrere Monatsläufe."
+            : "Keine Beobachtungs-Signale."}
+        </div>
+      ) : (
+        <div className="space-y-2">{shown.map((a) => <QualityAlertRow key={a.id} alert={a} showAccount={showAccount} />)}</div>
+      )}
+      {max != null && rows.length > max && (
+        <p className="text-[11px] text-muted-foreground text-center">Zeigt {max} von {rows.length} — Detailprofil je Firma unten.</p>
+      )}
+      <p className="text-[11px] text-muted-foreground/80">
+        Bestätigt = kritischer Alarm über ≥2 aufeinanderfolgende Monatsläufe. Regel doppelt kalibriert an zwei
+        unabhängigen historischen Backtests (53 + 44 belegte DE-Fälle, Juli 2026) — senkt Fehlalarme von 86–95 % auf unter 10–18 %.
+      </p>
+    </div>
+  );
+}

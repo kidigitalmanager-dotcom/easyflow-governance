@@ -4,12 +4,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingDown, Layers, BellRing, BarChart3 } from "lucide-react";
 import {
   useHealthSeries, useCategorySeries, useMetricValues, useCapCatalog,
-  useAccountAlerts, useHealthBenchmark,
+  useAccountAlerts, useHealthBenchmark, useFreshness,
 } from "@/hooks/use-capital";
 import {
   ScoreBadge, IllustrativeBadge, CoverageBadge, HealthTimeline, CategoryBars, KpiTable, ProvenancePanel,
 } from "@/components/capital/CapitalBits";
-import { RiskBadge, AlertFeed, BenchmarkBand, NoBenchmarkHint } from "@/components/capital/CapitalAlerts";
+import { RiskBadge, TieredAlertFeed, BenchmarkBand, NoBenchmarkHint } from "@/components/capital/CapitalAlerts";
+import { DataFreshnessBadge, SignalBasisBadge } from "@/components/capital/CapitalFreshness";
 import {
   fmtMonth, trailingSlope,
   type CapAccount, type MetricValue, type HealthPoint, type CategoryPoint, type CapAlert,
@@ -39,6 +40,7 @@ export function AccountDashboard({ account, data }: { account: CapAccount; data?
   const valuesHook = useMetricValues(injected ? undefined : account.id);
   const acctAlertsHook = useAccountAlerts(injected ? undefined : account.id);
   const benchmarks = useHealthBenchmark();
+  const freshness = useFreshness(account.id);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
 
   const healthData: HealthPoint[] = data?.health ?? healthHook.data ?? [];
@@ -101,9 +103,11 @@ export function AccountDashboard({ account, data }: { account: CapAccount; data?
                 <ScoreBadge value={model.latestHealth?.health_score} size="lg" />
                 <div className="text-xs text-muted-foreground space-y-1">
                   <div>Stand {fmtMonth(model.latestPeriod)}</div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <CoverageBadge coverage={model.latestHealth?.coverage} />
                     <RiskBadge slope={model.slope} points={model.points} size="md" />
+                    <DataFreshnessBadge rows={freshness.data ?? []} loading={freshness.isLoading} />
+                    <SignalBasisBadge values={valuesData} />
                   </div>
                 </div>
               </div>
@@ -127,8 +131,7 @@ export function AccountDashboard({ account, data }: { account: CapAccount; data?
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <AlertFeed alerts={alertsData} loading={alertsLoading} showAccount={false}
-              emptyText="Keine offenen Alerts für diese Firma." />
+            <TieredAlertFeed alerts={alertsData} loading={alertsLoading} showAccount={false} />
           </CardContent>
         </Card>
         <Card className="glass-card lg:col-span-2">

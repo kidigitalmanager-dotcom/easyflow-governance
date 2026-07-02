@@ -4,7 +4,7 @@ import { supabase as authClient } from "@/integrations/supabase/client";
 import type {
   CapAccount, CapCategory, CapMetric, CapSource,
   HealthPoint, CategoryPoint, MetricValue,
-  CapAlert, CapHealthBenchmark, CapCategoryBenchmark,
+  CapAlert, CapHealthBenchmark, CapCategoryBenchmark, FreshnessRow,
 } from "@/lib/capital";
 import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken } from "@/lib/api-client";
 
@@ -272,6 +272,21 @@ export function useAlerts(opts?: { openOnly?: boolean }) {
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as CapAlert[];
+    },
+    refetchOnWindowFocus: false,
+  });
+}
+
+
+export function useFreshness(accountId?: string) {
+  return useQuery({
+    enabled: !!accountId,
+    queryKey: ["cap", "freshness", accountId],
+    queryFn: async () => {
+      const { data, error } = await capital.from("cap_freshness").select("*")
+        .eq("account_id", accountId!);
+      if (error) throw error;
+      return (data ?? []) as FreshnessRow[];
     },
     refetchOnWindowFocus: false,
   });
