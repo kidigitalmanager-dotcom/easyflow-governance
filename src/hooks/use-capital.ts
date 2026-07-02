@@ -6,7 +6,7 @@ import type {
   HealthPoint, CategoryPoint, MetricValue,
   CapAlert, CapHealthBenchmark, CapCategoryBenchmark, FreshnessRow,
 } from "@/lib/capital";
-import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken } from "@/lib/api-client";
+import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds } from "@/lib/api-client";
 
 export function useCapCatalog() {
   return useQuery({
@@ -254,6 +254,32 @@ export function useSyncCapitalShopify() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => syncCapitalShopify(),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+
+// ── Capital-Layer: Meta Ads (sales_cac) ──
+export function useCapitalMetaAdsStatus() {
+  return useQuery({
+    queryKey: ["cap", "meta-ads", "status"],
+    queryFn: () => getCapitalMetaAdsStatus(),
+    retry: false,
+  });
+}
+export function useConnectCapitalMetaAds() {
+  return useMutation({ mutationFn: () => connectCapitalMetaAds() });
+}
+export function useCapitalMetaAdsCallback() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { code: string; state: string }) => callbackCapitalMetaAds(vars.code, vars.state),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+export function useSyncCapitalMetaAds() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => syncCapitalMetaAds(),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
   });
 }

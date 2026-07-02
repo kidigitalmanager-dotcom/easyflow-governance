@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Lock, ShieldCheck, Activity, Plug, CreditCard, Landmark, Users,
+  Lock, ShieldCheck, Activity, Plug, CreditCard, Landmark, Users, Megaphone,
   ChevronRight, ArrowRight, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ import { CapitalBankConnect } from "@/components/capital/CapitalBankConnect";
 import { CapitalAccountingConnect } from "@/components/capital/CapitalAccountingConnect";
 import { CapitalStripeConnect } from "@/components/capital/CapitalStripeConnect";
 import { CapitalShopifyConnect } from "@/components/capital/CapitalShopifyConnect";
+import { CapitalMetaAdsConnect } from "@/components/capital/CapitalMetaAdsConnect";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
 
 const SELF_SLUG = "self_demo";
@@ -67,6 +68,12 @@ const GROUPS: GroupDef[] = [
       { key: "hubspot", label: "HubSpot", sourceKeys: ["hubspot_crm"], card: <HubSpotIntegration /> },
     ],
   },
+  {
+    key: "marketing", label: "Marketing", icon: Megaphone,
+    sources: [
+      { key: "meta_ads", label: "Meta Ads", sourceKeys: ["meta_ads"], card: <CapitalMetaAdsConnect /> },
+    ],
+  },
 ];
 
 // cap_metrics.connect_source → passende Gruppe/Quelle in der Datenquellen-Sub-Sidebar.
@@ -77,6 +84,7 @@ const CONNECT_TARGET: Record<string, { group: string; source: string }> = {
   bank: { group: "finanzen", source: "bank" },
   maesn: { group: "finanzen", source: "buchhaltung" },
   hubspot: { group: "crm", source: "hubspot" },
+  meta_ads: { group: "marketing", source: "meta_ads" },
 };
 
 // Kommt der Nutzer von einem OAuth-Redirect zurück, springt er direkt in die
@@ -89,6 +97,7 @@ function readCallbackTarget(): { section: SectionKey; group: string; source: str
     if (sp.get("capital_shopify") === "callback") return { section: "quellen", group: "umsatz", source: "shopify" };
     if (sp.get("capital_bank") === "callback") return { section: "quellen", group: "finanzen", source: "bank" };
     if (sp.get("capital_acct") === "callback") return { section: "quellen", group: "finanzen", source: "buchhaltung" };
+    if (sp.get("capital_meta_ads") === "callback") return { section: "quellen", group: "marketing", source: "meta_ads" };
     if (sp.get("hubspot")) return { section: "quellen", group: "crm", source: "hubspot" };
   } catch {
     /* ignore */

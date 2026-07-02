@@ -889,6 +889,65 @@ export interface CapitalShopifyTokenConnectResponse {
 export const connectCapitalShopifyToken = (shop: string, token: string) =>
   apiPost<CapitalShopifyTokenConnectResponse>("/v1/capital/shopify/connect-token", { shop, access_token: token });
 
+// ── Capital-Layer: Meta-Ads-Connector (Facebook Login for Business, ads_read) → sales_cac ──
+export interface CapitalMetaAdsStatus {
+  ok: boolean;
+  configured: boolean;
+  connected: boolean;
+  status: string;
+  provider?: string;
+  ad_account_id?: string | null;
+  ad_account_name?: string | null;
+  currency?: string | null;
+  consent_at?: string | null;
+  last_sync_at?: string | null;
+  token_expires_at?: string | null;
+  last_error?: string | null;
+}
+export interface CapitalMetaAdsSyncResponse {
+  ok: boolean;
+  status?: string;
+  ad_account_id?: string | null;
+  currency?: string | null;
+  period?: string | null;
+  spend_months?: number;
+  metrics?: { metric_key: string; value: number; coverage: number }[];
+  emitted_keys?: string[];
+  skipped_keys?: string[];
+  cac_basis?: "cross_source" | "self_contained" | null;
+  self_contained_cac?: number | null;
+  cross_source_cac?: number | null;
+  cross_source?: string | null;
+  posted?: boolean;
+  ingest_status?: number;
+  error?: string;
+}
+export interface CapitalMetaAdsConnectResponse {
+  ok: boolean;
+  redirect_url?: string;
+  state?: string;
+  provider?: string;
+  error?: string;
+  hint?: string;
+}
+export interface CapitalMetaAdsCallbackResponse {
+  ok: boolean;
+  status?: string;
+  ad_account_id?: string | null;
+  ad_account_name?: string | null;
+  accounts?: number;
+  sync?: CapitalMetaAdsSyncResponse | null;
+  error?: string;
+}
+export const getCapitalMetaAdsStatus = () =>
+  apiGetV1<CapitalMetaAdsStatus>("/v1/capital/meta-ads/status");
+export const connectCapitalMetaAds = () =>
+  apiPost<CapitalMetaAdsConnectResponse>("/v1/capital/meta-ads/connect", {});
+export const callbackCapitalMetaAds = (code: string, state: string) =>
+  apiPost<CapitalMetaAdsCallbackResponse>("/v1/capital/meta-ads/callback", { code, state });
+export const syncCapitalMetaAds = () =>
+  apiPost<CapitalMetaAdsSyncResponse>("/v1/capital/meta-ads/sync", {});
+
 export const revertSpreadsheetAction = (bulkId: string) =>
   apiPost<SpreadsheetRevertResponse>("/v1/spreadsheet/revert", { bulk_id: bulkId });
 
