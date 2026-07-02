@@ -14,6 +14,9 @@ export type CapMetric = {
   key: string; short_code: string | null; name: string; category_key: string | null;
   description: string | null; measures: string | null; early_indicator_for: string | null;
   source_layer: string; is_predictive: boolean; weight: number; status: string; display_order: number;
+  // Additive Katalog-Metadaten (KEIN Rollup-Impact) — steuern das ehrliche KPI-Status-Label.
+  connect_source?: string | null;                                  // stripe|shopify|bank|maesn|hubspot|…
+  availability?: "live" | "connectable" | "building" | "planned" | null;
 };
 export type CapSource = {
   key: string; name: string; source_type: string | null; access: string | null;
@@ -130,4 +133,62 @@ export function riskFromSlope(slope: number | null, points = 99): { dir: RiskDir
   if (slope <= -1.0) return { dir: "falling", label: "Fallend", color: "#C0392B" };
   if (slope >= 1.0) return { dir: "rising", label: "Steigend", color: "#10b981" };
   return { dir: "stable", label: "Stabil", color: "#E8A33D" };
+}
+
+// ── KPI-Status-Taxonomie (ehrliche 4 Zustände statt binär "geplant") ──────────
+// Ersetzt das alte `status==='planned' || !value` → das warf "wirklich geplant",
+// "aktiv aber (noch) kein Wert" und "Connector gebaut, nicht verbunden" in einen Topf.
+export type KpiStateKind = "live" | "collecting" | "unconnected" | "planned" | "nodata";
+export type KpiState = {
+  kind: KpiStateKind;
+  label: string;               // Kurztext für die Zelle ("" bei live → Score wird gerendert)
+  connectSource: string | null; // Quelle/Connector (für Deep-Link bzw. "braucht: X")
+  linkable: boolean;            // nur Kunden-Ansicht + Connector, der eine Karte in /signale hat
+};
+
+// Presentation-Label je Connector-Key (Machine-Key steht in cap_metrics.connect_source).
+export const CONNECT_SOURCE_LABEL: Record<string, string> = {
+  stripe: "Stripe", shopify: "Shopify", bank: "Bank-Konto (finAPI)", maesn: "Buchhaltung (Maesn)",
+  hubspot: "HubSpot", einvoice: "E-Rechnungen", comms_inbox: "Postfach", trustpilot: "Trustpilot",
+  meta_ads: "Meta Ads", survey: "Umfrage-Tool", ticketing: "Ticketing-System",
+  logistics: "Versand/Logistik", crm_targets: "Vertriebsziele", insolvency_feed: "Insolvenz-Feed",
+};
+// Connectoren mit einer Connect-Karte in der /signale-Datenquellen-Sub-Sidebar → Deep-Link möglich.
+export const CONNECTABLE_IN_SIGNALE = new Set(["stripe", "shopify", "bank", "maesn", "hubspot"]);
+
+export function connectSourceLabel(cs: string | null | undefined): string | null {
+  if (!cs) return null;
+  return CONNECT_SOURCE_LABEL[cs] ?? cs;
+}
+
+// Leitet den ehrlichen Anzeige-Zustand einer KPI für EIN Konto ab.
+// variant "tenant" = eigene /signale-Ansicht (kann handeln → Deep-Links); "investor" = /investoren.
+export function deriveKpiState(
+  metric: Pick<CapMetric, "status" | "availability" | "connect_source">,
+  hasValue: boolean,
+  variant: "tenant" | "investor" = "investor",
+): KpiState {
+  const active = metric.status === "active";
+  const avail = metric.availability ?? (active ? "live" : "planned");
+  const cs = metric.connect_source ?? null;
+
+  // Validierter, aktiver Wert → echter Score.
+  if (active && hasValue) return { kind: "live", label: "", connectSource: cs, linkable: false };
+  // Wert vorhanden, Metrik aber (noch) nicht 'active' (z.B. dünnes Portal → 0) → Rohwert NICHT als Score zeigen.
+  if (hasValue) return { kind: "collecting", label: "wird erhoben", connectSource: cs, linkable: false };
+
+  // Ab hier: kein Wert.
+  if (avail === "connectable") {
+    if (variant === "tenant") {
+      return { kind: "unconnected", label: "nicht verbunden", connectSource: cs, linkable: !!cs && CONNECTABLE_IN_SIGNALE.has(cs) };
+    }
+    return { kind: "nodata", label: "—", connectSource: cs, linkable: false };
+  }
+  if (avail === "planned") {
+    const csl = connectSourceLabel(cs);
+    return { kind: "planned", label: csl ? `geplant · braucht ${csl}` : "geplant", connectSource: cs, linkable: false };
+  }
+  // building | live, aber (für dieses Konto) noch kein Wert.
+  if (variant === "tenant") return { kind: "collecting", label: "wird erhoben", connectSource: cs, linkable: false };
+  return { kind: "nodata", label: "—", connectSource: cs, linkable: false };
 }

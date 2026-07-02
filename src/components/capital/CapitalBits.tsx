@@ -2,7 +2,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   ReferenceLine, Tooltip as RTooltip, LineChart, Line,
 } from "recharts";
-import { ShieldCheck, TrendingUp, FlaskConical, CheckCircle2, AlertCircle, ChevronDown, HelpCircle } from "lucide-react";
+import { ShieldCheck, TrendingUp, FlaskConical, CheckCircle2, AlertCircle, ChevronDown, HelpCircle, Plug, ArrowRight } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -12,7 +12,7 @@ import { Fragment, useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { humanizeMetricValue, type MetricExplanation } from "@/data/capital-provenance";
 import {
-  RED_THRESHOLD, scoreColor, scoreLabel, fmtMonth, fmtPct,
+  RED_THRESHOLD, scoreColor, scoreLabel, fmtMonth, fmtPct, deriveKpiState,
   type CapCategory, type CapMetric, type HealthPoint, type MetricValue,
 } from "@/lib/capital";
 
@@ -159,11 +159,13 @@ export function CategoryBars({
 /* ---------- KPI drill-down table + per-KPI "Warum dieser Wert?" ---------- */
 
 export function KpiTable({
-  metrics, latestByMetric, sourceName,
+  metrics, latestByMetric, sourceName, variant = "investor", onConnect,
 }: {
   metrics: CapMetric[];
   latestByMetric: Record<string, MetricValue>;
   sourceName?: (key: string) => string;
+  variant?: "tenant" | "investor";
+  onConnect?: (source: string) => void;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const nameFor = sourceName ?? ((k: string) => k);
@@ -182,13 +184,14 @@ export function KpiTable({
           const v = latestByMetric[m.key];
           const val = v?.value ?? null;
           const used: string[] = v?.provenance?.sources_used ?? [];
-          const planned = m.status === "planned" || !v;
-          const expandable = !planned && !!v;
+          const state = deriveKpiState(m, val != null, variant);
+          const isLive = state.kind === "live";
+          const expandable = isLive; // "Warum dieser Wert?" nur bei echtem Score
           const isOpen = open === m.key;
           return (
             <Fragment key={m.key}>
               <TableRow
-                className={cn(planned ? "opacity-55" : "", expandable && "cursor-pointer")}
+                className={cn(!isLive && "opacity-60", expandable && "cursor-pointer")}
                 onClick={expandable ? () => setOpen(isOpen ? null : m.key) : undefined}
                 aria-expanded={expandable ? isOpen : undefined}
               >
@@ -212,8 +215,21 @@ export function KpiTable({
                   {m.measures && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{m.measures}</p>}
                 </TableCell>
                 <TableCell>
-                  {planned ? <span className="text-xs text-muted-foreground italic">geplant</span>
-                    : <span className="font-semibold tabular-nums" style={{ color: scoreColor(val) }}>{val == null ? "–" : Math.round(val)}</span>}
+                  {isLive ? (
+                    <span className="font-semibold tabular-nums" style={{ color: scoreColor(val) }}>{val == null ? "–" : Math.round(val)}</span>
+                  ) : state.kind === "unconnected" && state.linkable && onConnect ? (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onConnect(state.connectSource!); }}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                    >
+                      <Plug className="w-3 h-3" /> nicht verbunden <ArrowRight className="w-3 h-3" />
+                    </button>
+                  ) : state.kind === "planned" ? (
+                    <span className="text-xs text-muted-foreground italic">{state.label}</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{state.label}</span>
+                  )}
                 </TableCell>
                 <TableCell><CoverageBadge coverage={v?.coverage} /></TableCell>
                 <TableCell>

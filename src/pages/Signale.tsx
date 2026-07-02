@@ -69,6 +69,16 @@ const GROUPS: GroupDef[] = [
   },
 ];
 
+// cap_metrics.connect_source → passende Gruppe/Quelle in der Datenquellen-Sub-Sidebar.
+// Deep-Link aus einer "nicht verbunden"-KPI springt genau dorthin.
+const CONNECT_TARGET: Record<string, { group: string; source: string }> = {
+  stripe: { group: "umsatz", source: "stripe" },
+  shopify: { group: "umsatz", source: "shopify" },
+  bank: { group: "finanzen", source: "bank" },
+  maesn: { group: "finanzen", source: "buchhaltung" },
+  hubspot: { group: "crm", source: "hubspot" },
+};
+
 // Kommt der Nutzer von einem OAuth-Redirect zurück, springt er direkt in die
 // richtige Gruppe/Quelle. Wird EINMAL beim ersten Render gelesen (bevor eine
 // Karte window.location.search per replaceState aufräumt).
@@ -172,6 +182,17 @@ export default function Signale() {
       else n.add(k);
       return n;
     });
+
+  // Deep-Link aus einer "nicht verbunden"-KPI → passende Gruppe/Quelle aufklappen.
+  const goConnect = (cs: string) => {
+    const t = CONNECT_TARGET[cs];
+    setSection("quellen");
+    if (t) {
+      setOpenGroups((prev) => new Set(prev).add(t.group));
+      setOpenSources((prev) => new Set(prev).add(t.source));
+    }
+    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch { /* ignore */ }
+  };
 
   // Welche Quellen liefern gerade Signale? Rein aus den bereits geladenen
   // Metric-Values (provenance.sources_used) — keine zusätzlichen Hooks.
@@ -312,7 +333,7 @@ export default function Signale() {
               </h2>
               {account.account_type === "demo" && <IllustrativeBadge />}
             </div>
-            <AccountDashboard account={account} data={dash} />
+            <AccountDashboard account={account} data={dash} variant="tenant" onConnectSource={goConnect} />
             {anyIdle && (
               <button
                 onClick={() => setSection("quellen")}

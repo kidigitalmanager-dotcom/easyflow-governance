@@ -32,7 +32,11 @@ export type AccountDashboardData = {
   freshness?: FreshnessRow[];
 };
 
-export function AccountDashboard({ account, data }: { account: CapAccount; data?: AccountDashboardData }) {
+export function AccountDashboard({ account, data, variant = "investor", onConnectSource }: {
+  account: CapAccount; data?: AccountDashboardData;
+  variant?: "tenant" | "investor";           // "tenant" = eigene /signale-Ansicht (Deep-Links aktiv)
+  onConnectSource?: (source: string) => void; // springt in die Datenquellen-Sub-Sidebar
+}) {
   const injected = !!data;
   const catalog = useCapCatalog();
   // Anon-client hooks can't read a consent=false tenant, so disable them when data is injected.
@@ -180,7 +184,7 @@ export function AccountDashboard({ account, data }: { account: CapAccount; data?
           </CardHeader>
           <CardContent>
             {selectedCat
-              ? <KpiTable metrics={metricsForCat} latestByMetric={model.latestByMetric} sourceName={sourceName} />
+              ? <KpiTable metrics={metricsForCat} latestByMetric={model.latestByMetric} sourceName={sourceName} variant={variant} onConnect={onConnectSource} />
               : <p className="text-sm text-muted-foreground py-8 text-center">Links eine Kategorie anklicken, um die einzelnen KPIs und ihre Quellen zu sehen.</p>}
           </CardContent>
         </Card>
