@@ -6,7 +6,8 @@ import type {
   HealthPoint, CategoryPoint, MetricValue,
   CapAlert, CapHealthBenchmark, CapCategoryBenchmark, FreshnessRow,
 } from "@/lib/capital";
-import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds } from "@/lib/api-client";
+import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds, getCapitalTicketingStatus, connectCapitalTicketing, syncCapitalTicketing } from "@/lib/api-client";
+import type { CapitalTicketingConnectInput } from "@/lib/api-client";
 
 export function useCapCatalog() {
   return useQuery({
@@ -280,6 +281,25 @@ export function useSyncCapitalMetaAds() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => syncCapitalMetaAds(),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+
+// ── Capital-Layer: Ticketing (risk_*/cust_csat + ops) ──
+export function useCapitalTicketingStatus() {
+  return useQuery({ queryKey: ["cap", "ticketing", "status"], queryFn: () => getCapitalTicketingStatus(), retry: false });
+}
+export function useConnectCapitalTicketing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CapitalTicketingConnectInput) => connectCapitalTicketing(input),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+export function useSyncCapitalTicketing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => syncCapitalTicketing(),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
   });
 }

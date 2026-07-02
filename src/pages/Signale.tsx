@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Lock, ShieldCheck, Activity, Plug, CreditCard, Landmark, Users, Megaphone,
+  Lock, ShieldCheck, Activity, Plug, CreditCard, Landmark, Users, Megaphone, LifeBuoy,
   ChevronRight, ArrowRight, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,7 @@ import { CapitalAccountingConnect } from "@/components/capital/CapitalAccounting
 import { CapitalStripeConnect } from "@/components/capital/CapitalStripeConnect";
 import { CapitalShopifyConnect } from "@/components/capital/CapitalShopifyConnect";
 import { CapitalMetaAdsConnect } from "@/components/capital/CapitalMetaAdsConnect";
+import { CapitalTicketingConnect } from "@/components/capital/CapitalTicketingConnect";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
 
 const SELF_SLUG = "self_demo";
@@ -74,6 +75,12 @@ const GROUPS: GroupDef[] = [
       { key: "meta_ads", label: "Meta Ads", sourceKeys: ["meta_ads"], card: <CapitalMetaAdsConnect /> },
     ],
   },
+  {
+    key: "support", label: "Support/Service", icon: LifeBuoy,
+    sources: [
+      { key: "ticketing", label: "Ticketing (HubSpot/Zendesk/Freshdesk)", sourceKeys: ["ticketing"], card: <CapitalTicketingConnect /> },
+    ],
+  },
 ];
 
 // cap_metrics.connect_source → passende Gruppe/Quelle in der Datenquellen-Sub-Sidebar.
@@ -85,6 +92,7 @@ const CONNECT_TARGET: Record<string, { group: string; source: string }> = {
   maesn: { group: "finanzen", source: "buchhaltung" },
   hubspot: { group: "crm", source: "hubspot" },
   meta_ads: { group: "marketing", source: "meta_ads" },
+  ticketing: { group: "support", source: "ticketing" },
 };
 
 // Kommt der Nutzer von einem OAuth-Redirect zurück, springt er direkt in die

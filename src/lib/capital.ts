@@ -154,7 +154,7 @@ export const CONNECT_SOURCE_LABEL: Record<string, string> = {
   logistics: "Versand/Logistik", crm_targets: "Vertriebsziele", insolvency_feed: "Insolvenz-Feed",
 };
 // Connectoren mit einer Connect-Karte in der /signale-Datenquellen-Sub-Sidebar → Deep-Link möglich.
-export const CONNECTABLE_IN_SIGNALE = new Set(["stripe", "shopify", "bank", "maesn", "hubspot", "meta_ads"]);
+export const CONNECTABLE_IN_SIGNALE = new Set(["stripe", "shopify", "bank", "maesn", "hubspot", "meta_ads", "ticketing"]);
 
 export function connectSourceLabel(cs: string | null | undefined): string | null {
   if (!cs) return null;

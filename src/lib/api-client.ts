@@ -948,6 +948,54 @@ export const callbackCapitalMetaAds = (code: string, state: string) =>
 export const syncCapitalMetaAds = () =>
   apiPost<CapitalMetaAdsSyncResponse>("/v1/capital/meta-ads/sync", {});
 
+// ── Capital-Layer: Ticketing-Connector (HubSpot Service Hub / Zendesk / Freshdesk) → risk_*/cust_csat + ops ──
+export interface CapitalTicketingStatus {
+  ok: boolean;
+  connected: boolean;
+  status: string;
+  provider?: string | null;
+  subdomain?: string | null;
+  hubspot_available?: boolean;
+  providers?: string[];
+  consent_at?: string | null;
+  last_sync_at?: string | null;
+  last_error?: string | null;
+}
+export interface CapitalTicketingSyncResponse {
+  ok: boolean;
+  provider?: string;
+  period?: string | null;
+  tickets?: number;
+  category_coverage?: number;
+  csat_ratings?: number;
+  open_backlog?: number;
+  metrics?: { metric_key: string; value: number; coverage: number }[];
+  emitted_keys?: string[];
+  skipped_keys?: string[];
+  posted?: boolean;
+  ingest_status?: number;
+  error?: string;
+}
+export interface CapitalTicketingConnectResponse {
+  ok: boolean;
+  status?: string;
+  provider?: string;
+  sync?: CapitalTicketingSyncResponse | null;
+  error?: string;
+  hint?: string;
+}
+export interface CapitalTicketingConnectInput {
+  provider: "hubspot" | "zendesk" | "freshdesk";
+  subdomain?: string; email?: string; api_token?: string; // zendesk
+  domain?: string; api_key?: string;                        // freshdesk
+}
+export const getCapitalTicketingStatus = () =>
+  apiGetV1<CapitalTicketingStatus>("/v1/capital/ticketing/status");
+export const connectCapitalTicketing = (input: CapitalTicketingConnectInput) =>
+  apiPost<CapitalTicketingConnectResponse>("/v1/capital/ticketing/connect", input as unknown as Record<string, unknown>);
+export const syncCapitalTicketing = () =>
+  apiPost<CapitalTicketingSyncResponse>("/v1/capital/ticketing/sync", {});
+
 export const revertSpreadsheetAction = (bulkId: string) =>
   apiPost<SpreadsheetRevertResponse>("/v1/spreadsheet/revert", { bulk_id: bulkId });
 
