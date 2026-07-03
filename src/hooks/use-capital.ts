@@ -7,7 +7,7 @@ import type {
   CapAlert, CapHealthBenchmark, CapCategoryBenchmark, FreshnessRow,
   VerificationTierRow,
 } from "@/lib/capital";
-import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds, getCapitalTicketingStatus, connectCapitalTicketing, syncCapitalTicketing } from "@/lib/api-client";
+import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, disconnectCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds, getCapitalTicketingStatus, connectCapitalTicketing, syncCapitalTicketing } from "@/lib/api-client";
 import type { CapitalTicketingConnectInput } from "@/lib/api-client";
 
 export function useCapCatalog() {
@@ -227,6 +227,13 @@ export function useSyncCapitalStripe() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => syncCapitalStripe(),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
+  });
+}
+export function useDisconnectCapitalStripe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => disconnectCapitalStripe(),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
   });
 }

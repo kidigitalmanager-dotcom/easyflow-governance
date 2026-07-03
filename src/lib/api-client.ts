@@ -825,6 +825,18 @@ export const callbackCapitalStripe = (code: string, state: string) =>
   apiPost<CapitalStripeCallbackResponse>("/v1/capital/stripe/callback", { code, state });
 export const syncCapitalStripe = () =>
   apiPost<CapitalStripeSyncResponse>("/v1/capital/stripe/sync", {});
+export interface CapitalStripeDisconnectResponse {
+  ok: boolean;
+  status?: string;
+  disconnected?: boolean;
+  revoked?: boolean;
+  revoke_note?: string | null;
+  already?: boolean;
+  stripe_account?: string | null;
+  error?: string;
+}
+export const disconnectCapitalStripe = () =>
+  apiPost<CapitalStripeDisconnectResponse>("/v1/capital/stripe/disconnect", {});
 
 // ── Capital-Layer Step 3: Shopify-Revenue-Connector (Public-App-OAuth) → rev_*-Indizes ──
 export interface CapitalShopifyStatus {
