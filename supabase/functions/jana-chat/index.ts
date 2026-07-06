@@ -3,6 +3,7 @@ import {
   shapeContext, buildChatPrompt, buildExplainDivergencePrompt, weeklyPriorities,
   validateAnswer, extractProxyText, resolveModelId, resolveMaxTokens,
   classifyComplexity, bedrockInvokeUrl, extractProxyModel,
+  rankPortfolio, buildPortfolioPrompt, validatePortfolioAnswer,
   type RawBundle,
 } from "./core.ts";
 
@@ -131,6 +132,79 @@ async function callBedrock(url: string, token: string, prompt: string, model: st
   }
 }
 
+// ── Investor Data-Room (M2): Portfolio-Aggregat ueber das sichtbare Universe ──
+// Laedt nur die zum Ranking noetigen Aggregate (kein loadBundle je Firma) via
+// service_role, streng gescoped auf extern-ODER-freigegeben. Ranking + Zitat-
+// Validierung liegen in core.ts (rein/testbar). Die Rangliste steht IMMER (auch
+// ohne Bedrock-Secret); das LLM formuliert nur die Antwort.
+async function handleInvestorPortfolio(svc: any, body: any) {
+  const filterIn = String(body.filter ?? "").trim();
+  const filter = (["falling_slope", "critical_alerts", "stale_data", "adverse_news"].includes(filterIn) ? filterIn : null) as
+    | "falling_slope" | "critical_alerts" | "stale_data" | "adverse_news" | null;
+  const message = String(body.message ?? "").trim();
+  const limit = Math.max(1, Math.min(30, Number(body.limit) || 12));
+
+  // 1) Sichtbares Universe: extern ODER ausdruecklich freigegeben (Gate serverseitig).
+  const { data: accRows, error: accErr } = await svc.from("cap_accounts")
+    .select("id, slug, name, account_type, vertical, consent_data_sharing")
+    .or("account_type.eq.external,consent_data_sharing.eq.true");
+  if (accErr) return json(500, { error: accErr.message });
+  const accounts = (accRows ?? []).filter((a: any) => a.account_type === "external" || a.consent_data_sharing === true);
+  const ids = accounts.map((a: any) => a.id);
+  const emptyBase = { ok: true, mode: "investor", action: "investor_portfolio", filter, universe_size: 0, hits: [], generated_at: new Date().toISOString() };
+  if (!ids.length) return json(200, { ...emptyBase, llm_configured: false, answer: null, citations: [] });
+
+  // 2) Aggregat-Quellen parallel, jeweils streng auf das sichtbare Set gescoped.
+  const [latestRes, slopeRes, alertRes, tierRes, freshRes, toneRes] = await Promise.all([
+    svc.from("cap_account_latest").select("account_id, health_score, coverage, period, is_illustrative").in("account_id", ids),
+    svc.from("cap_health_slope_sql").select("account_id, slope6, net_drop6, n_points").in("account_id", ids),
+    svc.from("cap_alerts").select("account_id, kind, severity, status, period, first_detected_at, message, value_now, subject_key").eq("status", "open").in("account_id", ids),
+    svc.from("cap_verification_tier").select("account_id, verification_tier").eq("is_latest", true).in("account_id", ids),
+    svc.from("cap_freshness").select("account_id, status").in("account_id", ids),
+    svc.from("cap_metric_values").select("account_id, value, period").eq("metric_key", "proxy_news_tone").in("account_id", ids).order("period", { ascending: false }),
+  ]);
+  for (const r of [latestRes, slopeRes, alertRes, tierRes, freshRes, toneRes]) { if (r.error) return json(500, { error: r.error.message }); }
+
+  const latest = new Map<string, any>(); for (const r of (latestRes.data ?? [])) latest.set(r.account_id, r);
+  const slope = new Map<string, any>(); for (const r of (slopeRes.data ?? [])) slope.set(r.account_id, r);
+  const tier = new Map<string, string>(); for (const r of (tierRes.data ?? [])) tier.set(r.account_id, r.verification_tier);
+  const alertsBy = new Map<string, any[]>(); for (const r of (alertRes.data ?? [])) { if (!alertsBy.has(r.account_id)) alertsBy.set(r.account_id, []); alertsBy.get(r.account_id)!.push(r); }
+  const freshBy = new Map<string, any[]>(); for (const r of (freshRes.data ?? [])) { if (!freshBy.has(r.account_id)) freshBy.set(r.account_id, []); freshBy.get(r.account_id)!.push(r); }
+  const toneBy = new Map<string, number>(); for (const r of (toneRes.data ?? [])) { if (!toneBy.has(r.account_id) && r.value != null) toneBy.set(r.account_id, Number(r.value)); } // period-desc -> erster = neuester
+
+  const rows = accounts.map((a: any) => {
+    const l = latest.get(a.id) ?? {};
+    const s = slope.get(a.id) ?? {};
+    return {
+      id: a.id, slug: a.slug, name: a.name, account_type: a.account_type, vertical: a.vertical,
+      consent_data_sharing: a.consent_data_sharing,
+      is_illustrative: !!l.is_illustrative, health_now: l.health_score ?? null, coverage: l.coverage ?? null, period: l.period ?? null,
+      slope6: s.slope6 ?? null, net_drop6: s.net_drop6 ?? null, verification_tier: tier.get(a.id) ?? null,
+      alerts: alertsBy.get(a.id) ?? [], freshness: freshBy.get(a.id) ?? [], news_tone: toneBy.get(a.id) ?? null,
+    };
+  });
+
+  const ranking = rankPortfolio(rows, { filter, limit });
+  const base = { ok: true, mode: "investor", action: "investor_portfolio", filter: ranking.filter, universe_size: ranking.universe_size, hits: ranking.hits, generated_at: new Date().toISOString() };
+
+  // 3) LLM formuliert nur bei echter Frage + gesetztem Secret; die Rangliste steht immer.
+  const BEDROCK_URL = (Deno.env.get("USEEASY_BEDROCK_PROXY_URL") ?? "").trim();
+  const BEDROCK_TOKEN = (Deno.env.get("USEEASY_BEDROCK_AUTH_TOKEN") ?? Deno.env.get("USEEASY_SHARED_AUTH_TOKEN") ?? "").trim();
+  if (!message) return json(200, { ...base, llm_configured: !!(BEDROCK_URL && BEDROCK_TOKEN), answer: null, citations: [] });
+  if (!BEDROCK_URL || !BEDROCK_TOKEN) return json(200, { ...base, llm_configured: false, answer: null, citations: [] });
+
+  const env = { JANA_CHAT_MODEL_ID: Deno.env.get("JANA_CHAT_MODEL_ID"), JANA_CHAT_MODEL: Deno.env.get("JANA_CHAT_MODEL"), JANA_CHAT_MAX_TOKENS: Deno.env.get("JANA_CHAT_MAX_TOKENS") };
+  const model = resolveModelId(env, "complex"); // Portfolio-DD = belegtreu (Sonnet, sofern nicht ge-pinnt)
+  const maxTokens = resolveMaxTokens(env);
+  const llm = await callBedrock(BEDROCK_URL, BEDROCK_TOKEN, buildPortfolioPrompt(ranking, message), model, maxTokens);
+  if (!llm.ok) return json(200, { ...base, llm_configured: true, llm_error: llm.error, answer: null, citations: [] });
+  const v = validatePortfolioAnswer(llm.text, ranking);
+  return json(200, {
+    ...base, llm_configured: true, answer: v.answer, citations: v.citations, used_data: v.used_data,
+    confidence: v.confidence, dropped_citations: v.dropped_citations, parse_ok: v.parse_ok, model, proxy_model: llm.proxyModel ?? null,
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -147,6 +221,12 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({} as any));
     const action = String(body.action ?? "chat");
     const mode = String(body.mode ?? "tenant");
+
+    // Investor Data-Room (M2): Portfolio-Screening ueber das sichtbare Universe
+    // (extern ODER freigegeben). Deterministik-first, LLM formuliert + zitiert nur.
+    if (action === "investor_portfolio") {
+      return await handleInvestorPortfolio(svc, body);
+    }
 
     // Konto aufloesen.
     let acc: any = null;

@@ -311,3 +311,43 @@ export type WeeklyPrioritiesResponse = {
   account?: { name: string; slug: string; vertical: string | null } | null;
   latest_period?: string | null; priorities: WeeklyPriority[]; open_alert_count?: number;
 };
+
+
+// ── Investor Data-Room (M2): Portfolio-Screening ─────────────────────────────
+// Spiegelt die Antwort der jana-chat-Aktion `investor_portfolio` (deterministisch
+// gerankte Firmen des sichtbaren Universe + belegte LLM-Formulierung).
+export type PortfolioFilterKey = "falling_slope" | "critical_alerts" | "stale_data" | "adverse_news";
+export type PortfolioHit = {
+  id: string | null; slug: string; name: string; vertical: string | null; account_type: string | null;
+  is_illustrative: boolean; verification_tier: VerificationTierKind | null;
+  health: number | null; band: string; slope6: number | null; net_drop6: number | null;
+  risk_dir: "rising" | "stable" | "falling" | "unknown";
+  coverage: number | null; period: string | null;
+  open_alerts: number; critical_alerts: number; confirmed_alerts: number;
+  worst_freshness: "fresh" | "stale" | "dead" | "none"; stale_count: number;
+  news_tone: number | null; concern: number;
+};
+export type FirmCitation = { type: "firm"; key: string; label?: string; value?: number | null };
+export type InvestorPortfolioResponse = {
+  ok: boolean; mode?: string; action?: string;
+  filter: PortfolioFilterKey | null; universe_size: number; hits: PortfolioHit[];
+  llm_configured?: boolean; llm_error?: string;
+  answer: string | null; citations: FirmCitation[];
+  used_data?: boolean | null; confidence?: number | null; dropped_citations?: number; parse_ok?: boolean;
+  model?: string; proxy_model?: string | null; generated_at?: string;
+};
+export const PORTFOLIO_FILTERS: { key: PortfolioFilterKey; label: string; hint: string }[] = [
+  { key: "falling_slope", label: "Fallende Health-Kurve", hint: "Firmen mit der stärksten negativen 6-Monats-Steigung zuerst." },
+  { key: "critical_alerts", label: "Kritische Alerts", hint: "Firmen mit offenen kritischen Frühwarn-Signalen (bestätigte zuerst)." },
+  { key: "stale_data", label: "Dünne Datenlage", hint: "Firmen mit veralteten oder ausgefallenen Datenquellen." },
+  { key: "adverse_news", label: "Negativer News-Ton", hint: "Firmen mit dem schwächsten Nachrichten-Ton (adverse media, GDELT)." },
+];
+export const PORTFOLIO_FILTER_LABEL: Record<PortfolioFilterKey, string> = {
+  falling_slope: "Fallende Health-Steigung (6 Monate)",
+  critical_alerts: "Offene kritische Frühwarn-Signale",
+  stale_data: "Dünne/veraltete Datenlage",
+  adverse_news: "Negativer Nachrichten-Ton",
+};
+export function worstFreshnessLabel(w: PortfolioHit["worst_freshness"]): string {
+  return w === "dead" ? "Quelle inaktiv" : w === "stale" ? "veraltet" : "aktuell";
+}

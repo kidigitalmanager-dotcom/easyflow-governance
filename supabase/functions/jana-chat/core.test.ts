@@ -7,7 +7,8 @@ import {
   resolveModelId, resolveMaxTokens, extractProxyText, extractProxyModel, bandFor, trailingSlope, alertTier,
   classifyComplexity, bedrockInvokeUrl,
   DEFAULT_MODEL_ID, HAIKU_MODEL_ID,
-  type RawBundle,
+  isPortfolioVisible, toPortfolioHit, rankPortfolio, buildPortfolioPrompt, validatePortfolioAnswer,
+  type RawBundle, type PortfolioAccountRaw,
 } from "./core.ts";
 
 let passed = 0;
@@ -215,5 +216,129 @@ eq(extractProxyText({ nope: 1 }), "", "proxy unbekannt -> leer");
 eq(extractProxyModel({ model: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0", content: [{ text: "x" }] }), "eu.anthropic.claude-sonnet-4-5-20250929-v1:0", "proxy_model aus antwort");
 eq(extractProxyModel({ content: [{ text: "x" }] }), null, "kein model -> null");
 eq(extractProxyModel("roh"), null, "string -> null");
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Investor Data-Room (M2) — Portfolio-Aggregation
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Sichtbarkeits-Gate ZUERST: nur extern ODER freigegeben ───────────────────
+ok(isPortfolioVisible({ account_type: "external", consent_data_sharing: false }), "gate: extern sichtbar");
+ok(isPortfolioVisible({ account_type: "tenant", consent_data_sharing: true }), "gate: freigegeben sichtbar");
+ok(!isPortfolioVisible({ account_type: "tenant", consent_data_sharing: false }), "gate: tenant ohne freigabe unsichtbar");
+ok(!isPortfolioVisible({ account_type: "demo", consent_data_sharing: false }), "gate: demo ohne freigabe unsichtbar");
+
+const pfRows: PortfolioAccountRaw[] = [
+  // sichtbar, stark fallend, 2 kritische (1 bestätigt: distress alt >28d), tone niedrig, stale
+  { id: "a1", slug: "fall_co", name: "Fall Co", account_type: "external", consent_data_sharing: false, is_illustrative: false,
+    health_now: 30, coverage: 0.8, period: "2026-06-01", slope6: -12, net_drop6: -40, verification_tier: "external_proxy",
+    alerts: [
+      { severity: "critical", status: "open", kind: "distress_risk", period: "2026-06-01", first_detected_at: "2026-04-01", subject_key: "health" },
+      { severity: "critical", status: "open", kind: "trend_down", period: "2026-06-01", first_detected_at: "2026-06-01", subject_key: "rhi" },
+      { severity: "warning", status: "open", kind: "anomaly", period: "2026-06-01", first_detected_at: "2026-06-01", subject_key: "cli" },
+    ],
+    freshness: [{ status: "stale" }], news_tone: 30 },
+  // sichtbar, leicht steigend, keine kritischen, dead freshness, tone hoch (gesund)
+  { id: "a2", slug: "steady_co", name: "Steady Co", account_type: "external", consent_data_sharing: false, is_illustrative: false,
+    health_now: 72, coverage: 0.6, period: "2026-06-01", slope6: 1.5, net_drop6: 5, verification_tier: "external_proxy",
+    alerts: [], freshness: [{ status: "dead" }, { status: "fresh" }], news_tone: 80 },
+  // sichtbar (freigegeben), moderat fallend, 3 kritische (2 bestätigt), nur frisch, kein tone
+  { id: "a3", slug: "consent_co", name: "Consent Co", account_type: "tenant", consent_data_sharing: true, is_illustrative: false,
+    health_now: 45, coverage: 0.9, period: "2026-06-01", slope6: -3, net_drop6: -15, verification_tier: "first_party_verified",
+    alerts: [
+      { severity: "critical", status: "open", kind: "distress_risk", period: "2026-06-01", first_detected_at: "2026-03-01", subject_key: "health" },
+      { severity: "critical", status: "open", kind: "threshold_breach", period: "2026-06-01", first_detected_at: "2026-01-01", subject_key: "health" },
+      { severity: "critical", status: "open", kind: "trend_down", period: "2026-06-01", first_detected_at: "2026-06-01", subject_key: "csi" },
+    ],
+    freshness: [{ status: "fresh" }], news_tone: null },
+  // NICHT sichtbar (tenant ohne consent) — trotz schlimmster Werte NIE in hits
+  { id: "x", slug: "hidden_co", name: "Hidden", account_type: "tenant", consent_data_sharing: false, is_illustrative: false,
+    health_now: 5, coverage: 1, period: "2026-06-01", slope6: -20, net_drop6: -90, verification_tier: "first_party_verified",
+    alerts: [{ severity: "critical", status: "open", kind: "distress_risk", period: "2026-06-01", first_detected_at: "2026-01-01", subject_key: "health" }],
+    freshness: [{ status: "dead" }], news_tone: 10 },
+];
+const PF_NOW = Date.parse("2026-06-15T00:00:00Z");
+
+// toPortfolioHit: Zähler + confirmed via alertTier (Debounce)
+{
+  const h = toPortfolioHit(pfRows[0], PF_NOW);
+  eq(h.open_alerts, 3, "pf: open alerts gezählt");
+  eq(h.critical_alerts, 2, "pf: kritische gezählt");
+  eq(h.confirmed_alerts, 1, "pf: bestätigt (distress alt) gezählt, frischer trend nicht");
+  eq(h.band, "kritisch", "pf: health 30 kritisch");
+  eq(h.risk_dir, "falling", "pf: slope -12 fallend");
+  eq(h.worst_freshness, "stale", "pf: worst stale");
+  eq(toPortfolioHit(pfRows[1], PF_NOW).worst_freshness, "dead", "pf: dead schlägt fresh");
+}
+
+// rankPortfolio: Sichtbarkeits-Gate zieht hidden_co RAUS (trotz schlimmster Werte)
+{
+  const r = rankPortfolio(pfRows, { filter: null, nowMs: PF_NOW });
+  eq(r.universe_size, 3, "pf: 3 sichtbare (hidden gedroppt)");
+  ok(!r.hits.some((h) => h.slug === "hidden_co"), "pf: unsichtbare firma nie in default-hits");
+}
+// falling_slope: fall_co (-12) vor consent_co (-3) vor steady_co (+1.5)
+{
+  const r = rankPortfolio(pfRows, { filter: "falling_slope", nowMs: PF_NOW });
+  eq(r.hits[0].slug, "fall_co", "pf slope: stärkster abfall zuerst");
+  ok(r.hits.findIndex((h) => h.slug === "consent_co") < r.hits.findIndex((h) => h.slug === "steady_co"), "pf slope: fallend vor steigend");
+}
+// critical_alerts: consent_co (2 confirmed) vor fall_co (1 confirmed); steady_co (0 kritisch) ausgeschlossen
+{
+  const r = rankPortfolio(pfRows, { filter: "critical_alerts", nowMs: PF_NOW });
+  eq(r.hits[0].slug, "consent_co", "pf crit: meiste bestätigte kritische zuerst");
+  ok(!r.hits.some((h) => h.slug === "steady_co"), "pf crit: firma ohne kritische ausgeschlossen");
+}
+// stale_data: steady_co (dead) + fall_co (stale); consent_co (nur fresh) ausgeschlossen
+{
+  const r = rankPortfolio(pfRows, { filter: "stale_data", nowMs: PF_NOW });
+  eq(r.hits[0].slug, "steady_co", "pf stale: dead vor stale");
+  ok(r.hits.some((h) => h.slug === "fall_co"), "pf stale: stale-firma enthalten");
+  ok(!r.hits.some((h) => h.slug === "consent_co"), "pf stale: nur-frische firma ausgeschlossen");
+}
+// adverse_news: fall_co (30) vor steady_co (80); consent_co (null tone) ausgeschlossen
+{
+  const r = rankPortfolio(pfRows, { filter: "adverse_news", nowMs: PF_NOW });
+  eq(r.hits[0].slug, "fall_co", "pf news: schlechtester (niedrigster) ton zuerst");
+  ok(!r.hits.some((h) => h.slug === "consent_co"), "pf news: firma ohne ton ausgeschlossen");
+}
+eq(rankPortfolio(pfRows, { filter: null, limit: 1, nowMs: PF_NOW }).hits.length, 1, "pf: limit greift");
+
+// buildPortfolioPrompt: Regeln + firm-slug + redigierte Frage + firm-zitat-format
+{
+  const r = rankPortfolio(pfRows, { filter: "falling_slope", nowMs: PF_NOW });
+  const p = buildPortfolioPrompt(r, "Welche Firma faellt am staerksten? mail an chef@x.de");
+  ok(p.includes("Due-Diligence"), "pf prompt: rolle");
+  ok(p.includes("fall_co"), "pf prompt: firm-slug im context");
+  ok(p.includes("[email]"), "pf prompt: frage redigiert");
+  ok(p.includes('"type": "firm"'), "pf prompt: firm-zitat-format");
+  ok(!p.includes("hidden_co"), "pf prompt: unsichtbare firma nicht im context");
+}
+// validatePortfolioAnswer: nur firm-slugs AUS der Rangliste (Anti-Halluzination)
+{
+  const r = rankPortfolio(pfRows, { filter: null, nowMs: PF_NOW });
+  const good = JSON.stringify({ answer: "Fall Co ist am kritischsten.", citations: [{ type: "firm", key: "fall_co" }, { type: "firm", key: "hidden_co" }, { type: "kpi", key: "rhi" }], used_data: true, confidence: 0.8 });
+  const v = validatePortfolioAnswer(good, r);
+  eq(v.citations.length, 1, "pf validate: nur gültiger firm-slug bleibt");
+  eq(v.citations[0].key, "fall_co", "pf validate: gültige firma");
+  eq(v.citations[0].value, 30, "pf validate: zitat mit health angereichert");
+  eq(v.dropped_citations, 2, "pf validate: unsichtbare firma + falscher typ verworfen");
+  eq(v.parse_ok, true, "pf validate: parse ok");
+  eq(v.confidence, 0.8, "pf validate: confidence übernommen");
+}
+{
+  const r = rankPortfolio(pfRows, { filter: null, nowMs: PF_NOW });
+  const v = validatePortfolioAnswer("kein json, 42.", r);
+  eq(v.parse_ok, false, "pf validate: rohtext parse_ok false");
+  eq(v.citations.length, 0, "pf validate: rohtext keine zitate");
+  const dup = validatePortfolioAnswer(JSON.stringify({ answer: "x", citations: [{ type: "firm", key: "fall_co" }, { type: "firm", key: "fall_co" }] }), r);
+  eq(dup.citations.length, 1, "pf validate: dedupe firm-zitate");
+}
+
+// ── Sichtbarkeits-Gate ZULETZT (bracketing) ─────────────────────────────────
+ok(!rankPortfolio(pfRows, { filter: "critical_alerts", nowMs: PF_NOW }).hits.some((h) => h.slug === "hidden_co"), "gate zuletzt: hidden nie in kritische-alerts-hits");
+ok(!rankPortfolio(pfRows, { filter: "adverse_news", nowMs: PF_NOW }).hits.some((h) => h.slug === "hidden_co"), "gate zuletzt: hidden nie in news-hits");
+ok(!isPortfolioVisible({ account_type: "demo", consent_data_sharing: false }), "gate zuletzt: demo ohne consent unsichtbar");
+
 
 console.log(`\nOK — ${passed} Assertions bestanden.`);

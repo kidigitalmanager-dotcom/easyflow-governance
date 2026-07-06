@@ -535,3 +535,206 @@ function numOr(x: unknown, d: number): number { const n = numOrNull(x); return n
 function round2(x: number | null): number | null { return x == null ? null : Math.round(x * 100) / 100; }
 function stripSuffix(name: string): string { return String(name || "").replace(/\s*\([^)]*\)\s*$/, "").trim(); }
 function firstClause(measures: string | null | undefined): string | null { const m = (measures || "").trim(); if (!m) return null; const first = m.split(/[;.]/)[0].trim(); return first || m; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Investor Data-Room (M2) — Portfolio-Aggregation (deterministisch, testbar).
+// Rankt das SICHTBARE Universe (extern ODER freigegeben) hart nach DD-Dimensionen
+// (fallende Health-Steigung, kritische/bestätigte Alerts, dünne Freshness,
+// negativer Nachrichten-Ton). Das LLM formuliert nur die Antwort und darf NUR
+// Firmen aus der Rangliste per slug zitieren (Zitat-Validierung).
+// ─────────────────────────────────────────────────────────────────────────────
+export type PortfolioFilter = "falling_slope" | "critical_alerts" | "stale_data" | "adverse_news" | null;
+
+export type PortfolioAlertRaw = {
+  kind?: string; severity?: string; status?: string;
+  period?: string | null; first_detected_at?: string | null;
+  message?: string; value_now?: number | null; subject_key?: string;
+};
+export type PortfolioAccountRaw = {
+  id?: string | null; slug: string; name?: string | null;
+  account_type?: string | null; vertical?: string | null; consent_data_sharing?: boolean | null;
+  is_illustrative?: boolean | null; health_now?: number | null; coverage?: number | null; period?: string | null;
+  slope6?: number | null; net_drop6?: number | null; verification_tier?: string | null;
+  alerts?: PortfolioAlertRaw[]; freshness?: Array<{ status?: string | null }>; news_tone?: number | null;
+};
+export type PortfolioHit = {
+  id: string | null; slug: string; name: string; vertical: string | null; account_type: string | null;
+  is_illustrative: boolean; verification_tier: string | null;
+  health: number | null; band: string; slope6: number | null; net_drop6: number | null;
+  risk_dir: "rising" | "stable" | "falling" | "unknown";
+  coverage: number | null; period: string | null;
+  open_alerts: number; critical_alerts: number; confirmed_alerts: number;
+  worst_freshness: "fresh" | "stale" | "dead" | "none"; stale_count: number;
+  news_tone: number | null; concern: number;
+};
+export type PortfolioRanking = { filter: PortfolioFilter; universe_size: number; hits: PortfolioHit[] };
+
+// Sichtbarkeits-Gate (Spiegel des index.ts `.or()`-Filters): NUR extern ODER freigegeben.
+export function isPortfolioVisible(a: { account_type?: string | null; consent_data_sharing?: boolean | null }): boolean {
+  return a?.account_type === "external" || a?.consent_data_sharing === true;
+}
+
+const FRESH_RANK_P: Record<string, number> = { dead: 3, stale: 2, no_sla: 1, fresh: 0 };
+function freshRank(w: string): number { return w === "dead" ? 3 : w === "stale" ? 2 : 0; }
+function riskDirFromSlope(slope: number | null, points = 99): "rising" | "stable" | "falling" | "unknown" {
+  if (slope == null || points < 3) return "unknown";
+  if (slope <= -1.0) return "falling";
+  if (slope >= 1.0) return "rising";
+  return "stable";
+}
+
+export function toPortfolioHit(a: PortfolioAccountRaw, nowMs = Date.now()): PortfolioHit {
+  let open = 0, crit = 0, confirmed = 0;
+  for (const al of (a.alerts ?? [])) {
+    if ((al.status ?? "open") !== "open") continue;
+    open++;
+    if (al.severity === "critical") { crit++; if (alertTier(al as RawAlert, nowMs) === "confirmed") confirmed++; }
+  }
+  let worstRank = 0, staleCount = 0;
+  for (const f of (a.freshness ?? [])) {
+    const s = String(f.status ?? "");
+    if (s === "stale" || s === "dead") staleCount++;
+    const r = FRESH_RANK_P[s] ?? 0;
+    if (r > worstRank) worstRank = r;
+  }
+  const worst_freshness = worstRank >= 3 ? "dead" : worstRank >= 2 ? "stale" : "none";
+  const health = numOrNull(a.health_now);
+  const slope6 = numOrNull(a.slope6);
+  const tone = numOrNull(a.news_tone);
+  // concern: deterministisches Composite NUR zur Reihung; jede Einzelzahl bleibt separat belegbar.
+  const concern =
+    (health == null ? 0 : (100 - health)) +
+    (slope6 != null && slope6 < 0 ? -slope6 * 3 : 0) +
+    confirmed * 8 + crit * 3 +
+    (worst_freshness === "dead" ? 10 : staleCount * 2) +
+    (tone != null && tone < 50 ? (50 - tone) * 0.3 : 0);
+  return {
+    id: a.id ?? null, slug: a.slug, name: a.name ?? a.slug, vertical: a.vertical ?? null,
+    account_type: a.account_type ?? null, is_illustrative: !!a.is_illustrative,
+    verification_tier: a.verification_tier ?? null,
+    health, band: bandFor(health), slope6, net_drop6: numOrNull(a.net_drop6), risk_dir: riskDirFromSlope(slope6),
+    coverage: numOrNull(a.coverage), period: a.period ?? null,
+    open_alerts: open, critical_alerts: crit, confirmed_alerts: confirmed,
+    worst_freshness, stale_count: staleCount, news_tone: tone, concern: Math.round(concern * 100) / 100,
+  };
+}
+
+// Rankt das sichtbare Universe deterministisch. Filtert defensiv ERNEUT auf
+// Sichtbarkeit (Belt-and-Suspenders zum SQL-Gate) — unsichtbare Firmen nie in hits.
+export function rankPortfolio(rows: PortfolioAccountRaw[], opts?: { filter?: PortfolioFilter; limit?: number; nowMs?: number }): PortfolioRanking {
+  const filter = opts?.filter ?? null;
+  const limit = Math.max(1, Math.min(50, opts?.limit ?? 12));
+  const nowMs = opts?.nowMs ?? Date.now();
+  const visible = rows.filter(isPortfolioVisible);
+  const hits = visible.map((r) => toPortfolioHit(r, nowMs));
+
+  let filtered = hits;
+  let cmp: (a: PortfolioHit, b: PortfolioHit) => number;
+  switch (filter) {
+    case "falling_slope":
+      filtered = hits.filter((h) => h.slope6 != null);
+      cmp = (a, b) => (a.slope6! - b.slope6!) || ((a.net_drop6 ?? 0) - (b.net_drop6 ?? 0)) || ((a.health ?? 999) - (b.health ?? 999));
+      break;
+    case "critical_alerts":
+      filtered = hits.filter((h) => h.critical_alerts > 0);
+      cmp = (a, b) => (b.confirmed_alerts - a.confirmed_alerts) || (b.critical_alerts - a.critical_alerts) || ((a.health ?? 999) - (b.health ?? 999));
+      break;
+    case "stale_data":
+      filtered = hits.filter((h) => h.worst_freshness !== "none");
+      cmp = (a, b) => (freshRank(b.worst_freshness) - freshRank(a.worst_freshness)) || (b.stale_count - a.stale_count) || ((a.health ?? 999) - (b.health ?? 999));
+      break;
+    case "adverse_news":
+      filtered = hits.filter((h) => h.news_tone != null);
+      cmp = (a, b) => (a.news_tone! - b.news_tone!) || (b.concern - a.concern);
+      break;
+    default:
+      cmp = (a, b) => (b.concern - a.concern) || ((a.health ?? 999) - (b.health ?? 999));
+  }
+  return { filter, universe_size: visible.length, hits: [...filtered].sort(cmp).slice(0, limit) };
+}
+
+export const PORTFOLIO_FILTER_LABEL: Record<string, string> = {
+  falling_slope: "Fallende Health-Steigung (6 Monate)",
+  critical_alerts: "Offene kritische Frühwarn-Signale",
+  stale_data: "Dünne/veraltete Datenlage",
+  adverse_news: "Negativer Nachrichten-Ton",
+};
+
+export function buildPortfolioSystemPrompt(): string {
+  return [
+    "Du bist Jana, die Portfolio-Analystin von UseEasy für Investoren. Du beantwortest Due-Diligence-Fragen über ein PORTFOLIO von Firmen anhand ihrer Frühwarn-Signale (Capital-Layer, 0-100, höher = gesünder).",
+    "STRIKTE REGELN:",
+    "1. Nutze AUSSCHLIESSLICH die Firmen und Zahlen aus dem bereitgestellten CONTEXT (deterministisch vorab gerankte Firmenliste). Erfinde NIEMALS Firmen, Werte oder Ränge.",
+    '2. Jede Firma, die du nennst, MUSS mit einer Zitat-Referenz belegt sein: { "type": "firm", "key": "<slug>" } aus dem CONTEXT.',
+    "3. Beantworte die Frage anhand der gelieferten Rangliste. Wenn der CONTEXT die Frage nicht belegen kann (z.B. nach Firmen, die nicht in der Liste sind), sage das ehrlich statt zu raten.",
+    "4. Firmen mit is_illustrative=true sind Demonstrationsdaten (bekannte Insolvenzen zur Methodik-Veranschaulichung) — kennzeichne sie als illustrativ, behandle sie nicht als reale Live-Firmen.",
+    "5. KEINE Renditezusagen, keine Kauf-/Halte-/Verkaufsempfehlung, keine Prognose als Fakt. Du erklärst read-only die Signale (0-100, >=70 gesund, 50-69 beobachten, <50 kritisch).",
+    "6. Antworte kurz, klar und auf Deutsch. Nenne Score/Trend/Signale konkret mit Zahl.",
+    "ANTWORTFORMAT: Gib NUR ein JSON-Objekt zurück, ohne Markdown-Zaun:",
+    '{ "answer": "<deutsche Antwort>", "citations": [ { "type": "firm", "key": "<slug>" } ], "used_data": true|false, "confidence": 0.0-1.0 }',
+    "used_data=false, wenn der CONTEXT die Frage nicht belegen kann.",
+  ].join("\n");
+}
+
+export function portfolioContextForPrompt(ranking: PortfolioRanking): Record<string, unknown> {
+  return {
+    filter: ranking.filter,
+    filter_label: ranking.filter ? (PORTFOLIO_FILTER_LABEL[ranking.filter] ?? ranking.filter) : null,
+    universe_size: ranking.universe_size,
+    shown: ranking.hits.length,
+    firms: ranking.hits.map((h, i) => ({
+      rank: i + 1, slug: h.slug, name: h.name, vertical: h.vertical,
+      market_type: h.account_type === "external" ? "public_signals" : "consented",
+      is_illustrative: h.is_illustrative, verification_tier: h.verification_tier,
+      health: h.health, band: h.band, slope6: round2(h.slope6), net_drop6: round2(h.net_drop6), trend: h.risk_dir,
+      open_alerts: h.open_alerts, critical_alerts: h.critical_alerts, confirmed_alerts: h.confirmed_alerts,
+      freshness: h.worst_freshness, stale_signals: h.stale_count, news_tone: h.news_tone, coverage: h.coverage, period: h.period,
+    })),
+  };
+}
+
+export function buildPortfolioPrompt(ranking: PortfolioRanking, message: string): string {
+  return [
+    buildPortfolioSystemPrompt(),
+    "",
+    "CONTEXT (deterministisch vorab gerankte Firmen des Investoren-Portfolios, PII-frei):",
+    JSON.stringify(portfolioContextForPrompt(ranking)),
+    "",
+    `FRAGE DES INVESTORS: ${redactPII(message).slice(0, 1200)}`,
+    "",
+    "Antworte jetzt als JSON:",
+  ].join("\n");
+}
+
+export type FirmCitation = { type: "firm"; key: string; label?: string; value?: number | null };
+export type ValidatedPortfolioAnswer = {
+  answer: string; citations: FirmCitation[]; used_data: boolean | null;
+  confidence: number | null; dropped_citations: number; parse_ok: boolean;
+};
+export function validatePortfolioAnswer(rawText: string, ranking: PortfolioRanking): ValidatedPortfolioAnswer {
+  const parsed = parseLLMJson(rawText);
+  const bySlug = new Map(ranking.hits.map((h) => [h.slug, h]));
+  if (!parsed || typeof parsed !== "object") {
+    const fallback = String(rawText ?? "").replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+    return { answer: fallback || "Ich konnte dazu gerade keine belegte Antwort bilden.", citations: [], used_data: null, confidence: null, dropped_citations: 0, parse_ok: false };
+  }
+  const answer = typeof parsed.answer === "string" ? parsed.answer.trim() : "";
+  const rawCites: any[] = Array.isArray(parsed.citations) ? parsed.citations : [];
+  const citations: FirmCitation[] = [];
+  let dropped = 0;
+  const seen = new Set<string>();
+  for (const c of rawCites) {
+    if (!c || typeof c !== "object") { dropped++; continue; }
+    const type = String(c.type ?? "").toLowerCase();
+    const key = String(c.key ?? "").trim();
+    if (type !== "firm" || !key || !bySlug.has(key)) { dropped++; continue; }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const h = bySlug.get(key)!;
+    citations.push({ type: "firm", key, label: h.name, value: h.health });
+  }
+  const used_data = typeof parsed.used_data === "boolean" ? parsed.used_data : (citations.length > 0 ? true : null);
+  let confidence = numOrNull(parsed.confidence);
+  if (confidence != null) confidence = Math.max(0, Math.min(1, confidence));
+  return { answer: answer || "Ich konnte dazu gerade keine belegte Antwort bilden.", citations, used_data, confidence, dropped_citations: dropped, parse_ok: true };
+}

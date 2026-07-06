@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Landmark, ShieldCheck, Star, Globe } from "lucide-react";
@@ -8,6 +8,7 @@ import { useCapAccounts, useHealthSeries, useAlerts, useVerificationTiers } from
 import { AccountDashboard } from "@/components/capital/AccountDashboard";
 import { JanaChat } from "@/components/capital/JanaChat";
 import { ReportExportButton } from "@/components/capital/ReportExportButton";
+import { DataRoom } from "@/components/capital/DataRoom";
 import { ScoreBadge, Sparkline, IllustrativeBadge, CoverageBadge, VerificationBadge } from "@/components/capital/CapitalBits";
 import { RiskBadge, WatchButton, TieredAlertFeed, FeedHeader } from "@/components/capital/CapitalAlerts";
 import { useWatchlist, syncWatchlistFromServer } from "@/lib/watchlist";
@@ -101,6 +102,9 @@ export default function Investoren() {
   const tiers = useVerificationTiers();
   const tierMap = (tiers.data ?? {}) as Record<string, { verification_tier: string }>;
 
+  const detailRef = useRef<HTMLDivElement>(null);
+  const openFirm = (id: string) => { setSelectedId(id); setTimeout(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60); };
+
   // one-time cross-device merge (logged-in investors); anon → localStorage only
   useEffect(() => { void syncWatchlistFromServer(); }, []);
 
@@ -158,6 +162,9 @@ export default function Investoren() {
         </button>
       </header>
 
+      {/* Data-Room · Portfolio-Screening (M2 Investor-Tier) */}
+      <DataRoom onSelect={openFirm} selectedId={selectedId} />
+
       {/* Frühwarn-Alert-Feed (Datenfreigabe-Firmen + Markt-Index) */}
       <section className="space-y-3">
         <FeedHeader count={criticalCount} />
@@ -176,7 +183,7 @@ export default function Investoren() {
             {watchOnly ? "Keine beobachteten Firmen mit Datenfreigabe." : "Noch keine Firmen mit Datenfreigabe."}
           </CardContent></Card>
         ) : (
-          <FirmGrid accounts={visibleConsented} selectedId={selectedId} onSelect={setSelectedId} tierMap={tierMap} />
+          <FirmGrid accounts={visibleConsented} selectedId={selectedId} onSelect={openFirm} tierMap={tierMap} />
         )}
       </section>
 
@@ -207,10 +214,11 @@ export default function Investoren() {
             {watchOnly ? "Keine beobachteten Firmen im Markt-Index." : "Noch keine externen Firmen im Markt-Index."}
           </CardContent></Card>
         ) : (
-          <FirmGrid accounts={visibleExternal} selectedId={selectedId} onSelect={setSelectedId} tierMap={tierMap} />
+          <FirmGrid accounts={visibleExternal} selectedId={selectedId} onSelect={openFirm} tierMap={tierMap} />
         )}
       </section>
 
+      <div ref={detailRef} />
       {selected ? (
         <section className="space-y-3 pt-2">
           <div className="flex flex-wrap items-center justify-between gap-2">

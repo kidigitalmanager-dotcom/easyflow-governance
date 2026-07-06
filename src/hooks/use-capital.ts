@@ -7,6 +7,7 @@ import type {
   CapAlert, CapHealthBenchmark, CapCategoryBenchmark, FreshnessRow,
   VerificationTierRow,
   RiskShield, FoerderRadar, JanaChatResponse, WeeklyPrioritiesResponse,
+  InvestorPortfolioResponse, PortfolioFilterKey,
 } from "@/lib/capital";
 import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, disconnectCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds, getCapitalTicketingStatus, connectCapitalTicketing, syncCapitalTicketing, disconnectCapitalBank, disconnectCapitalAccounting, disconnectCapitalShopify, disconnectCapitalMetaAds, disconnectCapitalTicketing } from "@/lib/api-client";
 import type { CapitalTicketingConnectInput } from "@/lib/api-client";
@@ -574,6 +575,20 @@ export function useJanaChat() {
       message: v.message,
       history: v.history ?? [],
       ...(v.mode === "investor" && v.slug ? { mode: "investor", slug: v.slug } : {}),
+    }),
+  });
+}
+
+// M2 Investor Data-Room: Portfolio-Screening ueber das sichtbare Universe.
+// Aktion `investor_portfolio` — liefert IMMER die deterministische Rangliste
+// (hits); `answer`/`citations` nur bei echter Frage + gesetztem Bedrock-Secret.
+export function useInvestorPortfolio() {
+  return useMutation<InvestorPortfolioResponse, Error, { message?: string; filter?: PortfolioFilterKey | null; limit?: number }>({
+    mutationFn: (v) => callJana({
+      action: "investor_portfolio",
+      ...(v.message ? { message: v.message } : {}),
+      ...(v.filter ? { filter: v.filter } : {}),
+      ...(v.limit ? { limit: v.limit } : {}),
     }),
   });
 }
