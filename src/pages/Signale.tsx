@@ -27,6 +27,8 @@ import { ComplianceRadarCard } from "@/components/capital/ComplianceRadarCard";
 import { FoerderRadarCard } from "@/components/capital/FoerderRadarCard";
 import { JanaChat } from "@/components/capital/JanaChat";
 import { WeeklyPriorities } from "@/components/capital/WeeklyPriorities";
+import { OnboardingCoach } from "@/components/onboarding/OnboardingCoach";
+import { GuidedTour } from "@/components/onboarding/GuidedTour";
 
 const SELF_SLUG = "self_demo";
 const TERMS_VERSION = "v1.0";
@@ -185,6 +187,7 @@ export default function Signale() {
   const [section, setSection] = useState<SectionKey>(boot.section);
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(boot.groups));
   const [openSources, setOpenSources] = useState<Set<string>>(() => new Set(boot.sources));
+  const [tourOpen, setTourOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -281,7 +284,7 @@ export default function Signale() {
   return (
     <div className="space-y-5">
       {/* ── Sticky Kontext-Header: Firma + Health + Freigabe-Status ── */}
-      <div className="sticky top-0 z-20 -mx-8 -mt-8 px-8 py-3 bg-background/85 backdrop-blur border-b border-border">
+      <div data-tour="header" className="sticky top-0 z-20 -mx-8 -mt-8 px-8 py-3 bg-background/85 backdrop-blur border-b border-border">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
@@ -293,6 +296,13 @@ export default function Signale() {
             </div>
           </div>
           <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              onClick={() => setTourOpen(true)}
+              className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full border border-primary/25 bg-primary/5 text-primary hover:bg-primary/10"
+              title="Geführte Tour"
+            >
+              <Sparkles className="w-3 h-3" /> Tour
+            </button>
             {latestHealth != null && (
               <div className="hidden sm:flex items-center gap-1.5">
                 <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Health</span>
@@ -353,6 +363,7 @@ export default function Signale() {
         <div className="flex-1 min-w-0">
           {/* ══ Bereich 1: Signale & Gesundheit (nur Auswertung) ══ */}
           <section className={cn("space-y-4", section !== "signale" && "hidden")}>
+            <OnboardingCoach setSection={setSection} onStartTour={() => setTourOpen(true)} />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-medium text-muted-foreground">
@@ -362,7 +373,7 @@ export default function Signale() {
               </div>
               <ReportExportButton account={account} data={dash} variant="tenant" />
             </div>
-            <WeeklyPriorities />
+            <div data-tour="weekly"><WeeklyPriorities /></div>
             <AccountDashboard account={account} data={dash} variant="tenant" onConnectSource={goConnect} />
             {anyIdle && (
               <button
@@ -389,7 +400,7 @@ export default function Signale() {
           </section>
 
           {/* ══ Bereich 1c: Jana fragen (read-only Chat ueber die eigenen Signale) ══ */}
-          <section className={cn(section !== "jana" && "hidden")}>
+          <section data-tour="jana" className={cn(section !== "jana" && "hidden")}>
             <JanaChat account={account} />
           </section>
 
@@ -399,7 +410,7 @@ export default function Signale() {
           </section>
 
           {/* ══ Bereich 2: Datenquellen verbinden (2 Aufklapp-Ebenen) ══ */}
-          <section className={cn(section !== "quellen" && "hidden")}>
+          <section data-tour="quellen" className={cn(section !== "quellen" && "hidden")}>
             <div className="mb-4">
               <h2 className="text-sm font-semibold text-foreground">Datenquellen verbinden</h2>
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
@@ -478,7 +489,7 @@ export default function Signale() {
           </section>
 
           {/* ══ Bereich 3: Datenfreigabe (Consent) ══ */}
-          <section className={cn(section !== "freigabe" && "hidden")}>
+          <section data-tour="freigabe" className={cn(section !== "freigabe" && "hidden")}>
             {!consented ? (
               <Card className="glass-card border-primary/20">
                 <CardContent className="pt-6">
@@ -531,6 +542,7 @@ export default function Signale() {
           </section>
         </div>
       </div>
+      <GuidedTour open={tourOpen} onClose={() => setTourOpen(false)} setSection={setSection} />
     </div>
   );
 }

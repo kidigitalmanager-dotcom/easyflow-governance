@@ -11,6 +11,7 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { storeProviderTokens } from "@/lib/api-client";
+import { OnboardingNudges } from "@/components/onboarding/OnboardingNudges";
 
 export default function Uebersicht() {
   useEffect(() => {
@@ -48,6 +49,8 @@ export default function Uebersicht() {
         <h1 className="text-2xl font-semibold tracking-tight">Übersicht</h1>
         <p className="text-sm text-muted-foreground mt-1">Dein UseEasy Dashboard – KPIs, offene Reviews und Eskalationen.</p>
       </div>
+
+      <OnboardingNudges />
 
       {/* v4.26.0 (3A): nicht-technische "System verbessern?"-Karte */}
       {improve?.suggestion && !improveDismissed && (

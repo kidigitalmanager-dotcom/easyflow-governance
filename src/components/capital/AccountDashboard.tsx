@@ -98,7 +98,7 @@ export function AccountDashboard({ account, data, variant = "investor", onConnec
   return (
     <div className="space-y-5">
       {/* Header score */}
-      <Card className="glass-card">
+      <Card data-tour="health" className="glass-card">
         <CardContent className="pt-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -160,13 +160,13 @@ export function AccountDashboard({ account, data, variant = "investor", onConnec
       </div>
 
       {/* Timeline */}
-      <Card className="glass-card">
+      <Card data-tour="timeline" className="glass-card">
         <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Health-Verlauf (0–100, 100 = gesund)</CardTitle></CardHeader>
         <CardContent><HealthTimeline data={healthData} failureMonth={account.failure_month} /></CardContent>
       </Card>
 
       {/* Categories + drill-down */}
-      <div className="grid gap-5 lg:grid-cols-5">
+      <div data-tour="categories" className="grid gap-5 lg:grid-cols-5">
         <Card className="glass-card lg:col-span-2">
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Hauptkategorien</CardTitle></CardHeader>
           <CardContent>
