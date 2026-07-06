@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Lock, ShieldCheck, ShieldAlert, Activity, Plug, CreditCard, Landmark, Users, Megaphone, LifeBuoy,
-  ChevronRight, ArrowRight, type LucideIcon,
+  ChevronRight, ArrowRight, Sparkles, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,15 +23,18 @@ import { CapitalTicketingConnect } from "@/components/capital/CapitalTicketingCo
 import HubSpotIntegration from "@/components/HubSpotIntegration";
 import { RiskShieldCard } from "@/components/capital/RiskShieldCard";
 import { FoerderRadarCard } from "@/components/capital/FoerderRadarCard";
+import { JanaChat } from "@/components/capital/JanaChat";
+import { WeeklyPriorities } from "@/components/capital/WeeklyPriorities";
 
 const SELF_SLUG = "self_demo";
 const TERMS_VERSION = "v1.0";
 const SECTION_STORAGE_KEY = "ue.signale.section";
 
-type SectionKey = "signale" | "risk_shield" | "foerder" | "quellen" | "freigabe";
+type SectionKey = "signale" | "jana" | "risk_shield" | "foerder" | "quellen" | "freigabe";
 
 const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon }[] = [
   { key: "signale", label: "Signale & Gesundheit", icon: Activity },
+  { key: "jana", label: "Jana fragen", icon: Sparkles },
   { key: "risk_shield", label: "Risk Shield", icon: ShieldAlert },
   { key: "foerder", label: "Förder-Radar", icon: Landmark },
   { key: "quellen", label: "Datenquellen verbinden", icon: Plug },
@@ -354,6 +357,7 @@ export default function Signale() {
               </h2>
               {account.account_type === "demo" && <IllustrativeBadge />}
             </div>
+            <WeeklyPriorities />
             <AccountDashboard account={account} data={dash} variant="tenant" onConnectSource={goConnect} />
             {anyIdle && (
               <button
@@ -374,6 +378,11 @@ export default function Signale() {
           {/* ══ Bereich 1b: Risk Shield (Partner-Fruehwarnung) ══ */}
           <section className={cn(section !== "risk_shield" && "hidden")}>
             <RiskShieldCard />
+          </section>
+
+          {/* ══ Bereich 1c: Jana fragen (read-only Chat ueber die eigenen Signale) ══ */}
+          <section className={cn(section !== "jana" && "hidden")}>
+            <JanaChat account={account} />
           </section>
 
           {/* ══ Bereich 1c: Förder-Radar (latentes Kapital) ══ */}

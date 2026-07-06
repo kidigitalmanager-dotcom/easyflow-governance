@@ -266,3 +266,30 @@ export const FOERDER_VERTICALS: { key: string; label: string }[] = [
   { key: "bau", label: "Bau & Handwerk" },
   { key: "b2b_sales", label: "Dienstleistung" },
 ];
+
+
+// ── Jana-Chat (Read-only Q&A ueber die eigenen Signale) ──────────────────────
+export type JanaCitation = {
+  type: "kpi" | "source" | "alert" | "category" | "health" | "divergence";
+  key: string; label?: string; value?: number | null; period?: string | null;
+};
+export type JanaChatResponse = {
+  ok: boolean; has_own_account: boolean;
+  account?: { name: string; slug: string; vertical: string | null } | null;
+  llm_configured?: boolean; llm_error?: string;
+  answer: string | null; citations: JanaCitation[];
+  used_data?: boolean | null; confidence?: number | null;
+  dropped_citations?: number; parse_ok?: boolean;
+  model?: string; latest_period?: string | null;
+};
+export type WeeklyPriority = {
+  rank: number; title: string; severity: AlertSeverity | string; kind: AlertKind | string;
+  handlung: string;
+  beleg: { kpi: string | null; value: number | null; period: string | null; sources: string[] };
+  tier: "confirmed" | "watch" | string; alert_id: string;
+};
+export type WeeklyPrioritiesResponse = {
+  ok: boolean; has_own_account: boolean;
+  account?: { name: string; slug: string; vertical: string | null } | null;
+  latest_period?: string | null; priorities: WeeklyPriority[]; open_alert_count?: number;
+};

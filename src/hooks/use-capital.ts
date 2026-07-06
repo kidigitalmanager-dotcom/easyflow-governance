@@ -6,7 +6,7 @@ import type {
   HealthPoint, CategoryPoint, MetricValue,
   CapAlert, CapHealthBenchmark, CapCategoryBenchmark, FreshnessRow,
   VerificationTierRow,
-  RiskShield, FoerderRadar,
+  RiskShield, FoerderRadar, JanaChatResponse, WeeklyPrioritiesResponse,
 } from "@/lib/capital";
 import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, disconnectCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds, getCapitalTicketingStatus, connectCapitalTicketing, syncCapitalTicketing, disconnectCapitalBank, disconnectCapitalAccounting, disconnectCapitalShopify, disconnectCapitalMetaAds, disconnectCapitalTicketing } from "@/lib/api-client";
 import type { CapitalTicketingConnectInput } from "@/lib/api-client";
@@ -535,5 +535,53 @@ export function useFoerderRadar(vertical?: string) {
     queryKey: ["cap", "foerder", vertical ?? "self"],
     refetchOnWindowFocus: false,
     queryFn: () => callFoerder(vertical ? { vertical } : {}),
+  });
+}
+
+
+// ── Jana-Chat: read-only Q&A + Wochen-Prioritaeten ueber die eigenen Signale ──
+// Spiegelt useMySignals/useFoerderRadar: Console-Session via x-console-token; die
+// jana-chat Edge-Function liest mit service_role und belegt jede Aussage (KPI + Quelle).
+const CAPITAL_JANA_CHAT_URL = "https://vunhcexnwbvxrwecymiy.functions.supabase.co/jana-chat";
+
+async function callJana(body: Record<string, unknown>): Promise<any> {
+  const { data: { session } } = await authClient.auth.getSession();
+  const token = session?.access_token ?? "";
+  if (!token) throw new Error("not_authenticated");
+  const res = await fetch(CAPITAL_JANA_CHAT_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", apikey: CAPITAL_ANON, "x-console-token": token },
+    body: JSON.stringify(body),
+  });
+  const j = await res.json().catch(() => ({} as any));
+  if (!res.ok || j.ok === false) throw new Error(j.error || ("jana_failed_" + res.status));
+  return j;
+}
+
+export function useJanaChat() {
+  return useMutation<JanaChatResponse, Error, { message: string; history?: { role: string; content: string }[] }>({
+    mutationFn: (v) => callJana({ action: "chat", message: v.message, history: v.history ?? [] }),
+  });
+}
+
+export function useWeeklyPriorities() {
+  return useQuery<WeeklyPrioritiesResponse>({
+    queryKey: ["cap", "weekly-priorities"],
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const empty: WeeklyPrioritiesResponse = { ok: true, has_own_account: false, priorities: [] };
+      const { data: { session } } = await authClient.auth.getSession();
+      const token = session?.access_token ?? "";
+      if (!token) return empty;
+      const res = await fetch(CAPITAL_JANA_CHAT_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json", apikey: CAPITAL_ANON, "x-console-token": token },
+        body: JSON.stringify({ action: "weekly_priorities" }),
+      });
+      if (res.status === 401) return empty;
+      const j = await res.json().catch(() => ({} as any));
+      if (!res.ok || !j.ok) throw new Error(j.error || ("weekly_failed_" + res.status));
+      return j as WeeklyPrioritiesResponse;
+    },
   });
 }
