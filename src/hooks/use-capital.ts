@@ -6,7 +6,7 @@ import type {
   HealthPoint, CategoryPoint, MetricValue,
   CapAlert, CapHealthBenchmark, CapCategoryBenchmark, FreshnessRow,
   VerificationTierRow,
-  RiskShield, FoerderRadar, JanaChatResponse, WeeklyPrioritiesResponse,
+  RiskShield, FoerderRadar, JanaChatResponse, WeeklyPrioritiesResponse, MorningBriefingResponse,
   InvestorPortfolioResponse, PortfolioFilterKey,
 } from "@/lib/capital";
 import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, disconnectCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds, getCapitalTicketingStatus, connectCapitalTicketing, syncCapitalTicketing, disconnectCapitalBank, disconnectCapitalAccounting, disconnectCapitalShopify, disconnectCapitalMetaAds, disconnectCapitalTicketing } from "@/lib/api-client";
@@ -611,6 +611,35 @@ export function useWeeklyPriorities() {
       const j = await res.json().catch(() => ({} as any));
       if (!res.ok || !j.ok) throw new Error(j.error || ("weekly_failed_" + res.status));
       return j as WeeklyPrioritiesResponse;
+    },
+  });
+}
+
+// ── Morning-Briefing (V1 Jana): das tägliche 30-Sekunden-Ritual über die eigenen
+// Signale. Spiegelt useWeeklyPriorities: Console-Session (Auth-Projekt) via
+// x-console-token; die morning-briefing Edge-Function rechnet deterministisch das
+// Tagesfenster (Top-3 heute + Nacht-Delta + "Soll ich vorbereiten?"-Seed) aus
+// cap_alerts. jana-chat (M2) bleibt unberührt.
+const CAPITAL_MORNING_BRIEFING_URL = "https://vunhcexnwbvxrwecymiy.functions.supabase.co/morning-briefing";
+
+export function useMorningBriefing() {
+  return useQuery<MorningBriefingResponse>({
+    queryKey: ["cap", "morning-briefing"],
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const empty: MorningBriefingResponse = { ok: true, has_own_account: false };
+      const { data: { session } } = await authClient.auth.getSession();
+      const token = session?.access_token ?? "";
+      if (!token) return empty;
+      const res = await fetch(CAPITAL_MORNING_BRIEFING_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json", apikey: CAPITAL_ANON, "x-console-token": token },
+        body: JSON.stringify({ action: "morning_briefing" }),
+      });
+      if (res.status === 401) return empty;
+      const j = await res.json().catch(() => ({} as any));
+      if (!res.ok || !j.ok) throw new Error(j.error || ("morning_briefing_failed_" + res.status));
+      return j as MorningBriefingResponse;
     },
   });
 }

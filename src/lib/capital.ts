@@ -351,3 +351,23 @@ export const PORTFOLIO_FILTER_LABEL: Record<PortfolioFilterKey, string> = {
 export function worstFreshnessLabel(w: PortfolioHit["worst_freshness"]): string {
   return w === "dead" ? "Quelle inaktiv" : w === "stale" ? "veraltet" : "aktuell";
 }
+
+// ── Morning-Briefing (V1 Jana): Tagesfenster über cap_alerts, deterministisch ──
+export type MorningNightDelta = {
+  since?: string | null; window_hours?: number;
+  new: number; new_critical: number; resolved: number; note: string;
+};
+export type MorningSuggestion = {
+  alert_id: string; kpi: string | null; title: string;
+  cta_label: string; cta_action: string; prep: string; focus: string | null;
+} | null;
+export type MorningHealth = { now: number | null; prev: number | null; slope6: number | null; band: string } | null;
+export type MorningBriefingResponse = {
+  ok: boolean; mode?: string; has_own_account: boolean;
+  account?: { name: string; slug: string; vertical: string | null } | null;
+  latest_period?: string | null; generated_at?: string | null;
+  window_hours?: number; empty_case?: boolean; headline?: string;
+  health?: MorningHealth; open_alert_count?: number;
+  night_delta?: MorningNightDelta;
+  top_priorities?: WeeklyPriority[]; suggestion?: MorningSuggestion;
+};
