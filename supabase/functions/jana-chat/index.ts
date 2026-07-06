@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   shapeContext, buildChatPrompt, buildExplainDivergencePrompt, weeklyPriorities,
   validateAnswer, extractProxyText, resolveModelId, resolveMaxTokens,
+  classifyComplexity, bedrockInvokeUrl,
   type RawBundle,
 } from "./core.ts";
 
@@ -113,10 +114,10 @@ async function callBedrock(url: string, token: string, prompt: string, model: st
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 25000);
   try {
-    const r = await fetch(`${url.replace(/\/+$/, "")}/v1/invoke`, {
+    const r = await fetch(bedrockInvokeUrl(url), {
       method: "POST",
       headers: { "content-type": "application/json", "x-auth-token": token },
-      body: JSON.stringify({ model_id: model, prompt, max_tokens: maxTokens }),
+      body: JSON.stringify({ messages: [{ role: "user", content: prompt }], max_tokens: maxTokens, model_id: model }),
       signal: ctrl.signal,
     });
     const raw = await r.text();
@@ -193,9 +194,10 @@ Deno.serve(async (req) => {
     }
 
     const env = { JANA_CHAT_MODEL_ID: Deno.env.get("JANA_CHAT_MODEL_ID"), JANA_CHAT_MODEL: Deno.env.get("JANA_CHAT_MODEL"), JANA_CHAT_MAX_TOKENS: Deno.env.get("JANA_CHAT_MAX_TOKENS") };
-    const model = resolveModelId(env);
-    const maxTokens = resolveMaxTokens(env);
     const history = Array.isArray(body.history) ? body.history : [];
+    const complexity = classifyComplexity(message, { action, historyLen: history.length });
+    const model = resolveModelId(env, complexity);
+    const maxTokens = resolveMaxTokens(env);
     const prompt = action === "explain_divergence" ? buildExplainDivergencePrompt(ctx) : buildChatPrompt(ctx, message, history);
 
     const llm = await callBedrock(BEDROCK_URL, BEDROCK_TOKEN, prompt, model, maxTokens);
@@ -205,7 +207,7 @@ Deno.serve(async (req) => {
     return json(200, {
       ok: true, mode, action, has_own_account: true, account: accountOut, llm_configured: true,
       answer: v.answer, citations: v.citations, used_data: v.used_data, confidence: v.confidence,
-      dropped_citations: v.dropped_citations, parse_ok: v.parse_ok, model,
+      dropped_citations: v.dropped_citations, parse_ok: v.parse_ok, model, complexity,
       latest_period: ctx.account.latest_period, generated_at: new Date().toISOString(),
     });
   } catch (e) {

@@ -5,6 +5,7 @@ import {
   redactPII, shapeContext, contextForPrompt, buildChatPrompt, buildExplainDivergencePrompt,
   parseLLMJson, validateAnswer, knownKeys, weeklyPriorities, handlungForAlert,
   resolveModelId, resolveMaxTokens, extractProxyText, bandFor, trailingSlope, alertTier,
+  classifyComplexity, bedrockInvokeUrl,
   DEFAULT_MODEL_ID, HAIKU_MODEL_ID,
   type RawBundle,
 } from "./core.ts";
@@ -179,9 +180,28 @@ for (const k of ["distress_risk", "threshold_breach", "trend_down", "anomaly", "
 }
 
 // ── Modell / max_tokens / Proxy-Text ─────────────────────────────────────────
-eq(resolveModelId({}), DEFAULT_MODEL_ID, "default sonnet");
-eq(resolveModelId({ JANA_CHAT_MODEL: "haiku" }), HAIKU_MODEL_ID, "haiku via flag");
-eq(resolveModelId({ JANA_CHAT_MODEL_ID: "custom-x" }), "custom-x", "explizite model id");
+// Auto-Routing: einfach -> Haiku, komplex -> Sonnet
+eq(resolveModelId({}, "complex"), DEFAULT_MODEL_ID, "komplex -> sonnet");
+eq(resolveModelId({}, "simple"), HAIKU_MODEL_ID, "einfach -> haiku");
+eq(resolveModelId({}), DEFAULT_MODEL_ID, "default (ohne complexity) -> sonnet");
+eq(resolveModelId({ JANA_CHAT_MODEL: "haiku" }, "complex"), HAIKU_MODEL_ID, "ops-pin haiku schlaegt routing");
+eq(resolveModelId({ JANA_CHAT_MODEL: "sonnet" }, "simple"), DEFAULT_MODEL_ID, "ops-pin sonnet schlaegt routing");
+eq(resolveModelId({ JANA_CHAT_MODEL_ID: "custom-x" }, "simple"), "custom-x", "explizite model id pin");
+// classifyComplexity
+eq(classifyComplexity("Was ist mein RHI?"), "simple", "kurze faktfrage einfach");
+eq(classifyComplexity("Wie hoch ist mein Score?"), "simple", "wert-abfrage einfach");
+eq(classifyComplexity("Warum ist mein Score gefallen?"), "complex", "warum -> komplex");
+eq(classifyComplexity("Vergleiche meine letzten Monate."), "complex", "vergleich -> komplex");
+eq(classifyComplexity("Was ist der Treiber der Divergenz?"), "complex", "treiber/divergenz -> komplex");
+eq(classifyComplexity("Welche Kennzahl ist am staerksten gefallen und was bedeutet das fuer naechste Woche?"), "complex", "mehrschritt -> komplex");
+eq(classifyComplexity("x", { action: "explain_divergence" }), "complex", "explain_divergence immer komplex");
+eq(classifyComplexity("Zeig mir bitte nur meinen ganz aktuellen Health Wert als nackte Zahl fuer heute ohne alles andere drum herum", { historyLen: 0 }), "complex", ">14 woerter -> komplex");
+eq(classifyComplexity("Und im Mai?", { historyLen: 3 }), "simple", "kurze follow-up bleibt einfach");
+// bedrockInvokeUrl
+eq(bedrockInvokeUrl("https://gpl60wd3uj.execute-api.eu-central-1.amazonaws.com"), "https://gpl60wd3uj.execute-api.eu-central-1.amazonaws.com/v1/llm/bedrock/invoke", "basis-host -> voller pfad");
+eq(bedrockInvokeUrl("https://x.test/"), "https://x.test/v1/llm/bedrock/invoke", "trailing slash");
+eq(bedrockInvokeUrl("https://x.test/v1/llm/bedrock"), "https://x.test/v1/llm/bedrock/invoke", "pfad ohne invoke");
+eq(bedrockInvokeUrl("https://x.test/v1/llm/bedrock/invoke"), "https://x.test/v1/llm/bedrock/invoke", "voller pfad unveraendert");
 eq(resolveMaxTokens({}), 1200, "default max tokens");
 eq(resolveMaxTokens({ JANA_CHAT_MAX_TOKENS: "800" }), 800, "gueltige max tokens");
 eq(resolveMaxTokens({ JANA_CHAT_MAX_TOKENS: "99" }), 1200, "zu klein -> default");

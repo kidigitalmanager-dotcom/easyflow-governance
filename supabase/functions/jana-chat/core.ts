@@ -470,12 +470,36 @@ export function validateAnswer(rawText: string, ctx: JanaContext): ValidatedAnsw
 // ── Bedrock-Proxy-Vertrag ────────────────────────────────────────────────────
 export const DEFAULT_MODEL_ID = "eu.anthropic.claude-sonnet-4-5-20250929-v1:0";
 export const HAIKU_MODEL_ID = "eu.anthropic.claude-haiku-4-5-20251001-v1:0";
-export function resolveModelId(env: Record<string, string | undefined>): string {
-  const m = (env.JANA_CHAT_MODEL_ID ?? "").trim();
-  if (m) return m;
+export type Complexity = "simple" | "complex";
+// Marker fuer Mehrschritt-/Analyse-/Vergleichsfragen (DE + EN). Trifft einer zu -> komplex.
+const COMPLEX_RE = /\b(warum|weshalb|wieso|vergleich\w*|verglichen|versus|unterschied\w*|treiber|ursach\w*|grund|gr[\u00fcu]nde|zusammenhang|entwicklung|trend\w*|prognos\w*|erwart\w*|bedeut\w*|erkl[\u00e4a]r\w*|begr[\u00fcu]nd\w*|analys\w*|einbruch|gefallen|gesunken|gestiegen|ver[\u00e4a]ndert|schw[\u00e4a]chst\w*|st[\u00e4a]rkst\w*|gr[\u00f6o][\u00dfs]t\w*|niedrigst\w*|h[\u00f6o]chst\w*|ma[\u00dfs]nahm\w*|priorit\w*|risik\w*|divergenz|abweichung|why|compare|driver|reason|forecast|explain)\b/i;
+// Serverseitige Komplexitaets-Klassifikation (deterministisch, KEIN LLM). NICHT vom Frontend steuerbar.
+export function classifyComplexity(message: string, opts?: { action?: string; historyLen?: number }): Complexity {
+  if (opts?.action === "explain_divergence") return "complex";
+  const m = String(message ?? "");
+  if (COMPLEX_RE.test(m)) return "complex";
+  const words = m.trim().split(/\s+/).filter(Boolean).length;
+  if (words > 14) return "complex";
+  if ((m.match(/\?/g) || []).length >= 2) return "complex";
+  if ((opts?.historyLen ?? 0) >= 2 && words > 8) return "complex";
+  return "simple";
+}
+// Auto-Routing: einfache Fragen -> Haiku (guenstig/schnell), komplexe -> Sonnet 4.5 (belegtreu).
+// NICHT im Frontend waehlbar. Ops-Override: JANA_CHAT_MODEL_ID (pin) ODER JANA_CHAT_MODEL=haiku|sonnet.
+export function resolveModelId(env: Record<string, string | undefined>, complexity: Complexity = "complex"): string {
+  const explicit = (env.JANA_CHAT_MODEL_ID ?? "").trim();
+  if (explicit) return explicit;
   const pref = (env.JANA_CHAT_MODEL ?? "").trim().toLowerCase();
   if (pref === "haiku") return HAIKU_MODEL_ID;
-  return DEFAULT_MODEL_ID;
+  if (pref === "sonnet") return DEFAULT_MODEL_ID;
+  return complexity === "simple" ? HAIKU_MODEL_ID : DEFAULT_MODEL_ID;
+}
+// Baut die Bedrock-Proxy-Invoke-URL robust (Basis-Host ODER schon mit Pfad).
+export function bedrockInvokeUrl(base: string): string {
+  const u = String(base ?? "").trim().replace(/\/+$/, "");
+  if (/\/invoke$/i.test(u)) return u;
+  if (/\/v1\/llm\/bedrock$/i.test(u)) return u + "/invoke";
+  return u + "/v1/llm/bedrock/invoke";
 }
 export function resolveMaxTokens(env: Record<string, string | undefined>): number {
   const n = Number(env.JANA_CHAT_MAX_TOKENS ?? "");
