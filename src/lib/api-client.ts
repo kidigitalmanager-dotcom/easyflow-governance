@@ -837,6 +837,25 @@ export interface CapitalStripeDisconnectResponse {
 }
 export const disconnectCapitalStripe = () =>
   apiPost<CapitalStripeDisconnectResponse>("/v1/capital/stripe/disconnect", {});
+export interface CapitalDisconnectResponse {
+  ok: boolean;
+  status?: string;
+  disconnected?: boolean;
+  revoked?: boolean;
+  revoke_note?: string | null;
+  already?: boolean;
+  error?: string;
+}
+export const disconnectCapitalBank = () =>
+  apiPost<CapitalDisconnectResponse>("/v1/capital/bank/disconnect", {});
+export const disconnectCapitalAccounting = () =>
+  apiPost<CapitalDisconnectResponse>("/v1/capital/accounting/disconnect", {});
+export const disconnectCapitalShopify = () =>
+  apiPost<CapitalDisconnectResponse>("/v1/capital/shopify/disconnect", {});
+export const disconnectCapitalMetaAds = () =>
+  apiPost<CapitalDisconnectResponse>("/v1/capital/meta-ads/disconnect", {});
+export const disconnectCapitalTicketing = () =>
+  apiPost<CapitalDisconnectResponse>("/v1/capital/ticketing/disconnect", {});
 
 // ── Capital-Layer Step 3: Shopify-Revenue-Connector (Public-App-OAuth) → rev_*-Indizes ──
 export interface CapitalShopifyStatus {

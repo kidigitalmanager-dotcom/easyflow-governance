@@ -7,7 +7,7 @@ import type {
   CapAlert, CapHealthBenchmark, CapCategoryBenchmark, FreshnessRow,
   VerificationTierRow,
 } from "@/lib/capital";
-import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, disconnectCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds, getCapitalTicketingStatus, connectCapitalTicketing, syncCapitalTicketing } from "@/lib/api-client";
+import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, disconnectCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds, getCapitalTicketingStatus, connectCapitalTicketing, syncCapitalTicketing, disconnectCapitalBank, disconnectCapitalAccounting, disconnectCapitalShopify, disconnectCapitalMetaAds, disconnectCapitalTicketing } from "@/lib/api-client";
 import type { CapitalTicketingConnectInput } from "@/lib/api-client";
 
 export function useCapCatalog() {
@@ -236,6 +236,26 @@ export function useDisconnectCapitalStripe() {
     mutationFn: () => disconnectCapitalStripe(),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); },
   });
+}
+export function useDisconnectCapitalBank() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: () => disconnectCapitalBank(), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); } });
+}
+export function useDisconnectCapitalAccounting() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: () => disconnectCapitalAccounting(), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); } });
+}
+export function useDisconnectCapitalShopify() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: () => disconnectCapitalShopify(), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); } });
+}
+export function useDisconnectCapitalMetaAds() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: () => disconnectCapitalMetaAds(), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); } });
+}
+export function useDisconnectCapitalTicketing() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: () => disconnectCapitalTicketing(), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cap"] }); } });
 }
 
 // ── Capital-Layer Step 3: Shopify ──

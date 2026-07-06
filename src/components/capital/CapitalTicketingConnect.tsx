@@ -6,9 +6,10 @@ import {
   useCapitalTicketingStatus,
   useConnectCapitalTicketing,
   useSyncCapitalTicketing,
+  useDisconnectCapitalTicketing,
 } from "@/hooks/use-capital";
 import type { CapitalTicketingSyncResponse, CapitalTicketingConnectInput } from "@/lib/api-client";
-import { LifeBuoy, ShieldCheck, Loader2, CheckCircle2, RefreshCw } from "lucide-react";
+import { LifeBuoy, ShieldCheck, Loader2, CheckCircle2, RefreshCw, Unlink } from "lucide-react";
 
 // Capital-Layer: „Ticketing verbinden" (HubSpot Service Hub / Zendesk / Freshdesk).
 // Direct-Connect (kein OAuth-Redirect). Speichert/zeigt nur aggregierte 0–100-Indizes —
@@ -45,6 +46,7 @@ export function CapitalTicketingConnect() {
   const status = useCapitalTicketingStatus();
   const connect = useConnectCapitalTicketing();
   const sync = useSyncCapitalTicketing();
+  const disconnect = useDisconnectCapitalTicketing();
   const [syncResult, setSyncResult] = useState<CapitalTicketingSyncResponse | null>(null);
   const [provider, setProvider] = useState<"hubspot" | "zendesk" | "freshdesk">("hubspot");
   const [subdomain, setSubdomain] = useState("");
@@ -52,9 +54,10 @@ export function CapitalTicketingConnect() {
   const [apiToken, setApiToken] = useState("");
   const [domain, setDomain] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [confirmDisc, setConfirmDisc] = useState(false);
 
   const st = status.data;
-  const busy = connect.isPending || sync.isPending;
+  const busy = connect.isPending || sync.isPending || disconnect.isPending;
   const sInfo = STATUS_LABEL[st?.status || "not_connected"] || STATUS_LABEL.not_connected;
   const hubspotAvailable = st?.hubspot_available !== false;
 
@@ -82,6 +85,18 @@ export function CapitalTicketingConnect() {
       onError: (e: any) => toast({ title: "Sync fehlgeschlagen", description: e?.message, variant: "destructive" }),
     });
 
+  const doDisconnect = () =>
+    disconnect.mutate(undefined, {
+      onSuccess: (d) => {
+        setConfirmDisc(false);
+        setSyncResult(null);
+        status.refetch();
+        if (d.ok) { toast({ title: "Verbindung getrennt", description: "Verbindung entfernt." }); }
+        else { toast({ title: "Trennen fehlgeschlagen", description: d.error || d.status, variant: "destructive" }); }
+      },
+      onError: (e: any) => toast({ title: "Trennen fehlgeschlagen", description: e?.message, variant: "destructive" }),
+    });
+
   return (
     <Card className="glass-card">
       <CardContent className="pt-5 pb-5 space-y-4">
@@ -106,10 +121,23 @@ export function CapitalTicketingConnect() {
             {st?.last_sync_at && <span className="text-[11px] text-muted-foreground truncate">· letzter Abgleich {new Date(st.last_sync_at).toLocaleDateString("de-DE")}</span>}
           </div>
           {st?.connected && (
-            <Button size="sm" variant="outline" onClick={doSync} disabled={busy}>
-              {sync.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              <span className="ml-1">Aktualisieren</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={doSync} disabled={busy}>
+                {sync.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                <span className="ml-1">Aktualisieren</span>
+              </Button>
+              {!confirmDisc ? (
+                <Button size="sm" variant="ghost" className="h-8 px-2 text-xs text-red-400 hover:text-red-300" onClick={() => setConfirmDisc(true)} disabled={busy}>
+                  <Unlink className="w-3.5 h-3.5" /><span className="ml-1">Trennen</span>
+                </Button>
+              ) : (
+                <span className="flex items-center gap-1 text-xs">
+                  <span className="text-muted-foreground">Trennen?</span>
+                  <Button size="sm" variant="destructive" className="h-8 px-2 text-xs" onClick={doDisconnect} disabled={disconnect.isPending}>{disconnect.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}<span className={disconnect.isPending ? "ml-1" : ""}>Ja</span></Button>
+                  <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setConfirmDisc(false)} disabled={disconnect.isPending}>Nein</Button>
+                </span>
+              )}
+            </div>
           )}
         </div>
 

@@ -7,9 +7,10 @@ import {
   useConnectCapitalAccounting,
   useCapitalAccountingCallback,
   useSyncCapitalAccounting,
+  useDisconnectCapitalAccounting,
 } from "@/hooks/use-capital";
 import type { CapitalAccountingSyncResponse } from "@/lib/api-client";
-import { BookOpenCheck, ShieldCheck, Loader2, CheckCircle2, RefreshCw, AlertTriangle } from "lucide-react";
+import { BookOpenCheck, ShieldCheck, Loader2, CheckCircle2, RefreshCw, AlertTriangle, RotateCw, Unlink } from "lucide-react";
 
 // Capital-Layer Schicht 2: „Buchhaltung verbinden" (Maesn Unified-API, DATEV-zertifiziert).
 // Self-Service OAuth; speichert/zeigt nur aggregierte 0–100-Indizes — keine Konten/Belege/Namen.
@@ -52,8 +53,11 @@ export function CapitalAccountingConnect() {
   const connect = useConnectCapitalAccounting();
   const callback = useCapitalAccountingCallback();
   const sync = useSyncCapitalAccounting();
+  const disconnect = useDisconnectCapitalAccounting();
   const [syncResult, setSyncResult] = useState<CapitalAccountingSyncResponse | null>(null);
   const [target, setTarget] = useState<string>(TARGETS[0].value);
+  const [confirmDisc, setConfirmDisc] = useState(false);
+  const [reconnect, setReconnect] = useState(false);
   const handled = useRef(false);
 
   // Nach dem Aggregator-Redirect: /signale?capital_acct=callback&state=…&accountKey=…&ts=…&maesn_signature=…
@@ -88,7 +92,7 @@ export function CapitalAccountingConnect() {
 
   const st = status.data;
   const configured = st?.configured !== false; // bis bekannt: optimistisch
-  const busy = connect.isPending || callback.isPending || sync.isPending;
+  const busy = connect.isPending || callback.isPending || sync.isPending || disconnect.isPending;
   const sInfo = STATUS_LABEL[st?.status || "not_connected"] || STATUS_LABEL.not_connected;
 
   const startConnect = () =>
@@ -115,6 +119,22 @@ export function CapitalAccountingConnect() {
         toast({ title: "Aktualisiert", description: `${(d.metrics || []).length} Kennzahl(en) berechnet.` });
       },
       onError: (e: any) => toast({ title: "Sync fehlgeschlagen", description: e?.message, variant: "destructive" }),
+    });
+
+  const doDisconnect = () =>
+    disconnect.mutate(undefined, {
+      onSuccess: (d) => {
+        setConfirmDisc(false);
+        setReconnect(false);
+        setSyncResult(null);
+        status.refetch();
+        if (d.ok) {
+          toast({ title: "Verbindung getrennt", description: d.revoked ? "Der Zugriff wurde widerrufen." : "Verbindung entfernt." });
+        } else {
+          toast({ title: "Trennen fehlgeschlagen", description: d.error || d.status, variant: "destructive" });
+        }
+      },
+      onError: (e: any) => toast({ title: "Trennen fehlgeschlagen", description: e?.message, variant: "destructive" }),
     });
 
   return (
@@ -152,7 +172,7 @@ export function CapitalAccountingConnect() {
                   <span className="text-[11px] text-muted-foreground truncate">· letzter Abgleich {new Date(st.last_sync_at).toLocaleDateString("de-DE")}</span>
                 )}
               </div>
-              {st?.connected ? (
+              {(st?.connected && !reconnect) ? (
                 <Button size="sm" variant="outline" onClick={doSync} disabled={busy}>
                   {sync.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   <span className="ml-1">Aktualisieren</span>
@@ -174,9 +194,34 @@ export function CapitalAccountingConnect() {
                     {connect.isPending || callback.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpenCheck className="w-4 h-4" />}
                     <span className="ml-1">{st?.status === "reauth_required" ? "Neu verbinden" : "Verbinden"}</span>
                   </Button>
+                  {reconnect && (
+                    <Button size="sm" variant="ghost" onClick={() => setReconnect(false)} disabled={busy}>Abbrechen</Button>
+                  )}
                 </div>
               )}
             </div>
+
+            {st?.connected && !reconnect && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={() => setReconnect(true)} disabled={busy} title="Ersetzt die aktuelle Verbindung.">
+                  <RotateCw className="w-3.5 h-3.5" /><span className="ml-1">Anderes Konto verbinden</span>
+                </Button>
+                {!confirmDisc ? (
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-red-400 hover:text-red-300" onClick={() => setConfirmDisc(true)} disabled={busy}>
+                    <Unlink className="w-3.5 h-3.5" /><span className="ml-1">Verbindung trennen</span>
+                  </Button>
+                ) : (
+                  <span className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground">Wirklich trennen?</span>
+                    <Button size="sm" variant="destructive" className="h-7 px-2 text-xs" onClick={doDisconnect} disabled={disconnect.isPending}>
+                      {disconnect.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                      <span className={disconnect.isPending ? "ml-1" : ""}>Ja, trennen</span>
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setConfirmDisc(false)} disabled={disconnect.isPending}>Abbrechen</Button>
+                  </span>
+                )}
+              </div>
+            )}
 
             {st?.status === "reauth_required" && (
               <div className="flex items-start gap-2 rounded-lg bg-amber-500/5 border border-amber-500/15 p-3">

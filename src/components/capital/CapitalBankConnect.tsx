@@ -7,9 +7,10 @@ import {
   useConnectCapitalBank,
   useCapitalBankCallback,
   useSyncCapitalBank,
+  useDisconnectCapitalBank,
 } from "@/hooks/use-capital";
 import type { CapitalBankSyncResponse } from "@/lib/api-client";
-import { Landmark, ShieldCheck, Loader2, CheckCircle2, RefreshCw, AlertTriangle } from "lucide-react";
+import { Landmark, ShieldCheck, Loader2, CheckCircle2, RefreshCw, AlertTriangle, RotateCw, Unlink } from "lucide-react";
 
 // Capital-Layer F3: „Bank verbinden" (finAPI, AISP). Self-Service OAuth + SCA.
 // Speichert/zeigt nur aggregierte 0–100-Indizes — keine PII, kein Zahlungszugriff.
@@ -41,7 +42,9 @@ export function CapitalBankConnect() {
   const connect = useConnectCapitalBank();
   const callback = useCapitalBankCallback();
   const sync = useSyncCapitalBank();
+  const disconnect = useDisconnectCapitalBank();
   const [syncResult, setSyncResult] = useState<CapitalBankSyncResponse | null>(null);
+  const [confirmDisc, setConfirmDisc] = useState(false);
   const handled = useRef(false);
 
   // Nach dem finAPI-SCA-Redirect: /signale?capital_bank=callback&state=… → Backend-Callback fahren.
@@ -76,7 +79,7 @@ export function CapitalBankConnect() {
 
   const st = status.data;
   const configured = st?.configured !== false; // bis bekannt: optimistisch
-  const busy = connect.isPending || callback.isPending || sync.isPending;
+  const busy = connect.isPending || callback.isPending || sync.isPending || disconnect.isPending;
   const sInfo = STATUS_LABEL[st?.status || "not_connected"] || STATUS_LABEL.not_connected;
 
   const startConnect = () =>
@@ -100,6 +103,21 @@ export function CapitalBankConnect() {
         toast({ title: "Aktualisiert", description: `${(d.metrics || []).length} Kennzahl(en) berechnet.` });
       },
       onError: (e: any) => toast({ title: "Sync fehlgeschlagen", description: e?.message, variant: "destructive" }),
+    });
+
+  const doDisconnect = () =>
+    disconnect.mutate(undefined, {
+      onSuccess: (d) => {
+        setConfirmDisc(false);
+        setSyncResult(null);
+        status.refetch();
+        if (d.ok) {
+          toast({ title: "Verbindung getrennt", description: d.revoked ? "Der Zugriff wurde widerrufen." : "Verbindung entfernt." });
+        } else {
+          toast({ title: "Trennen fehlgeschlagen", description: d.error || d.status, variant: "destructive" });
+        }
+      },
+      onError: (e: any) => toast({ title: "Trennen fehlgeschlagen", description: e?.message, variant: "destructive" }),
     });
 
   return (
@@ -145,6 +163,28 @@ export function CapitalBankConnect() {
                 </Button>
               )}
             </div>
+
+            {st?.connected && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={startConnect} disabled={busy} title="Ersetzt die aktuelle Verbindung.">
+                  <RotateCw className="w-3.5 h-3.5" /><span className="ml-1">Anderes Konto verbinden</span>
+                </Button>
+                {!confirmDisc ? (
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-red-400 hover:text-red-300" onClick={() => setConfirmDisc(true)} disabled={busy}>
+                    <Unlink className="w-3.5 h-3.5" /><span className="ml-1">Verbindung trennen</span>
+                  </Button>
+                ) : (
+                  <span className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground">Wirklich trennen?</span>
+                    <Button size="sm" variant="destructive" className="h-7 px-2 text-xs" onClick={doDisconnect} disabled={disconnect.isPending}>
+                      {disconnect.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                      <span className={disconnect.isPending ? "ml-1" : ""}>Ja, trennen</span>
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setConfirmDisc(false)} disabled={disconnect.isPending}>Abbrechen</Button>
+                  </span>
+                )}
+              </div>
+            )}
 
             {st?.status === "reauth_required" && (
               <div className="flex items-start gap-2 rounded-lg bg-amber-500/5 border border-amber-500/15 p-3">
