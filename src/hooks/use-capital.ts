@@ -6,7 +6,7 @@ import type {
   HealthPoint, CategoryPoint, MetricValue,
   CapAlert, CapHealthBenchmark, CapCategoryBenchmark, FreshnessRow,
   VerificationTierRow,
-  RiskShield,
+  RiskShield, FoerderRadar,
 } from "@/lib/capital";
 import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, disconnectCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds, getCapitalTicketingStatus, connectCapitalTicketing, syncCapitalTicketing, disconnectCapitalBank, disconnectCapitalAccounting, disconnectCapitalShopify, disconnectCapitalMetaAds, disconnectCapitalTicketing } from "@/lib/api-client";
 import type { CapitalTicketingConnectInput } from "@/lib/api-client";
@@ -511,4 +511,29 @@ export function useRiskShieldAdd() {
 export function useRiskShieldRemove() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (v: { domain: string }) => callRiskShield({ action: "remove", ...v }), onSuccess: (data) => qc.setQueryData(["cap", "risk-shield"], data) });
+}
+
+// ── Foerder-Radar via foerder-radar edge function ────────────────────────────
+const CAPITAL_FOERDER_URL = "https://vunhcexnwbvxrwecymiy.functions.supabase.co/foerder-radar";
+async function callFoerder(body: Record<string, unknown>): Promise<FoerderRadar> {
+  const empty: FoerderRadar = { has_tenant: false, vertical: null };
+  const { data: { session } } = await authClient.auth.getSession();
+  const token = session?.access_token ?? "";
+  if (!token) return empty;
+  const res = await fetch(CAPITAL_FOERDER_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", apikey: CAPITAL_ANON, "x-console-token": token },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) return empty;
+  const j = await res.json().catch(() => ({} as any));
+  if (!res.ok || !j.ok) throw new Error(j.error || ("foerder_failed_" + res.status));
+  return j as FoerderRadar;
+}
+export function useFoerderRadar(vertical?: string) {
+  return useQuery<FoerderRadar>({
+    queryKey: ["cap", "foerder", vertical ?? "self"],
+    refetchOnWindowFocus: false,
+    queryFn: () => callFoerder(vertical ? { vertical } : {}),
+  });
 }

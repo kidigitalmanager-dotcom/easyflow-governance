@@ -235,3 +235,34 @@ export function ampelColor(a: RiskAmpel): string {
 export function ampelLabel(a: RiskAmpel): string {
   switch (a) { case "red": return "Bestätigter Distress"; case "amber": return "Beobachtung"; case "green": return "Stabil"; default: return "Nicht überwacht"; }
 }
+
+// ── Foerder-Radar: latentes Foerderkapital ──────────────────────────────────
+export type GrantStatusClass = "verified" | "verify" | "paused";
+export type GrantClass = "zuschuss" | "kredit" | "gemischt" | "finanzierung";
+export type FoerderProgram = {
+  program_key: string; name: string; level: string | null; region: string | null;
+  provider: string | null; funding_type: string | null; grant_class: GrantClass;
+  status_class: GrantStatusClass; description: string | null; eligibility: string | null;
+  amount_min_eur: number | null; amount_max_eur: number | null; source: string | null;
+};
+export type FoerderKpi = {
+  grant_count: number; verified_count: number; financing_count: number; total_programs: number;
+  latent_verified_min: number; latent_verified_max: number;
+  latent_total_min: number; latent_total_max: number;
+  top_program: { name: string; amount_max_eur: number } | null;
+};
+export type FoerderRadar = {
+  has_tenant: boolean; account_name?: string | null;
+  vertical: string | null; vertical_label?: string; icp?: string;
+  kpi?: FoerderKpi; programs?: FoerderProgram[];
+};
+export function fmtEur(n: number | null | undefined): string {
+  if (n == null) return "–";
+  return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 }).format(Math.round(n)) + " €";
+}
+export const FOERDER_VERTICALS: { key: string; label: string }[] = [
+  { key: "ecom", label: "E-Commerce" },
+  { key: "real_estate", label: "Immobilienverwaltung" },
+  { key: "bau", label: "Bau & Handwerk" },
+  { key: "b2b_sales", label: "Dienstleistung" },
+];
