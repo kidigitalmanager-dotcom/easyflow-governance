@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Landmark, Coins, CheckCircle2, AlertCircle, PauseCircle, ChevronDown, ChevronRight,
-  Banknote, Info, Building2, Rocket, Loader2, Save, Lock,
+  Banknote, Info, Building2, Rocket, Loader2, Save, Lock, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,14 @@ function StatusBadge({ sc }: { sc: FoerderProgram["status_class"] }) {
   return <span className={cn("inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded", m.c, m.b)}><Icon className="w-3 h-3" />{m.t}</span>;
 }
 
+function AutoBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded text-sky-600 bg-sky-500/10" title="Automatisch aus der Förderdatenbank importiert – noch ungeprüft">
+      <Sparkles className="w-3 h-3" />auto
+    </span>
+  );
+}
+
 function ProgramRow({ p, conditional }: { p: FoerderProgram; conditional?: boolean }) {
   const [open, setOpen] = useState(false);
   const amt = (p.amount_max_eur ?? 0) > 0
@@ -40,6 +48,7 @@ function ProgramRow({ p, conditional }: { p: FoerderProgram; conditional?: boole
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-foreground truncate">{p.name}</span>
             <StatusBadge sc={p.status_class} />
+            {p.source_type === "auto" && <AutoBadge />}
           </div>
           <div className="text-xs text-muted-foreground truncate">
             {conditional && p.match_reason ? <span className="text-amber-600">{p.match_reason}</span> : `${p.level ?? ""}${p.provider ? ` · ${p.provider}` : ""}`}
@@ -67,6 +76,8 @@ export function FoerderRadarCard() {
   const { toast } = useToast();
   const [showAll, setShowAll] = useState(false);
   const [showFin, setShowFin] = useState(false);
+  const [showAuto, setShowAuto] = useState(false);
+  const [showAllAuto, setShowAllAuto] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
   const [year, setYear] = useState("");
@@ -86,8 +97,9 @@ export function FoerderRadarCard() {
   const kpi = data?.kpi;
   const programs = data?.programs ?? [];
   const conditional = data?.conditional_programs ?? [];
-  const grants = programs.filter((p) => (p.grant_class === "zuschuss" || p.grant_class === "stipendium") && (p.amount_max_eur ?? 0) > 0);
-  const financing = programs.filter((p) => p.grant_class === "kredit" || p.grant_class === "gemischt" || p.grant_class === "finanzierung");
+  const grants = programs.filter((p) => (p.grant_class === "zuschuss" || p.grant_class === "stipendium") && (p.amount_max_eur ?? 0) > 0 && p.source_type !== "auto");
+  const financing = programs.filter((p) => (p.grant_class === "kredit" || p.grant_class === "gemischt" || p.grant_class === "finanzierung") && p.source_type !== "auto");
+  const autoPrograms = programs.filter((p) => p.source_type === "auto");
   const shownGrants = showAll ? grants : grants.slice(0, 6);
   const activeVertical = vertical ?? data?.vertical ?? undefined;
   const hasProfile = !!(data?.profile && (data.profile.founding_year || data.profile.city || data.profile.region));
@@ -207,6 +219,24 @@ export function FoerderRadarCard() {
                   {showFin ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                 </button>
                 {showFin && <div className="space-y-2">{financing.map((p) => <ProgramRow key={p.program_key} p={p} />)}</div>}
+              </div>
+            )}
+
+            {/* Automatisch gefunden (Auto-Import Förderdatenbank, ungeprüft) */}
+            {autoPrograms.length > 0 && (
+              <div className="space-y-2">
+                <button onClick={() => setShowAuto((v) => !v)} className="w-full flex items-center gap-2 text-left">
+                  <Sparkles className="w-4 h-4 text-sky-600 shrink-0" />
+                  <span className="text-sm font-medium text-foreground flex-1">Automatisch gefunden ({autoPrograms.length}) · ungeprüft</span>
+                  {showAuto ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                </button>
+                {showAuto && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground -mt-1">Wöchentlich automatisch aus der Förderdatenbank des Bundes importiert und auf Ihre Branche gefiltert – noch nicht redaktionell geprüft. Vor Nutzung verifizieren.</p>
+                    {(showAllAuto ? autoPrograms : autoPrograms.slice(0, 8)).map((p) => <ProgramRow key={p.program_key} p={p} />)}
+                    {autoPrograms.length > 8 && <button onClick={() => setShowAllAuto((v) => !v)} className="text-xs font-medium text-primary hover:underline">{showAllAuto ? "Weniger anzeigen" : `Alle ${autoPrograms.length} anzeigen`}</button>}
+                  </div>
+                )}
               </div>
             )}
 
