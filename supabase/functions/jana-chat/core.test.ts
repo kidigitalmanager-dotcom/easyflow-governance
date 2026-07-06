@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   redactPII, shapeContext, contextForPrompt, buildChatPrompt, buildExplainDivergencePrompt,
   parseLLMJson, validateAnswer, knownKeys, weeklyPriorities, handlungForAlert,
-  resolveModelId, resolveMaxTokens, extractProxyText, bandFor, trailingSlope, alertTier,
+  resolveModelId, resolveMaxTokens, extractProxyText, extractProxyModel, bandFor, trailingSlope, alertTier,
   classifyComplexity, bedrockInvokeUrl,
   DEFAULT_MODEL_ID, HAIKU_MODEL_ID,
   type RawBundle,
@@ -211,5 +211,9 @@ eq(extractProxyText({ content: [{ text: "t" }] }), "t", "proxy content[0].text")
 eq(extractProxyText({ output_text: "o" }), "o", "proxy output_text");
 eq(extractProxyText({ message: { content: [{ text: "m" }] } }), "m", "proxy message.content");
 eq(extractProxyText({ nope: 1 }), "", "proxy unbekannt -> leer");
+// extractProxyModel (Live-Verifikation Auto-Routing)
+eq(extractProxyModel({ model: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0", content: [{ text: "x" }] }), "eu.anthropic.claude-sonnet-4-5-20250929-v1:0", "proxy_model aus antwort");
+eq(extractProxyModel({ content: [{ text: "x" }] }), null, "kein model -> null");
+eq(extractProxyModel("roh"), null, "string -> null");
 
 console.log(`\nOK — ${passed} Assertions bestanden.`);

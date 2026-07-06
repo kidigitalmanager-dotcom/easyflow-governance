@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   shapeContext, buildChatPrompt, buildExplainDivergencePrompt, weeklyPriorities,
   validateAnswer, extractProxyText, resolveModelId, resolveMaxTokens,
-  classifyComplexity, bedrockInvokeUrl,
+  classifyComplexity, bedrockInvokeUrl, extractProxyModel,
   type RawBundle,
 } from "./core.ts";
 
@@ -110,7 +110,7 @@ async function loadBundle(svc: any, acc: any): Promise<RawBundle> {
 // Ruft den UseEasy-Bedrock-Proxy (Frankfurt, PII-minimiert). Vertrag aus dem
 // bestehenden Stack: POST {URL}/v1/invoke, Header x-auth-token, Body
 // { model_id, prompt, max_tokens }. Antworthuelle wird defensiv extrahiert.
-async function callBedrock(url: string, token: string, prompt: string, model: string, maxTokens: number): Promise<{ ok: boolean; text: string; error?: string }> {
+async function callBedrock(url: string, token: string, prompt: string, model: string, maxTokens: number): Promise<{ ok: boolean; text: string; error?: string; proxyModel?: string | null }> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 25000);
   try {
@@ -123,7 +123,7 @@ async function callBedrock(url: string, token: string, prompt: string, model: st
     const raw = await r.text();
     if (!r.ok) return { ok: false, text: "", error: `proxy_${r.status}` };
     let payload: any; try { payload = JSON.parse(raw); } catch { payload = raw; }
-    return { ok: true, text: extractProxyText(payload) };
+    return { ok: true, text: extractProxyText(payload), proxyModel: extractProxyModel(payload) };
   } catch (e) {
     return { ok: false, text: "", error: String((e as any)?.name === "AbortError" ? "proxy_timeout" : e) };
   } finally {
@@ -207,7 +207,7 @@ Deno.serve(async (req) => {
     return json(200, {
       ok: true, mode, action, has_own_account: true, account: accountOut, llm_configured: true,
       answer: v.answer, citations: v.citations, used_data: v.used_data, confidence: v.confidence,
-      dropped_citations: v.dropped_citations, parse_ok: v.parse_ok, model, complexity,
+      dropped_citations: v.dropped_citations, parse_ok: v.parse_ok, model, complexity, proxy_model: llm.proxyModel ?? null,
       latest_period: ctx.account.latest_period, generated_at: new Date().toISOString(),
     });
   } catch (e) {

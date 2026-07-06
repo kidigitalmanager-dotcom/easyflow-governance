@@ -505,6 +505,14 @@ export function resolveMaxTokens(env: Record<string, string | undefined>): numbe
   const n = Number(env.JANA_CHAT_MAX_TOKENS ?? "");
   return Number.isFinite(n) && n >= 256 && n <= 4096 ? Math.floor(n) : 1200;
 }
+// Liest das vom Proxy tatsaechlich verwendete Modell (Anthropic-Antwort traegt `model`).
+// Damit ist das Modell-Auto-Routing LIVE verifizierbar: proxy_model muss zum angeforderten Modell passen.
+export function extractProxyModel(payload: any): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  if (typeof payload.model === "string" && payload.model.trim()) return payload.model.trim();
+  if (payload.message && typeof payload.message.model === "string") return payload.message.model;
+  return null;
+}
 export function extractProxyText(payload: any): string {
   if (payload == null) return "";
   if (typeof payload === "string") return payload;
