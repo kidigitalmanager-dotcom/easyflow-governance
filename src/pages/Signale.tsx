@@ -23,6 +23,7 @@ import { CapitalMetaAdsConnect } from "@/components/capital/CapitalMetaAdsConnec
 import { CapitalTicketingConnect } from "@/components/capital/CapitalTicketingConnect";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
 import { RiskShieldCard } from "@/components/capital/RiskShieldCard";
+import { ComplianceRadarCard } from "@/components/capital/ComplianceRadarCard";
 import { FoerderRadarCard } from "@/components/capital/FoerderRadarCard";
 import { JanaChat } from "@/components/capital/JanaChat";
 import { WeeklyPriorities } from "@/components/capital/WeeklyPriorities";
@@ -382,6 +383,9 @@ export default function Signale() {
           {/* ══ Bereich 1b: Risk Shield (Partner-Fruehwarnung) ══ */}
           <section className={cn(section !== "risk_shield" && "hidden")}>
             <RiskShieldCard />
+            <div className="mt-6">
+              <ComplianceRadarCard />
+            </div>
           </section>
 
           {/* ══ Bereich 1c: Jana fragen (read-only Chat ueber die eigenen Signale) ══ */}
