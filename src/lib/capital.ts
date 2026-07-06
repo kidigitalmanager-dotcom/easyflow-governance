@@ -211,3 +211,27 @@ export function verificationTierMeta(t?: VerificationTierKind | null): { label: 
     default: return null; // external_proxy / illustrative / unrated → kein eigenes Badge
   }
 }
+
+// ── Risk Shield: Geschaeftspartner-Fruehwarnung ──────────────────────────────
+// Der Tenant fuehrt eine Watchlist seiner Partner (Domains); jede wird gegen das
+// externe Distress-Universe (cap_accounts + cap_alerts) gematcht -> Ampel.
+export type RiskAmpel = "red" | "amber" | "green" | "gray";
+export type RiskPartnerAlert = {
+  kind: AlertKind; severity: AlertSeverity; message: string;
+  value_now: number | null; slope: number | null; period: string | null;
+  tier: "confirmed" | "watch"; first_detected_at: string | null;
+};
+export type RiskPartner = {
+  domain: string; name: string | null; source: "manual" | "inbox"; matched: boolean;
+  account_slug: string | null; account_name: string | null; vertical: string | null;
+  health_score: number | null; ampel: RiskAmpel; reason: string; confirmed_count: number; alerts: RiskPartnerAlert[];
+};
+export type RiskShieldSummary = { total: number; red: number; amber: number; green: number; gray: number };
+export type RiskShield = { has_tenant: boolean; tenant_id: string | null; summary: RiskShieldSummary; partners: RiskPartner[] };
+
+export function ampelColor(a: RiskAmpel): string {
+  switch (a) { case "red": return "#C0392B"; case "amber": return "#E8A33D"; case "green": return "#10b981"; default: return "#5A6473"; }
+}
+export function ampelLabel(a: RiskAmpel): string {
+  switch (a) { case "red": return "Bestätigter Distress"; case "amber": return "Beobachtung"; case "green": return "Stabil"; default: return "Nicht überwacht"; }
+}

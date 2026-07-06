@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Lock, ShieldCheck, Activity, Plug, CreditCard, Landmark, Users, Megaphone, LifeBuoy,
+  Lock, ShieldCheck, ShieldAlert, Activity, Plug, CreditCard, Landmark, Users, Megaphone, LifeBuoy,
   ChevronRight, ArrowRight, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,15 +21,17 @@ import { CapitalShopifyConnect } from "@/components/capital/CapitalShopifyConnec
 import { CapitalMetaAdsConnect } from "@/components/capital/CapitalMetaAdsConnect";
 import { CapitalTicketingConnect } from "@/components/capital/CapitalTicketingConnect";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
+import { RiskShieldCard } from "@/components/capital/RiskShieldCard";
 
 const SELF_SLUG = "self_demo";
 const TERMS_VERSION = "v1.0";
 const SECTION_STORAGE_KEY = "ue.signale.section";
 
-type SectionKey = "signale" | "quellen" | "freigabe";
+type SectionKey = "signale" | "risk_shield" | "quellen" | "freigabe";
 
 const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon }[] = [
   { key: "signale", label: "Signale & Gesundheit", icon: Activity },
+  { key: "risk_shield", label: "Risk Shield", icon: ShieldAlert },
   { key: "quellen", label: "Datenquellen verbinden", icon: Plug },
   { key: "freigabe", label: "Datenfreigabe", icon: ShieldCheck },
 ];
@@ -365,6 +367,11 @@ export default function Signale() {
                 </span>
               </button>
             )}
+          </section>
+
+          {/* ══ Bereich 1b: Risk Shield (Partner-Fruehwarnung) ══ */}
+          <section className={cn(section !== "risk_shield" && "hidden")}>
+            <RiskShieldCard />
           </section>
 
           {/* ══ Bereich 2: Datenquellen verbinden (2 Aufklapp-Ebenen) ══ */}

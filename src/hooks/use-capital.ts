@@ -6,6 +6,7 @@ import type {
   HealthPoint, CategoryPoint, MetricValue,
   CapAlert, CapHealthBenchmark, CapCategoryBenchmark, FreshnessRow,
   VerificationTierRow,
+  RiskShield,
 } from "@/lib/capital";
 import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, disconnectCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds, getCapitalTicketingStatus, connectCapitalTicketing, syncCapitalTicketing, disconnectCapitalBank, disconnectCapitalAccounting, disconnectCapitalShopify, disconnectCapitalMetaAds, disconnectCapitalTicketing } from "@/lib/api-client";
 import type { CapitalTicketingConnectInput } from "@/lib/api-client";
@@ -479,4 +480,35 @@ export function useVerificationTiers() {
       return map;
     },
   });
+}
+
+// ── Risk Shield: Partner-Fruehwarnung via risk-shield edge function ──────────
+// Mirror von useMySignals: console session (auth project) via x-console-token;
+// die Edge-Function matcht die Partner-Domains gegen das Distress-Universe.
+const CAPITAL_RISK_SHIELD_URL = "https://vunhcexnwbvxrwecymiy.functions.supabase.co/risk-shield";
+async function callRiskShield(body: Record<string, unknown>): Promise<RiskShield> {
+  const empty: RiskShield = { has_tenant: false, tenant_id: null, summary: { total: 0, red: 0, amber: 0, green: 0, gray: 0 }, partners: [] };
+  const { data: { session } } = await authClient.auth.getSession();
+  const token = session?.access_token ?? "";
+  if (!token) return empty;
+  const res = await fetch(CAPITAL_RISK_SHIELD_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", apikey: CAPITAL_ANON, "x-console-token": token },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) return empty;
+  const j = await res.json().catch(() => ({} as any));
+  if (!res.ok || !j.ok) throw new Error(j.error || ("risk_shield_failed_" + res.status));
+  return { has_tenant: !!j.has_tenant, tenant_id: j.tenant_id ?? null, summary: j.summary, partners: j.partners ?? [] };
+}
+export function useRiskShield() {
+  return useQuery<RiskShield>({ queryKey: ["cap", "risk-shield"], refetchOnWindowFocus: false, queryFn: () => callRiskShield({ action: "list" }) });
+}
+export function useRiskShieldAdd() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (v: { domain: string; name?: string }) => callRiskShield({ action: "add", ...v }), onSuccess: (data) => qc.setQueryData(["cap", "risk-shield"], data) });
+}
+export function useRiskShieldRemove() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (v: { domain: string }) => callRiskShield({ action: "remove", ...v }), onSuccess: (data) => qc.setQueryData(["cap", "risk-shield"], data) });
 }
