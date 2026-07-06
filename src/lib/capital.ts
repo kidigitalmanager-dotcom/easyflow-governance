@@ -238,23 +238,32 @@ export function ampelLabel(a: RiskAmpel): string {
 
 // ── Foerder-Radar: latentes Foerderkapital ──────────────────────────────────
 export type GrantStatusClass = "verified" | "verify" | "paused";
-export type GrantClass = "zuschuss" | "kredit" | "gemischt" | "finanzierung";
+export type GrantClass = "zuschuss" | "stipendium" | "kredit" | "gemischt" | "finanzierung";
+export type FoerderMatch = "match" | "conditional" | "excluded";
 export type FoerderProgram = {
   program_key: string; name: string; level: string | null; region: string | null;
   provider: string | null; funding_type: string | null; grant_class: GrantClass;
-  status_class: GrantStatusClass; description: string | null; eligibility: string | null;
+  status_class: GrantStatusClass; source_type?: "curated" | "auto"; description: string | null; eligibility: string | null;
   amount_min_eur: number | null; amount_max_eur: number | null; source: string | null;
+  is_startup_program?: boolean; conditional_note?: string | null;
+  match_status?: FoerderMatch; match_reason?: string | null;
 };
 export type FoerderKpi = {
-  grant_count: number; verified_count: number; financing_count: number; total_programs: number;
+  grant_count: number; verified_count: number; financing_count: number; total_visible?: number;
+  conditional_count?: number;
   latent_verified_min: number; latent_verified_max: number;
-  latent_total_min: number; latent_total_max: number;
+  latent_total_min: number; latent_total_max: number; latent_conditional_max?: number;
   top_program: { name: string; amount_max_eur: number } | null;
+};
+export type FoerderProfile = {
+  founding_year: number | null; city: string | null; region: string | null;
+  postal_code: string | null; employee_count: number | null; confirmed_at?: string | null;
 };
 export type FoerderRadar = {
   has_tenant: boolean; account_name?: string | null;
   vertical: string | null; vertical_label?: string; icp?: string;
-  kpi?: FoerderKpi; programs?: FoerderProgram[];
+  kpi?: FoerderKpi; programs?: FoerderProgram[]; conditional_programs?: FoerderProgram[];
+  profile?: FoerderProfile | null; suggested?: { founding_year: number | null };
 };
 export function fmtEur(n: number | null | undefined): string {
   if (n == null) return "–";
@@ -262,9 +271,18 @@ export function fmtEur(n: number | null | undefined): string {
 }
 export const FOERDER_VERTICALS: { key: string; label: string }[] = [
   { key: "ecom", label: "E-Commerce" },
+  { key: "fintech", label: "Fintech" },
   { key: "real_estate", label: "Immobilienverwaltung" },
   { key: "bau", label: "Bau & Handwerk" },
   { key: "b2b_sales", label: "Dienstleistung" },
+];
+export const BUNDESLAENDER: { key: string; label: string }[] = [
+  { key: "BW", label: "Baden-Württemberg" }, { key: "BY", label: "Bayern" }, { key: "BE", label: "Berlin" },
+  { key: "BB", label: "Brandenburg" }, { key: "HB", label: "Bremen" }, { key: "HH", label: "Hamburg" },
+  { key: "HE", label: "Hessen" }, { key: "MV", label: "Mecklenburg-Vorpommern" }, { key: "NI", label: "Niedersachsen" },
+  { key: "NRW", label: "Nordrhein-Westfalen" }, { key: "RP", label: "Rheinland-Pfalz" }, { key: "SL", label: "Saarland" },
+  { key: "SN", label: "Sachsen" }, { key: "ST", label: "Sachsen-Anhalt" }, { key: "SH", label: "Schleswig-Holstein" },
+  { key: "TH", label: "Thüringen" },
 ];
 
 

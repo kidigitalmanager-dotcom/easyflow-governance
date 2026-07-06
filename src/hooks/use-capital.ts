@@ -538,6 +538,15 @@ export function useFoerderRadar(vertical?: string) {
   });
 }
 
+export function useSaveFoerderProfile(vertical?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { founding_year?: number | null; city?: string | null; region?: string | null; postal_code?: string | null; employee_count?: number | null }) =>
+      callFoerder({ action: "save_profile", ...(vertical ? { vertical } : {}), ...v }),
+    onSuccess: (data) => qc.setQueryData(["cap", "foerder", vertical ?? "self"], data),
+  });
+}
+
 
 // ── Jana-Chat: read-only Q&A + Wochen-Prioritaeten ueber die eigenen Signale ──
 // Spiegelt useMySignals/useFoerderRadar: Console-Session via x-console-token; die
