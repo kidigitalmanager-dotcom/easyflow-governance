@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useMySignals, useCapAccountBySlug, useRecordConsent, useRevokeConsent } from "@/hooks/use-capital";
 import { AccountDashboard } from "@/components/capital/AccountDashboard";
+import { ReportExportButton } from "@/components/capital/ReportExportButton";
 import { IllustrativeBadge, ScoreBadge } from "@/components/capital/CapitalBits";
 import { CapitalStatementUpload } from "@/components/capital/CapitalStatementUpload";
 import { CapitalBankConnect } from "@/components/capital/CapitalBankConnect";
@@ -351,11 +352,14 @@ export default function Signale() {
         <div className="flex-1 min-w-0">
           {/* ══ Bereich 1: Signale & Gesundheit (nur Auswertung) ══ */}
           <section className={cn("space-y-4", section !== "signale" && "hidden")}>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-medium text-muted-foreground">
-                {consented ? "Dein freigegebenes Profil" : "Vorschau deines Profils (noch nicht freigegeben)"}
-              </h2>
-              {account.account_type === "demo" && <IllustrativeBadge />}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-medium text-muted-foreground">
+                  {consented ? "Dein freigegebenes Profil" : "Vorschau deines Profils (noch nicht freigegeben)"}
+                </h2>
+                {account.account_type === "demo" && <IllustrativeBadge />}
+              </div>
+              <ReportExportButton account={account} data={dash} variant="tenant" />
             </div>
             <WeeklyPriorities />
             <AccountDashboard account={account} data={dash} variant="tenant" onConnectSource={goConnect} />

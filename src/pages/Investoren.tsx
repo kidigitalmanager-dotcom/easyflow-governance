@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { useCapAccounts, useHealthSeries, useAlerts, useVerificationTiers } from "@/hooks/use-capital";
 import { AccountDashboard } from "@/components/capital/AccountDashboard";
+import { ReportExportButton } from "@/components/capital/ReportExportButton";
 import { ScoreBadge, Sparkline, IllustrativeBadge, CoverageBadge, VerificationBadge } from "@/components/capital/CapitalBits";
 import { RiskBadge, WatchButton, TieredAlertFeed, FeedHeader } from "@/components/capital/CapitalAlerts";
 import { useWatchlist, syncWatchlistFromServer } from "@/lib/watchlist";
@@ -211,7 +212,10 @@ export default function Investoren() {
 
       {selected ? (
         <section className="space-y-3 pt-2">
-          <h2 className="text-sm font-medium text-muted-foreground">Detailprofil · {selected.name}</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-medium text-muted-foreground">Detailprofil · {selected.name}</h2>
+            <ReportExportButton account={selected} variant="investor" />
+          </div>
           <AccountDashboard account={selected} />
         </section>
       ) : (visibleConsented.length > 0 || visibleExternal.length > 0) ? (
