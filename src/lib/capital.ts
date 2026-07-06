@@ -292,7 +292,7 @@ export type JanaCitation = {
   key: string; label?: string; value?: number | null; period?: string | null;
 };
 export type JanaChatResponse = {
-  ok: boolean; has_own_account: boolean;
+  ok: boolean; has_own_account: boolean; mode?: string; visible?: boolean;
   account?: { name: string; slug: string; vertical: string | null } | null;
   llm_configured?: boolean; llm_error?: string;
   answer: string | null; citations: JanaCitation[];

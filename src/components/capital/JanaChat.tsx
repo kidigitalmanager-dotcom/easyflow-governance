@@ -16,6 +16,13 @@ const STARTERS = [
   "Welche Signale sind veraltet?",
 ];
 
+const INVESTOR_STARTERS = [
+  "Warum ist der Score dieser Firma gefallen?",
+  "Welche Frühwarn-Signale sind kritisch?",
+  "Welche Datenquelle ist am schwächsten?",
+  "Wie verlässlich ist der Datenstand?",
+];
+
 function citeChip(c: JanaCitation): string {
   const label = c.label || c.key;
   const v = c.value != null ? ` ${Math.round(c.value)}/100` : "";
@@ -25,7 +32,8 @@ function citeChip(c: JanaCitation): string {
 
 // Jana-Chat: read-only Q&A ueber die EIGENEN Signale. Jede Antwort belegt ihre
 // Aussagen mit KPI + Quelle (Anti-Blackbox). Kein Schreiben, kein Senden.
-export function JanaChat({ account }: { account?: CapAccount | null }) {
+export function JanaChat({ account, mode = "tenant" }: { account?: CapAccount | null; mode?: "tenant" | "investor" }) {
+  const isInvestor = mode === "investor";
   const chat = useJanaChat();
   const [input, setInput] = useState("");
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -40,13 +48,19 @@ export function JanaChat({ account }: { account?: CapAccount | null }) {
     setMsgs((prev) => [...prev, { role: "user", content: q }]);
     setInput("");
     scrollDown();
+    if (isInvestor && !account?.slug) {
+      setMsgs((prev) => [...prev, { role: "assistant", content: "", note: "Keine Firma ausgewählt." }]);
+      scrollDown();
+      return;
+    }
     chat.mutate(
-      { message: q, history },
+      { message: q, history, ...(isInvestor ? { mode: "investor" as const, slug: account!.slug } : {}) },
       {
         onSuccess: (r) => {
           let content = r.answer ?? "";
           let note: string | undefined;
-          if (r.has_own_account === false) { content = ""; note = "Jana erklärt deine eigenen Signale, sobald dein Profil Daten liefert."; }
+          if (isInvestor && (r.visible === false || r.has_own_account === false)) { content = ""; note = "Diese Firma hat ihre Signale nicht freigegeben."; }
+          else if (r.has_own_account === false) { content = ""; note = "Jana erklärt deine eigenen Signale, sobald dein Profil Daten liefert."; }
           else if (r.llm_configured === false) { content = ""; note = "Jana-Chat ist noch nicht scharfgeschaltet (LLM-Verbindung fehlt). Die Wochen-Prioritäten funktionieren bereits."; }
           else if (r.llm_error) { content = ""; note = "Jana ist gerade nicht erreichbar. Bitte später erneut versuchen."; }
           else if (!content) { note = "Dazu liegen mir gerade keine belegten Daten vor."; }
@@ -70,7 +84,7 @@ export function JanaChat({ account }: { account?: CapAccount | null }) {
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-foreground leading-tight">Jana fragen</h3>
               <p className="text-xs text-muted-foreground leading-tight mt-0.5">
-                Stell Fragen zu deinen Signalen — jede Antwort mit KPI + Quelle belegt.
+                {isInvestor ? "Fragen zu dieser Firma, jede Antwort mit KPI + Quelle belegt." : "Stell Fragen zu deinen Signalen — jede Antwort mit KPI + Quelle belegt."}
               </p>
             </div>
           </div>
@@ -87,7 +101,7 @@ export function JanaChat({ account }: { account?: CapAccount | null }) {
                 {account?.name ? `Hallo — ich erkläre die Signale von ${account.name}.` : "Hallo — ich erkläre deine Frühwarn-Signale."} Womit soll ich anfangen?
               </p>
               <div className="flex flex-wrap gap-2">
-                {STARTERS.map((s) => (
+                {(isInvestor ? INVESTOR_STARTERS : STARTERS).map((s) => (
                   <button
                     key={s}
                     onClick={() => send(s)}
@@ -152,7 +166,7 @@ export function JanaChat({ account }: { account?: CapAccount | null }) {
           </Button>
         </form>
         <p className="text-[11px] text-muted-foreground mt-2">
-          Jana liest nur deine aggregierten 0–100-Signale (PII-frei) und schlägt nichts eigenmächtig vor. Keine Sende- oder Schreibaktionen.
+          {isInvestor ? "Jana liest nur die freigegebenen 0-100-Signale dieser Firma (PII-frei) und schlägt nichts eigenmächtig vor. Keine Sende- oder Schreibaktionen." : "Jana liest nur deine aggregierten 0–100-Signale (PII-frei) und schlägt nichts eigenmächtig vor. Keine Sende- oder Schreibaktionen."}
         </p>
       </CardContent>
     </Card>

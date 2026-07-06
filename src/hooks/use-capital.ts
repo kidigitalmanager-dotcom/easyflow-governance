@@ -568,8 +568,13 @@ async function callJana(body: Record<string, unknown>): Promise<any> {
 }
 
 export function useJanaChat() {
-  return useMutation<JanaChatResponse, Error, { message: string; history?: { role: string; content: string }[] }>({
-    mutationFn: (v) => callJana({ action: "chat", message: v.message, history: v.history ?? [] }),
+  return useMutation<JanaChatResponse, Error, { message: string; history?: { role: string; content: string }[]; mode?: "tenant" | "investor"; slug?: string }>({
+    mutationFn: (v) => callJana({
+      action: "chat",
+      message: v.message,
+      history: v.history ?? [],
+      ...(v.mode === "investor" && v.slug ? { mode: "investor", slug: v.slug } : {}),
+    }),
   });
 }
 

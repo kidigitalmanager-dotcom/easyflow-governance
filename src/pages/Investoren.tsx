@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { useCapAccounts, useHealthSeries, useAlerts, useVerificationTiers } from "@/hooks/use-capital";
 import { AccountDashboard } from "@/components/capital/AccountDashboard";
+import { JanaChat } from "@/components/capital/JanaChat";
 import { ReportExportButton } from "@/components/capital/ReportExportButton";
 import { ScoreBadge, Sparkline, IllustrativeBadge, CoverageBadge, VerificationBadge } from "@/components/capital/CapitalBits";
 import { RiskBadge, WatchButton, TieredAlertFeed, FeedHeader } from "@/components/capital/CapitalAlerts";
@@ -217,6 +218,7 @@ export default function Investoren() {
             <ReportExportButton account={selected} variant="investor" />
           </div>
           <AccountDashboard account={selected} />
+          <JanaChat account={selected} mode="investor" />
         </section>
       ) : (visibleConsented.length > 0 || visibleExternal.length > 0) ? (
         <p className="text-sm text-muted-foreground text-center py-6">Eine Firma auswählen, um das verifizierte Detailprofil zu öffnen.</p>
