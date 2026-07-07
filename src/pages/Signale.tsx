@@ -45,7 +45,7 @@ const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon }[] = [
   { key: "jana", label: "Jana fragen", icon: Sparkles },
   { key: "risk_shield", label: "Risk Shield", icon: ShieldAlert },
   { key: "foerder", label: "Förder-Radar", icon: Landmark },
-  { key: "quellen", label: "Datenquellen verbinden", icon: Plug },
+  { key: "quellen", label: "Datenquellen", icon: Plug },
   { key: "freigabe", label: "Datenfreigabe", icon: ShieldCheck },
 ];
 

@@ -7,6 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { createStripePortalSession } from "@/lib/api-client";
 
+// Aussenzahl des vollstaendigen Klassifikations-Regelkatalogs (alle Branchen-Pakete).
+// Stuetzt den Tooltip an der Rules-Chip: "X aktiv aus deinem Branchen-Paket".
+const TOTAL_CATALOG_RULES = 193;
+
 function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -137,8 +141,12 @@ export function DashboardTopBar() {
             )}
 
             {/* Rules chip */}
-            <span className={cn(
-              "inline-flex items-center text-[13px] font-medium px-3 py-1 rounded-full whitespace-nowrap",
+            <span
+              title={activeRules > 0
+                ? `${activeRules} Klassifikations-Regeln aus deinem Branchen-Paket aktiv \u00b7 Gesamtkatalog: ${TOTAL_CATALOG_RULES} Regeln`
+                : `Noch keine Regeln aktiv \u2014 Branchen-Paket zuordnen (Gesamtkatalog: ${TOTAL_CATALOG_RULES} Regeln)`}
+              className={cn(
+              "inline-flex items-center text-[13px] font-medium px-3 py-1 rounded-full whitespace-nowrap cursor-default",
               activeRules > 0 ? "text-green-400" : "text-yellow-400"
             )} style={{
               backgroundColor: activeRules > 0 ? "hsl(150 40% 14%)" : "hsl(45 40% 16%)"

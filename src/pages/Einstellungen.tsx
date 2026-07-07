@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMe } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
-import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug, FileSpreadsheet, Phone, CreditCard } from "lucide-react";
+import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug, FileSpreadsheet, Phone, CreditCard, ShieldCheck } from "lucide-react";
 import { ChipDomainInput } from "@/components/ChipDomainInput";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,6 +20,7 @@ import EmailAutopilotTab from "@/components/EmailAutopilotTab";
 import EmailAutopilotAuditView from "@/components/EmailAutopilotAuditView";
 import StichprobenAuditTab from "@/components/StichprobenAuditTab";
 import BillingTab from "@/components/BillingTab";
+import AiTransparencyTab from "@/components/AiTransparencyTab";
 
 function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [state, setState] = useState<T>(() => {
@@ -55,9 +56,12 @@ export default function Einstellungen() {
   const [approvalRules, setApprovalRules] = useLocalState(
     `ue_approval_${userId}`,
     {
-      legalDsgvo: false,
-      bankdaten: false,
-      mahnung: false,
+      // Sensible Standard-Absicherung: rechtlich/finanziell heikle Kategorien
+      // erfordern per Default eine manuelle Freigabe (deckt sich mit den
+      // Autopilot-Hard-Locks). Optionale Kategorien bleiben aus.
+      legalDsgvo: true,
+      bankdaten: true,
+      mahnung: true,
       externeEmpfaenger: false,
       anhaenge: false,
       betragThreshold: "500",
@@ -146,6 +150,10 @@ export default function Einstellungen() {
           <TabsTrigger value="billing" className="gap-1.5">
             <CreditCard className="w-3.5 h-3.5" />
             Abo & Zusatz
+          </TabsTrigger>
+          <TabsTrigger value="ki-transparenz" className="gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            KI-Transparenz
           </TabsTrigger>
         </TabsList>
 
@@ -357,6 +365,10 @@ export default function Einstellungen() {
 
         <TabsContent value="billing" className="mt-6 space-y-6">
           <BillingTab />
+        </TabsContent>
+
+        <TabsContent value="ki-transparenz" className="mt-6 space-y-6">
+          <AiTransparencyTab />
         </TabsContent>
       </Tabs>
     </div>
