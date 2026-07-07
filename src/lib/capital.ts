@@ -355,13 +355,14 @@ export function worstFreshnessLabel(w: PortfolioHit["worst_freshness"]): string 
 // ── Morning-Briefing (V1 Jana): Tagesfenster über cap_alerts, deterministisch ──
 export type MorningNightDelta = {
   since?: string | null; window_hours?: number;
-  new: number; new_critical: number; resolved: number; note: string;
+  new: number; new_critical: number; escalated: number; resolved: number; note: string;
 };
 export type MorningSuggestion = {
   alert_id: string; kpi: string | null; title: string;
   cta_label: string; cta_action: string; prep: string; focus: string | null;
 } | null;
 export type MorningHealth = { now: number | null; prev: number | null; slope6: number | null; band: string } | null;
+export type MorningFreshness = { fresh: number; stale: number; dead: number; level: "ok" | "limited"; note: string };
 export type MorningBriefingResponse = {
   ok: boolean; mode?: string; has_own_account: boolean;
   account?: { name: string; slug: string; vertical: string | null } | null;
@@ -369,5 +370,6 @@ export type MorningBriefingResponse = {
   window_hours?: number; empty_case?: boolean; headline?: string;
   health?: MorningHealth; open_alert_count?: number;
   night_delta?: MorningNightDelta;
+  data_freshness?: MorningFreshness;
   top_priorities?: WeeklyPriority[]; suggestion?: MorningSuggestion;
 };
