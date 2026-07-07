@@ -283,3 +283,22 @@ export function responseLabel(e: Record<string, unknown>): string | undefined {
   const rt = responseType(e);
   return rt === "reply" ? undefined : responseTypeLabel(rt);
 }
+
+// Ersetzt die technischen Pseudonymisierungs-Marker (aus der PII-Redaktion vor
+// dem LLM) durch lesbare Platzhalter fuer die Anzeige, z. B. [PHONE] -> [Telefonnummer].
+const REDACTION_LABELS: Record<string, string> = {
+  PHONE: "Telefonnummer",
+  EMAIL: "E-Mail",
+  IBAN: "IBAN",
+  NAME: "Name",
+  ADDRESS: "Adresse",
+  CARD: "Kartennummer",
+  URL: "Link",
+};
+export function prettyRedaction(text?: string | null): string {
+  if (!text) return text ?? "";
+  return text.replace(/\[([A-Z_]+)\]/g, (full, key: string) => {
+    const label = REDACTION_LABELS[key];
+    return label ? `[${label}]` : full;
+  });
+}

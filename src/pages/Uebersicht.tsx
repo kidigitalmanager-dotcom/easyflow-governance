@@ -4,7 +4,7 @@ import { PriorityBadge } from "@/components/PriorityBadge";
 import { ResponseTypeBadge } from "@/components/ResponseTypeBadge";
 import { responseType } from "@/data/humanize";
 import { useDashboardStats, useRecentEmails, useImproveSuggestion, useConsentImprove } from "@/hooks/use-api";
-import { humanizeCategory } from "@/data/humanize";
+import { humanizeCategory, prettyRedaction } from "@/data/humanize";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Sparkles, Loader2 } from "lucide-react";
@@ -140,7 +140,7 @@ export default function Uebersicht() {
               {pendingEmails.map((item) => (
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-muted/30 border border-border">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{item.subject}</p>
+                    <p className="text-sm font-medium truncate">{prettyRedaction(item.subject)}</p>
                     <p className="text-xs text-muted-foreground">{item.sender} · {new Date(item.created_at).toLocaleString("de-DE")}</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">

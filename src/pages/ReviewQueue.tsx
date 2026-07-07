@@ -6,7 +6,7 @@ import ReviewVerdictButtons from "@/components/ReviewVerdictButtons";
 import { ShadowModePill, ShadowWouldDoLine } from "@/components/ShadowHint";
 import { LabelReasonLine } from "@/components/LabelReasonLine";
 import { REVIEW } from "@/data/strings.de";
-import { humanizeCategory, responseType } from "@/data/humanize";
+import { humanizeCategory, responseType, prettyRedaction } from "@/data/humanize";
 import { Eye, Inbox, Sparkles, Loader2, Info, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -131,7 +131,7 @@ export default function ReviewQueue() {
                       )}
                       <ShadowModePill mode={item.autopilot_mode} />
                     </div>
-                    <p className="text-sm font-medium mt-2">{item.subject}</p>
+                    <p className="text-sm font-medium mt-2">{prettyRedaction(item.subject)}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {item.sender} · {new Date(item.created_at).toLocaleString("de-DE")}
                     </p>
