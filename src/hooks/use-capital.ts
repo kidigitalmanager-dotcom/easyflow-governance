@@ -548,6 +548,35 @@ export function useSaveFoerderProfile(vertical?: string) {
   });
 }
 
+// -- Handelsregister-Lookup: Firmenprofil-Vorschlag (handelsregister.ai) via foerder-radar --
+// Additive Aktion handelsregister_lookup: liefert Gruendungsjahr/Stadt/Bundesland-Vorschlaege
+// zum Firmennamen. KEIN Auto-Save (Nutzer bestaetigt + speichert via save_profile).
+// Inert ohne HANDELSREGISTER_API_KEY (hr_configured=false). Nur Firmen-Stammdaten (kein Personen-PII).
+export type FoerderHrCandidate = {
+  name: string | null; founding_year: number | null; city: string | null; region: string | null;
+  state_name: string | null; postal_code: string | null; register: string | null;
+  status: string | null; legal_form: string | null;
+};
+export type FoerderHrResult = { hr_configured: boolean; candidates: FoerderHrCandidate[]; error?: string };
+async function callFoerderHr(q: string): Promise<FoerderHrResult> {
+  const empty: FoerderHrResult = { hr_configured: false, candidates: [] };
+  const { data: { session } } = await authClient.auth.getSession();
+  const token = session?.access_token ?? "";
+  if (!token) return empty;
+  const res = await fetch(CAPITAL_FOERDER_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", apikey: CAPITAL_ANON, "x-console-token": token },
+    body: JSON.stringify({ action: "handelsregister_lookup", q }),
+  });
+  if (!res.ok) return empty;
+  const j = await res.json().catch(() => ({} as any));
+  if (!j || !j.ok) return empty;
+  return { hr_configured: !!j.hr_configured, candidates: Array.isArray(j.candidates) ? j.candidates : [], error: j.error };
+}
+export function useHandelsregisterLookup() {
+  return useMutation<FoerderHrResult, Error, string>({ mutationFn: (q: string) => callFoerderHr(q) });
+}
+
 
 // ── Jana-Chat: read-only Q&A + Wochen-Prioritaeten ueber die eigenen Signale ──
 // ── Foerder-Report-Textbausteine (LLM, optional) via foerder-radar action ────

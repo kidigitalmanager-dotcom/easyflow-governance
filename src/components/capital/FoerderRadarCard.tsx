@@ -1,15 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Landmark, Coins, CheckCircle2, AlertCircle, PauseCircle, ChevronDown, ChevronRight,
-  Banknote, Info, Building2, Rocket, Loader2, Save, Lock, Sparkles,
+  Banknote, Info, Building2, Rocket, Loader2, Save, Lock, Sparkles, Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useFoerderRadar, useSaveFoerderProfile } from "@/hooks/use-capital";
+import { useFoerderRadar, useSaveFoerderProfile, useHandelsregisterLookup, type FoerderHrCandidate } from "@/hooks/use-capital";
 import { fmtEur, FOERDER_VERTICALS, BUNDESLAENDER, type FoerderProgram } from "@/lib/capital";
 import { FoerderReportButton } from "@/components/capital/FoerderReport";
 
@@ -85,6 +85,9 @@ export function FoerderRadarCard() {
   const [city, setCity] = useState("");
   const [region, setRegion] = useState("");
   const [emp, setEmp] = useState("");
+  const hr = useHandelsregisterLookup();
+  const [hrQuery, setHrQuery] = useState("");
+  const autoExpandedRef = useRef(false);
 
   useEffect(() => {
     if (!data) return;
@@ -104,6 +107,16 @@ export function FoerderRadarCard() {
   const shownGrants = showAll ? grants : grants.slice(0, 6);
   const activeVertical = vertical ?? data?.vertical ?? undefined;
   const hasProfile = !!(data?.profile && (data.profile.founding_year || data.profile.city || data.profile.region));
+
+  useEffect(() => { if (data?.account_name && !hrQuery) setHrQuery(data.account_name); }, [data?.account_name]);
+  useEffect(() => { if (data?.has_tenant && !hasProfile && !autoExpandedRef.current) { setShowProfile(true); autoExpandedRef.current = true; } }, [data?.has_tenant, hasProfile]);
+
+  function applyCandidate(c: FoerderHrCandidate) {
+    if (c.founding_year) setYear(String(c.founding_year));
+    if (c.city) setCity(c.city);
+    if (c.region) setRegion(c.region);
+    toast({ title: "Aus Handelsregister übernommen", description: [c.city, c.founding_year ? `gegr. ${c.founding_year}` : null].filter(Boolean).join(" · ") });
+  }
 
   function onSave() {
     save.mutate(
@@ -142,6 +155,12 @@ export function FoerderRadarCard() {
           <div className="rounded-lg border border-border bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">Kein Firmenprofil gefunden. Melden Sie sich mit Ihrem Firmen-Postfach an.</div>
         ) : (
           <>
+            {!hasProfile && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>Firmenprofil unvollständig — dadurch werden Programme aus ganz Deutschland gezeigt. Ergänzen Sie Bundesland, Stadt und Gründungsjahr für einen regionalen, exakten Abgleich.</span>
+              </div>
+            )}
             {/* Firmenprofil */}
             <div className="rounded-lg border border-border">
               <button onClick={() => setShowProfile((v) => !v)} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left">
@@ -172,6 +191,35 @@ export function FoerderRadarCard() {
                         {BUNDESLAENDER.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}
                       </select>
                     </div>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5 space-y-2">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Building2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Automatisch aus dem Handelsregister übernehmen</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input value={hrQuery} onChange={(e) => setHrQuery(e.target.value)} placeholder="Firmenname, z.B. UseEasy UG" className="flex-1" />
+                      <Button type="button" variant="outline" size="sm" disabled={hr.isPending || hrQuery.trim().length < 2} onClick={() => hr.mutate(hrQuery.trim())}>
+                        {hr.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}<span className="ml-1.5">Suchen</span>
+                      </Button>
+                    </div>
+                    {hr.data && hr.data.hr_configured === false && (
+                      <p className="text-xs text-muted-foreground">Handelsregister-Abruf ist noch nicht aktiviert. Bitte Firmendaten unten manuell eintragen.</p>
+                    )}
+                    {hr.data && hr.data.hr_configured && hr.data.candidates.length === 0 && (
+                      <p className="text-xs text-muted-foreground">Kein Treffer{hr.data.error ? ` (${hr.data.error})` : ""}. Firmenname prüfen oder unten manuell eintragen.</p>
+                    )}
+                    {hr.data && hr.data.candidates.length > 0 && (
+                      <div className="space-y-1.5">
+                        {hr.data.candidates.slice(0, 5).map((c, i) => (
+                          <button key={i} type="button" onClick={() => applyCandidate(c)} className="w-full text-left rounded-md border border-border bg-background px-2.5 py-1.5 hover:border-primary/40">
+                            <div className="text-xs font-medium text-foreground truncate">{c.name ?? "—"}</div>
+                            <div className="text-[11px] text-muted-foreground truncate">{[c.city, c.state_name, c.founding_year ? `gegr. ${c.founding_year}` : null, c.register].filter(Boolean).join(" · ")}</div>
+                          </button>
+                        ))}
+                        <p className="text-[11px] text-muted-foreground">Eintrag anklicken, um Gründungsjahr/Stadt/Bundesland zu übernehmen, dann speichern.</p>
+                      </div>
+                    )}
                   </div>
                   <Button onClick={onSave} disabled={save.isPending} size="sm">
                     {save.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}<span className="ml-1.5">Profil speichern</span>
