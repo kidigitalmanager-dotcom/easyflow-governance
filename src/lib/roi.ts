@@ -1,26 +1,35 @@
 // src/lib/roi.ts
 // ROI-Schaetzung "Was Jana dir gespart hat" — reine, testbare Logik (V2-Kachel).
 //
-// Datenquelle: /v1/dashboard/stats (bereits vorhanden, KEIN neuer Endpoint):
-//   drafts_created_week  — von Jana vorbereitete Antwort-Entwuerfe (7 Tage)
-//   emails_week          — klassifizierte / eingeordnete E-Mails (7 Tage)
-//   resolved_week        — freigegebene & gesendete Entwuerfe (7 Tage; Teilmenge
-//                          der Entwuerfe → NICHT separat in Minuten gezaehlt,
-//                          sonst Doppelzaehlung. Dient nur als Kontext + M5-Hook.)
+// Zwei Datenpfade:
+//  1) ECHT (bevorzugt): GET /v1/dashboard/roi liefert gemessene Wochen- UND
+//     Monats-Zaehler (drafts_prepared, resolved, emails_triaged, deadlines_caught).
+//  2) FALLBACK: GET /v1/dashboard/stats (nur Wochen-Zaehler) → Woche gemessen,
+//     Monat als klar gekennzeichnete Hochrechnung (×WEEK_TO_MONTH).
 //
 // Ehrlichkeit: konservative Schaetzung mit sichtbaren Annahmen + Bandbreite,
-// nie als exakter Fakt. "Monat" hat KEINEN eigenen Zaehler im Endpoint → wird
-// aus dem 7-Tage-Schnitt hochgerechnet (klar als Projektion gekennzeichnet).
+// nie als exakter Fakt. resolved ist Teilmenge der Entwuerfe → NICHT separat in
+// Minuten gezaehlt (Doppelzaehlung), dient nur als Kontext + M5-Hook.
 
 import type { DashboardStats } from "@/lib/api-client";
 
 export type RoiPeriod = "week" | "month";
+
+/** Gemessene Zaehler eines Zeitfensters (aus /v1/dashboard/roi). */
+export interface RoiCounts {
+  drafts_prepared: number;
+  resolved: number;
+  emails_triaged: number;
+  deadlines_caught: number;
+}
 
 export interface RoiAssumptions {
   /** Gesparte Schreib-/Formulierzeit je vorbereitetem Entwurf (Minuten). */
   draftMinutes: number;
   /** Gesparte Sortier-/Priorisierzeit je eingeordneter E-Mail (Minuten). */
   triageMinutes: number;
+  /** Gesparte Zeit je erfasster Frist/Termin (nicht verpasst) (Minuten). */
+  deadlineMinutes: number;
   /** Stundensatz fuer die optionale Euro-Umrechnung (EUR/Std). */
   hourlyRate: number;
 }
@@ -28,6 +37,7 @@ export interface RoiAssumptions {
 export const DEFAULT_ASSUMPTIONS: RoiAssumptions = {
   draftMinutes: 8,
   triageMinutes: 1,
+  deadlineMinutes: 15,
   hourlyRate: 40,
 };
 
@@ -35,6 +45,7 @@ export const DEFAULT_ASSUMPTIONS: RoiAssumptions = {
 export const ASSUMPTION_BOUNDS = {
   draftMinutes: { min: 1, max: 30 },
   triageMinutes: { min: 0, max: 10 },
+  deadlineMinutes: { min: 1, max: 120 },
   hourlyRate: { min: 0, max: 500 },
 } as const;
 
@@ -43,31 +54,32 @@ export const ASSUMPTION_BOUNDS = {
 export const BAND_LOW = 0.75;
 export const BAND_HIGH = 1.25;
 
-// 7-Tage-Zaehler → Monat: Hochrechnung, NICHT gemessen (kein Monats-Zaehler im
-// Endpoint). Durchschnittliche Tage pro Monat geteilt durch 7.
+// 7-Tage-Zaehler → Monat (nur im FALLBACK-Pfad): Hochrechnung, NICHT gemessen.
+// Durchschnittliche Tage pro Monat geteilt durch 7.
 export const WEEK_TO_MONTH = 30.437 / 7; // ≈ 4.35
 
-// Schwelle: unter dieser Wochen-Aktivitaet ist die Schaetzung nicht belastbar.
-export const THIN_MIN_EMAILS = 3; // < 3 eingeordnete E-Mails UND 0 Entwuerfe → thin
+// Schwelle: unter dieser Aktivitaet ist die Schaetzung nicht belastbar.
+export const THIN_MIN_EMAILS = 3;
 
 // M5-Upsell-Hook (Platzhalter — wird mit der naechsten Autopilot-Stufe scharf-
 // geschaltet). Rein illustrativer, klar gekennzeichneter Vorwaerts-Blick.
-export const M5_AUTO_SHARE = 0.4; // Anteil auto-sendbarer Entwuerfe (Annahme)
-export const M5_RELEASE_MINUTES = 2; // gesparte Freigabe-/Sichtungszeit je Entwurf
+export const M5_AUTO_SHARE = 0.4;
+export const M5_RELEASE_MINUTES = 2;
 
-export const STORAGE_KEY = "ue.roi.assumptions.v1";
+export const STORAGE_KEY = "ue.roi.assumptions.v2";
 
 export interface RoiResult {
   period: RoiPeriod;
-  /** month = aus dem Wochen-Schnitt hochgerechnet (nicht gemessen). */
+  /** true = Monat aus dem Wochen-Schnitt hochgerechnet (nur Fallback-Pfad). */
   projected: boolean;
-  /** Zu wenig Aktivitaet fuer eine belastbare Zahl. */
+  /** true = Zahlen gemessen aus /v1/dashboard/roi (nicht hochgerechnet). */
+  measured: boolean;
   thin: boolean;
-  /** 0 Entwuerfe, aber genug E-Mails → nur Triage-Zeit gezaehlt. */
   triageOnly: boolean;
-  drafts: number; // (ggf. hochgerechnete) Anzahl vorbereiteter Entwuerfe
-  emails: number; // (ggf. hochgerechnete) Anzahl eingeordneter E-Mails
-  resolved: number; // (ggf. hochgerechnet) freigegeben & gesendet
+  drafts: number;
+  emails: number;
+  resolved: number;
+  deadlines: number;
   minutesPoint: number;
   minutesLow: number;
   minutesHigh: number;
@@ -88,24 +100,22 @@ function toNonNegInt(x: unknown): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+function toCounts(x: Partial<RoiCounts> | null | undefined): RoiCounts {
+  return {
+    drafts_prepared: toNonNegInt(x?.drafts_prepared),
+    resolved: toNonNegInt(x?.resolved),
+    emails_triaged: toNonNegInt(x?.emails_triaged),
+    deadlines_caught: toNonNegInt(x?.deadlines_caught),
+  };
+}
+
 export function sanitizeAssumptions(a: Partial<RoiAssumptions> | null | undefined): RoiAssumptions {
   const src = a ?? {};
   return {
-    draftMinutes: clamp(
-      Number(src.draftMinutes ?? DEFAULT_ASSUMPTIONS.draftMinutes),
-      ASSUMPTION_BOUNDS.draftMinutes.min,
-      ASSUMPTION_BOUNDS.draftMinutes.max,
-    ),
-    triageMinutes: clamp(
-      Number(src.triageMinutes ?? DEFAULT_ASSUMPTIONS.triageMinutes),
-      ASSUMPTION_BOUNDS.triageMinutes.min,
-      ASSUMPTION_BOUNDS.triageMinutes.max,
-    ),
-    hourlyRate: clamp(
-      Number(src.hourlyRate ?? DEFAULT_ASSUMPTIONS.hourlyRate),
-      ASSUMPTION_BOUNDS.hourlyRate.min,
-      ASSUMPTION_BOUNDS.hourlyRate.max,
-    ),
+    draftMinutes: clamp(Number(src.draftMinutes ?? DEFAULT_ASSUMPTIONS.draftMinutes), ASSUMPTION_BOUNDS.draftMinutes.min, ASSUMPTION_BOUNDS.draftMinutes.max),
+    triageMinutes: clamp(Number(src.triageMinutes ?? DEFAULT_ASSUMPTIONS.triageMinutes), ASSUMPTION_BOUNDS.triageMinutes.min, ASSUMPTION_BOUNDS.triageMinutes.max),
+    deadlineMinutes: clamp(Number(src.deadlineMinutes ?? DEFAULT_ASSUMPTIONS.deadlineMinutes), ASSUMPTION_BOUNDS.deadlineMinutes.min, ASSUMPTION_BOUNDS.deadlineMinutes.max),
+    hourlyRate: clamp(Number(src.hourlyRate ?? DEFAULT_ASSUMPTIONS.hourlyRate), ASSUMPTION_BOUNDS.hourlyRate.min, ASSUMPTION_BOUNDS.hourlyRate.max),
   };
 }
 
@@ -121,40 +131,34 @@ export function loadAssumptions(): RoiAssumptions {
 
 export function saveAssumptions(a: RoiAssumptions): void {
   try {
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizeAssumptions(a)));
-    }
+    if (typeof localStorage !== "undefined") localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizeAssumptions(a)));
   } catch {
     /* ignore */
   }
 }
 
-type RoiStats = Pick<DashboardStats, "drafts_created_week" | "emails_week" | "resolved_week">;
-
-export function computeRoi(
-  stats: RoiStats | null | undefined,
+/** Kern-Rechner: aus gemessenen Zaehlern eines Fensters → RoiResult.
+ *  `scale` skaliert die Zaehler (nur Fallback-Monat = ×WEEK_TO_MONTH); thin/
+ *  triageOnly werden IMMER auf den ungeskalierten (gemessenen) Zaehlern beurteilt. */
+export function computeRoiFromCounts(
+  countsIn: Partial<RoiCounts> | null | undefined,
   assumptionsIn: Partial<RoiAssumptions> | null | undefined,
-  period: RoiPeriod,
+  opts: { period: RoiPeriod; projected?: boolean; measured?: boolean; scale?: number },
 ): RoiResult {
   const a = sanitizeAssumptions(assumptionsIn);
-  const draftsWeek = toNonNegInt(stats?.drafts_created_week);
-  const emailsWeek = toNonNegInt(stats?.emails_week);
-  const resolvedWeek = toNonNegInt(stats?.resolved_week);
+  const base = toCounts(countsIn);
+  const scale = opts.scale && opts.scale > 0 ? opts.scale : 1;
 
-  // thin/triageOnly IMMER auf der gemessenen Wochen-Aktivitaet beurteilen.
-  const thin = draftsWeek === 0 && emailsWeek < THIN_MIN_EMAILS;
-  const triageOnly = draftsWeek === 0 && emailsWeek >= THIN_MIN_EMAILS;
+  const drafts = Math.round(base.drafts_prepared * scale);
+  const emails = Math.round(base.emails_triaged * scale);
+  const resolved = Math.round(base.resolved * scale);
+  const deadlines = Math.round(base.deadlines_caught * scale);
 
-  const projected = period === "month";
-  const f = projected ? WEEK_TO_MONTH : 1;
+  const thin = base.drafts_prepared === 0 && base.emails_triaged < THIN_MIN_EMAILS && base.deadlines_caught === 0;
+  const triageOnly = base.drafts_prepared === 0 && !thin;
 
-  const drafts = Math.round(draftsWeek * f);
-  const emails = Math.round(emailsWeek * f);
-  const resolved = Math.round(resolvedWeek * f);
-
-  // Punkt-Schaetzung: Schreibzeit je Entwurf + Triage-Zeit je E-Mail.
-  // resolved wird NICHT addiert (Teilmenge der Entwuerfe → Doppelzaehlung).
-  const minutesPoint = drafts * a.draftMinutes + emails * a.triageMinutes;
+  // resolved NICHT addieren (Teilmenge der Entwuerfe → Doppelzaehlung).
+  const minutesPoint = drafts * a.draftMinutes + emails * a.triageMinutes + deadlines * a.deadlineMinutes;
   const minutesLow = minutesPoint * BAND_LOW;
   const minutesHigh = minutesPoint * BAND_HIGH;
 
@@ -163,13 +167,15 @@ export function computeRoi(
   const euroHigh = (minutesHigh / 60) * a.hourlyRate;
 
   return {
-    period,
-    projected,
+    period: opts.period,
+    projected: !!opts.projected,
+    measured: !!opts.measured,
     thin,
     triageOnly,
     drafts,
     emails,
     resolved,
+    deadlines,
     minutesPoint,
     minutesLow,
     minutesHigh,
@@ -179,11 +185,32 @@ export function computeRoi(
   };
 }
 
+/** FALLBACK-Pfad aus /v1/dashboard/stats (nur Wochen-Zaehler, keine Fristen).
+ *  Woche = gemessen; Monat = Hochrechnung (projected). */
+export function computeRoi(
+  stats: Pick<DashboardStats, "drafts_created_week" | "emails_week" | "resolved_week"> | null | undefined,
+  assumptionsIn: Partial<RoiAssumptions> | null | undefined,
+  period: RoiPeriod,
+): RoiResult {
+  const counts: RoiCounts = {
+    drafts_prepared: toNonNegInt(stats?.drafts_created_week),
+    resolved: toNonNegInt(stats?.resolved_week),
+    emails_triaged: toNonNegInt(stats?.emails_week),
+    deadlines_caught: 0,
+  };
+  const projected = period === "month";
+  return computeRoiFromCounts(counts, assumptionsIn, {
+    period,
+    projected,
+    measured: false,
+    scale: projected ? WEEK_TO_MONTH : 1,
+  });
+}
+
 /** M5-Hook: geschaetzte ZUSAETZLICHE Zeitersparnis mit der naechsten Autopilot-
  *  Stufe (auto-Send eines Teils der Entwuerfe). Klar als Vorschau markiert. */
 export function computeM5Hook(result: RoiResult): { minutes: number } {
-  const minutes = result.drafts * M5_AUTO_SHARE * M5_RELEASE_MINUTES;
-  return { minutes };
+  return { minutes: result.drafts * M5_AUTO_SHARE * M5_RELEASE_MINUTES };
 }
 
 // ── Formatierung (de-DE) ──────────────────────────────────────────────────────

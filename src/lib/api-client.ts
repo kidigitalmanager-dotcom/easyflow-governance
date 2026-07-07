@@ -576,6 +576,32 @@ export const fetchStats = async (): Promise<DashboardStats> => {
     autopilot_queued_today: s?.autopilot_queued_today ?? raw.autopilot_queued_today ?? 0,
   };
 };
+export interface RoiWindowCounts {
+  drafts_prepared: number;
+  resolved: number;
+  emails_triaged: number;
+  deadlines_caught: number;
+}
+export interface RoiResponse {
+  ok?: boolean;
+  tenant_id?: string;
+  week: RoiWindowCounts;
+  month: RoiWindowCounts;
+  window?: { week_days: number; month_days: number };
+  generated_at?: string;
+}
+// v2 ROI-Kachel: gemessene Wochen- UND Monats-Zaehler (echte Monatszahlen).
+export const fetchRoi = async (): Promise<RoiResponse> => {
+  const raw = await apiFetch<RoiResponse>("/roi");
+  const norm = (c: Partial<RoiWindowCounts> | undefined): RoiWindowCounts => ({
+    drafts_prepared: c?.drafts_prepared ?? 0,
+    resolved: c?.resolved ?? 0,
+    emails_triaged: c?.emails_triaged ?? 0,
+    deadlines_caught: c?.deadlines_caught ?? 0,
+  });
+  return { ...raw, week: norm(raw?.week), month: norm(raw?.month) };
+};
+
 export const fetchRecentEmails = () => apiFetch<RecentEmail[]>("/emails/recent");
 export const fetchAuditLog = () => apiFetch<AuditLogEntry[]>("/audit");
 // v4.29.0 (1c): Operations-Assistenz — Timeout-Einstellung (Geduldig/Zügig).

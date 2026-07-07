@@ -2,23 +2,23 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  PiggyBank, Sparkles, ChevronDown, Info, RotateCcw, FileText, Inbox, CheckCircle2,
+  PiggyBank, Sparkles, ChevronDown, Info, RotateCcw, FileText, Inbox, CheckCircle2, CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useDashboardStats } from "@/hooks/use-api";
+import { useDashboardStats, useDashboardRoi } from "@/hooks/use-api";
 import {
-  computeRoi, computeM5Hook, loadAssumptions, saveAssumptions, sanitizeAssumptions,
+  computeRoi, computeRoiFromCounts, computeM5Hook, loadAssumptions, saveAssumptions, sanitizeAssumptions,
   formatHoursRange, formatEuroRange, formatMinutes, periodLabel,
   ASSUMPTION_BOUNDS, DEFAULT_ASSUMPTIONS,
-  type RoiAssumptions, type RoiPeriod,
+  type RoiAssumptions, type RoiPeriod, type RoiResult,
 } from "@/lib/roi";
 
 // V2-Kachel "Was Jana dir gespart hat" — macht den unsichtbaren Nutzen von Jana
-// sichtbar (vorbereitete Entwuerfe + eingeordnete E-Mails → geschaetzte Zeit/Euro).
-// Reine Frontend-Karte auf den schon vorhandenen /v1/dashboard/stats-Reads
-// (drafts_created_week, emails_week, resolved_week) — KEIN api-router-Edit.
-// Ehrlichkeit: konservative Schaetzung, sichtbare Methode, Bandbreite statt
-// Punktwert, ehrlicher "zu wenig Aktivitaet"-Fall.
+// sichtbar (vorbereitete Entwuerfe, eingeordnete E-Mails, gefangene Fristen →
+// geschaetzte Zeit/Euro). Bevorzugt den gemessenen /v1/dashboard/roi-Endpoint
+// (echte Wochen- UND Monatszahlen); faellt sonst auf /v1/dashboard/stats zurueck
+// (Woche gemessen, Monat hochgerechnet). Ehrlichkeit: konservative Schaetzung,
+// sichtbare Methode, Bandbreite, ehrlicher "zu wenig Aktivitaet"-Fall.
 
 function StatChip({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
   return (
@@ -33,8 +33,7 @@ function StatChip({ icon, value, label }: { icon: React.ReactNode; value: number
 function AssumptionField({
   label, suffix, value, min, max, step, onChange,
 }: {
-  label: string; suffix: string; value: number; min: number; max: number; step: number;
-  onChange: (v: number) => void;
+  label: string; suffix: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void;
 }) {
   return (
     <label className="flex items-center justify-between gap-2">
@@ -60,7 +59,11 @@ function AssumptionField({
 }
 
 export function RoiSavingsCard() {
-  const { data: stats, isLoading } = useDashboardStats();
+  const roiQuery = useDashboardRoi();
+  const statsQuery = useDashboardStats();
+  const roi = roiQuery.data;
+  const stats = statsQuery.data;
+
   const [period, setPeriod] = useState<RoiPeriod>("week");
   const [methodOpen, setMethodOpen] = useState(false);
   const [assumptions, setAssumptions] = useState<RoiAssumptions>(() => loadAssumptions());
@@ -69,13 +72,20 @@ export function RoiSavingsCard() {
     saveAssumptions(assumptions);
   }, [assumptions]);
 
-  const result = useMemo(() => computeRoi(stats, assumptions, period), [stats, assumptions, period]);
-  const m5 = useMemo(() => computeM5Hook(result), [result]);
+  const result: RoiResult | null = useMemo(() => {
+    if (roi) {
+      return computeRoiFromCounts(period === "week" ? roi.week : roi.month, assumptions, { period, measured: true });
+    }
+    if (stats) return computeRoi(stats, assumptions, period);
+    return null;
+  }, [roi, stats, assumptions, period]);
+
+  const m5 = useMemo(() => (result ? computeM5Hook(result) : { minutes: 0 }), [result]);
 
   const setField = (key: keyof RoiAssumptions, v: number) =>
     setAssumptions((prev) => sanitizeAssumptions({ ...prev, [key]: v }));
 
-  if (isLoading) {
+  if (roiQuery.isLoading && statsQuery.isLoading) {
     return (
       <Card className="glass-card border-primary/20">
         <CardContent className="pt-4 pb-4 space-y-3">
@@ -86,7 +96,11 @@ export function RoiSavingsCard() {
       </Card>
     );
   }
-  if (!stats) return null;
+  if (!result) return null;
+
+  const windowNote = result.measured
+    ? period === "week" ? "letzte 7 Tage · gemessen" : "letzte 30 Tage · gemessen"
+    : period === "week" ? "letzte 7 Tage · gemessen" : "aus 7-Tage-Schnitt hochgerechnet";
 
   return (
     <Card className={cn("glass-card", result.thin ? "border-border" : "border-primary/20")}>
@@ -149,7 +163,7 @@ export function RoiSavingsCard() {
             )}
             {result.triageOnly && (
               <p className="text-[11px] text-muted-foreground mt-1">
-                Aktuell nur aus eingeordneten E-Mails — noch keine vorbereiteten Entwürfe {periodLabel(period)}.
+                Aktuell ohne vorbereitete Entwürfe {periodLabel(period)} — nur aus eingeordneten E-Mails{result.deadlines > 0 ? " und erfassten Fristen" : ""}.
               </p>
             )}
 
@@ -158,6 +172,9 @@ export function RoiSavingsCard() {
               <StatChip icon={<FileText className="w-3.5 h-3.5" />} value={result.drafts} label="Entwürfe vorbereitet" />
               <StatChip icon={<Inbox className="w-3.5 h-3.5" />} value={result.emails} label="E-Mails eingeordnet" />
               <StatChip icon={<CheckCircle2 className="w-3.5 h-3.5" />} value={result.resolved} label="freigegeben & gesendet" />
+              {result.deadlines > 0 && (
+                <StatChip icon={<CalendarClock className="w-3.5 h-3.5" />} value={result.deadlines} label="Fristen erfasst" />
+              )}
             </div>
 
             {/* ── M5-Upsell-Hook (Platzhalter) ── */}
@@ -187,7 +204,7 @@ export function RoiSavingsCard() {
         {methodOpen && (
           <div className="mt-3 rounded-xl border border-border bg-card/40 p-4 space-y-3 text-xs text-muted-foreground leading-relaxed">
             <p>
-              Grundlage sind reale Zähler aus deinem Postfach der letzten 7 Tage. Wir rechnen sie mit den unten
+              Grundlage sind reale Zähler aus deinem Postfach ({windowNote}). Wir rechnen sie mit den unten
               sichtbaren, konservativen Zeit-Annahmen in gesparte Zeit um:
             </p>
             <ul className="space-y-1">
@@ -203,6 +220,13 @@ export function RoiSavingsCard() {
                 <span>
                   <span className="text-foreground font-medium tabular-nums">{result.emails.toLocaleString("de-DE")}</span> eingeordnete
                   E-Mails × {assumptions.triageMinutes} Min Sortierzeit
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CalendarClock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>
+                  <span className="text-foreground font-medium tabular-nums">{result.deadlines.toLocaleString("de-DE")}</span> erfasste
+                  Fristen/Termine × {assumptions.deadlineMinutes} Min
                 </span>
               </li>
             </ul>
@@ -222,21 +246,18 @@ export function RoiSavingsCard() {
                   <RotateCcw className="w-3 h-3" /> Zurücksetzen
                 </button>
               </div>
-              <AssumptionField
-                label="Zeit je Entwurf" suffix="Min" value={assumptions.draftMinutes}
+              <AssumptionField label="Zeit je Entwurf" suffix="Min" value={assumptions.draftMinutes}
                 min={ASSUMPTION_BOUNDS.draftMinutes.min} max={ASSUMPTION_BOUNDS.draftMinutes.max} step={1}
-                onChange={(v) => setField("draftMinutes", v)}
-              />
-              <AssumptionField
-                label="Zeit je E-Mail" suffix="Min" value={assumptions.triageMinutes}
+                onChange={(v) => setField("draftMinutes", v)} />
+              <AssumptionField label="Zeit je E-Mail" suffix="Min" value={assumptions.triageMinutes}
                 min={ASSUMPTION_BOUNDS.triageMinutes.min} max={ASSUMPTION_BOUNDS.triageMinutes.max} step={0.5}
-                onChange={(v) => setField("triageMinutes", v)}
-              />
-              <AssumptionField
-                label="Stundensatz" suffix="€/Std" value={assumptions.hourlyRate}
+                onChange={(v) => setField("triageMinutes", v)} />
+              <AssumptionField label="Zeit je Frist" suffix="Min" value={assumptions.deadlineMinutes}
+                min={ASSUMPTION_BOUNDS.deadlineMinutes.min} max={ASSUMPTION_BOUNDS.deadlineMinutes.max} step={1}
+                onChange={(v) => setField("deadlineMinutes", v)} />
+              <AssumptionField label="Stundensatz" suffix="€/Std" value={assumptions.hourlyRate}
                 min={ASSUMPTION_BOUNDS.hourlyRate.min} max={ASSUMPTION_BOUNDS.hourlyRate.max} step={5}
-                onChange={(v) => setField("hourlyRate", v)}
-              />
+                onChange={(v) => setField("hourlyRate", v)} />
               <p className="text-muted-foreground pt-0.5">Diese Annahmen gelten nur für dich (lokal gespeichert).</p>
             </div>
 
@@ -253,8 +274,8 @@ export function RoiSavingsCard() {
               {result.projected && " Der Monatswert ist aus dem 7-Tage-Schnitt hochgerechnet, nicht gemessen."}
             </p>
             <p className="text-[11px]">
-              Konservative Schätzung. Gefangene Fristen und weitere von Jana übernommene Aktionen sind hier noch nicht
-              enthalten — der reale Nutzen liegt eher darüber.
+              Konservative Schätzung. Weitere von Jana übernommene Aktionen sind hier noch nicht vollständig enthalten —
+              der reale Nutzen liegt eher darüber.
             </p>
           </div>
         )}

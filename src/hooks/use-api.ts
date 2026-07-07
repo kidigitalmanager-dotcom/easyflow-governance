@@ -3,6 +3,7 @@ import { fetchBillingSummary, startBillingCheckout, openBillingPortal } from "@/
 import {
   fetchMe,
   fetchStats,
+  fetchRoi,
   fetchRecentEmails,
   fetchAuditLog,
   fetchPlaybooks,
@@ -78,6 +79,17 @@ export function useMe() {
     queryFn: fetchMe,
     enabled: !!session,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useDashboardRoi() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["dashboard-roi"],
+    queryFn: fetchRoi,
+    enabled: !!session,
+    refetchInterval: 60_000,
+    retry: false, // /roi ist optional (Fallback auf /stats) → keine Retry-Spam vor Deploy
   });
 }
 
