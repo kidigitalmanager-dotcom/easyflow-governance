@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useFoerderRadar, useSaveFoerderProfile, useHandelsregisterLookup, type FoerderHrCandidate } from "@/hooks/use-capital";
 import { fmtEur, FOERDER_VERTICALS, BUNDESLAENDER, type FoerderProgram } from "@/lib/capital";
 import { FoerderReportButton } from "@/components/capital/FoerderReport";
+import { FoerderProgramDetail } from "@/components/capital/FoerderProgramDetail";
 
 // ── Foerder-Radar v2: latentes Kapital + konditionales Matching ──────────────
 // Kuratierter Katalog x Branche x Firmenprofil (Alter/Stadt/Region/Groesse).
@@ -64,6 +65,7 @@ function ProgramRow({ p, conditional }: { p: FoerderProgram; conditional?: boole
           {p.eligibility && <p><span className="text-foreground">Wer:</span> {p.eligibility}</p>}
           {p.conditional_note && <p className="text-amber-600">Bedingung: {p.conditional_note}</p>}
           {p.source && <p className="text-muted-foreground/70">Quelle: {p.source}</p>}
+          <FoerderProgramDetail program={p} />
         </div>
       )}
     </div>

@@ -7,6 +7,7 @@ import type {
   CapAlert, CapHealthBenchmark, CapCategoryBenchmark, FreshnessRow,
   VerificationTierRow,
   RiskShield, FoerderRadar, JanaChatResponse, WeeklyPrioritiesResponse, MorningBriefingResponse,
+  FoerderDetailResponse,
   InvestorPortfolioResponse, PortfolioFilterKey,
 } from "@/lib/capital";
 import { uploadCapitalStatement, getCapitalBankStatus, connectCapitalBank, callbackCapitalBank, syncCapitalBank, getCapitalAccountingStatus, connectCapitalAccounting, callbackCapitalAccounting, syncCapitalAccounting, getCapitalStripeStatus, connectCapitalStripe, callbackCapitalStripe, syncCapitalStripe, disconnectCapitalStripe, getCapitalShopifyStatus, connectCapitalShopify, callbackCapitalShopify, syncCapitalShopify, connectCapitalShopifyToken, getCapitalMetaAdsStatus, connectCapitalMetaAds, callbackCapitalMetaAds, syncCapitalMetaAds, getCapitalTicketingStatus, connectCapitalTicketing, syncCapitalTicketing, disconnectCapitalBank, disconnectCapitalAccounting, disconnectCapitalShopify, disconnectCapitalMetaAds, disconnectCapitalTicketing } from "@/lib/api-client";
@@ -701,4 +702,39 @@ export function useMorningBriefing() {
       return j as MorningBriefingResponse;
     },
   });
+}
+
+
+// ── M4 Foerder-RAG: belegte Antrags-Zusammenfassung (RAG) je Programm ────────
+// Spiegelt useFoerderRadar: Console-Session via x-console-token; die foerder-detail
+// Edge-Function retrievt NUR Chunks des program_key (kein Cross-Programm) und belegt
+// jede Aussage mit einem Richtlinien-Ausschnitt. Lazy: erst laden, wenn angefordert.
+const CAPITAL_FOERDER_DETAIL_URL = "https://vunhcexnwbvxrwecymiy.functions.supabase.co/foerder-detail";
+async function callFoerderDetail(programKey: string): Promise<FoerderDetailResponse> {
+  const { data: { session } } = await authClient.auth.getSession();
+  const token = session?.access_token ?? "";
+  if (!token) throw new Error("no_session");
+  const res = await fetch(CAPITAL_FOERDER_DETAIL_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", apikey: CAPITAL_ANON, "x-console-token": token },
+    body: JSON.stringify({ program_key: programKey, include_firm: true }),
+  });
+  const j = await res.json().catch(() => ({} as Record<string, unknown>));
+  if (!res.ok || !j.ok) throw new Error((j.error as string) || ("foerder_detail_failed_" + res.status));
+  return j as FoerderDetailResponse;
+}
+export function useFoerderDetail(programKey: string, enabled: boolean) {
+  return useQuery<FoerderDetailResponse>({
+    queryKey: ["cap", "foerder-detail", programKey],
+    enabled: !!programKey && enabled,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: false,
+    queryFn: () => callFoerderDetail(programKey),
+  });
+}
+// Der Berater-Bundle-Export nutzt dieselbe Detail-Antwort (program + detail + firm),
+// KEIN Doppel-Fetch. Duenner Alias fuer klare Aufrufsemantik.
+export function useFoerderBundle(programKey: string, enabled: boolean) {
+  return useFoerderDetail(programKey, enabled);
 }

@@ -373,3 +373,52 @@ export type MorningBriefingResponse = {
   data_freshness?: MorningFreshness;
   top_priorities?: WeeklyPriority[]; suggestion?: MorningSuggestion;
 };
+
+
+// ── M4 Foerder-RAG: belegte Antrags-Zusammenfassung (RAG) + Berater-Bundle ────
+// Spiegelt die Antwort der foerder-detail Edge-Function: jede Unterlage/jeder
+// Schritt/jede Frist ist mit einem Richtlinien-Ausschnitt (C1..Cn) belegt.
+export type FoerderDetailItem = { text: string; quelle: string };
+export type FoerderExcerpt = { id: string; chunk_idx: number; content: string; similarity: number };
+export type FoerderDetailInner = {
+  summary: string;
+  documents_needed: FoerderDetailItem[];
+  steps: FoerderDetailItem[];
+  deadlines_conditions: FoerderDetailItem[];
+  sources: string[];
+  dropped?: number; parse_ok?: boolean; model?: string;
+};
+export type FoerderDetailSignal = { metric_key: string; value: number | null; period: string | null; is_illustrative?: boolean };
+export type FoerderDetailFirm = {
+  has_tenant: boolean; account_name?: string | null; vertical?: string | null;
+  profile?: FoerderProfile | null; signals?: FoerderDetailSignal[];
+};
+export type FoerderDetailProgram = {
+  program_key: string; name: string; provider?: string | null; level?: string | null;
+  funding_type?: string | null; grant_class?: string | null;
+  amount_min_eur?: number | null; amount_max_eur?: number | null;
+  eligibility?: string | null; conditions?: string | null; description?: string | null;
+  source?: string | null; source_type?: string | null;
+};
+export type FoerderDetailResponse = {
+  ok: boolean;
+  program?: FoerderDetailProgram;
+  indexed: boolean;
+  llm_configured?: boolean | null; llm_error?: string;
+  detail?: FoerderDetailInner | null;
+  excerpts?: FoerderExcerpt[];
+  disclaimer?: string; source_url?: string; message?: string;
+  firm?: FoerderDetailFirm | null;
+};
+// Menschlich lesbares Label fuer die aggregierten fin_*-Signale (0-100, KEINE Rohunterlagen).
+export function foerderSignalLabel(key: string): string {
+  const m: Record<string, string> = {
+    fin_mrr: "Wiederkehrender Umsatz (Index)", fin_burn: "Liquiditaets-Burn (Index)",
+    fin_liquidity: "Liquiditaet (Index)", fin_runway: "Runway (Index)",
+    fin_dso: "Zahlungseingang / DSO (Index)", fin_dpo: "Zahlungsziel / DPO (Index)",
+    fin_ar_aging: "Forderungsalter (Index)", fin_ap_pressure: "Verbindlichkeitsdruck (Index)",
+    fin_gross_margin: "Bruttomarge (Index)", fin_working_capital: "Working Capital (Index)",
+    fin_cash_conversion: "Cash Conversion (Index)",
+  };
+  return m[key] ?? key;
+}
