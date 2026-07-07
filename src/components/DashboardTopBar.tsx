@@ -47,8 +47,10 @@ export function DashboardTopBar() {
   const planName = plan?.name ? capitalize(plan.name) : null;
   const mailboxUsed = plan?.active_mailboxes ?? 0;
   const mailboxLimit = plan?.mailbox_limit ?? 0;
-  const mailboxPct = mailboxLimit > 0 ? mailboxUsed / mailboxLimit : 0;
-  const mailboxWarn = mailboxPct >= 0.8;
+  // v4.102.0: rot NUR bei echter Ueberbelegung (mehr verbundene Postfaecher als der Plan
+  // erlaubt) -- "voll ausgeschoepft" (z.B. 1/1) ist der Normalzustand und darf nicht rot/
+  // alarmierend erscheinen (vorher: mailboxPct >= 0.8 machte 1/1 rot).
+  const mailboxWarn = mailboxLimit > 0 && mailboxUsed > mailboxLimit;
 
   // Setup status logic: prefer setup.complete / setup.status over tenant.status
   const setupComplete = setup?.complete === true;

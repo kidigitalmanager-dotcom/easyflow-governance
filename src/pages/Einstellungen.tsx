@@ -6,6 +6,7 @@ import { ChipDomainInput } from "@/components/ChipDomainInput";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { type MailboxHealth } from "@/lib/api-client";
 import KnowledgeBaseTab from "@/components/KnowledgeBaseTab";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
 import MicrosoftIntegration from "@/components/MicrosoftIntegration";
@@ -37,6 +38,31 @@ function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<Reac
   return [state, setState];
 }
 
+// v4.102.0: Anzeigename je Provider fuer die serverseitige Postfach-Liste.
+const PROVIDER_LABEL: Record<string, string> = {
+  gmail: "Gmail",
+  outlook: "Outlook / Microsoft 365",
+};
+
+// v4.102.0: Postfach-Status-Chip. Semantik gespiegelt aus MailboxReconnectCard
+// (Poller-Health aus mailbox_health[]): ok = verbunden/aktueller Abruf, stale = kein
+// aktueller Abruf, error = Verbindungsfehler, unknown = verbunden (kein Poller-Signal).
+function MailboxStatusBadge({ status }: { status: MailboxHealth["status"] }) {
+  const map: Record<MailboxHealth["status"], { dot: string; label: string }> = {
+    ok: { dot: "bg-emerald-500", label: "verbunden" },
+    unknown: { dot: "bg-emerald-500", label: "verbunden" },
+    stale: { dot: "bg-amber-500", label: "kein aktueller Abruf" },
+    error: { dot: "bg-destructive", label: "Verbindungsfehler" },
+  };
+  const { dot, label } = map[status] ?? map.unknown;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+      <span className={`h-2 w-2 rounded-full ${dot}`} aria-hidden />
+      {label}
+    </span>
+  );
+}
+
 export default function Einstellungen() {
   const { user } = useAuth();
   const { data: me, isLoading } = useMe();
@@ -47,11 +73,6 @@ export default function Einstellungen() {
 
   const userEmail = user?.email ?? "";
   const userId = user?.id ?? "anon";
-
-  const [mailboxStates, setMailboxStates] = useLocalState<Record<string, boolean>>(
-    `ue_mailboxes_${userId}`,
-    {}
-  );
 
   const [approvalRules, setApprovalRules] = useLocalState(
     `ue_approval_${userId}`,
@@ -73,15 +94,28 @@ export default function Einstellungen() {
   const [businessHours, setBusinessHours] = useLocalState(`ue_hours_${userId}`, { start: "08:00", end: "18:00" });
   const [slaTarget, setSlaTarget] = useLocalState(`ue_sla_${userId}`, "95");
 
-  const mailboxList = Object.keys(mailboxStates);
-  const activeMailboxes = Object.values(mailboxStates).filter(Boolean).length;
+  // v4.102.0: Postfach-Anzeige serverseitig ableiten (identische Wahrheit wie die Topbar)
+  // statt aus leerem localStorage. plan.active_mailboxes ist backendseitig auf Postfach-
+  // Ebene dedupliziert (ein Postfach mit mehreren Credential-Rows zaehlt EINMAL);
+  // mailbox_health[] liefert pro verbundenem Postfach Adresse + Poller-Status. Fallback
+  // auf die Tenant-Flags, falls die Poller-Health-Migration (noch) fehlt (mailbox_health=[]).
   const mailboxLimit = plan?.mailbox_limit ?? 0;
+  const activeMailboxes = plan?.active_mailboxes ?? 0;
 
-  const toggleMailbox = (mb: string) => {
-    const isOn = mailboxStates[mb];
-    if (!isOn && mailboxLimit > 0 && activeMailboxes >= mailboxLimit) return;
-    setMailboxStates(prev => ({ ...prev, [mb]: !prev[mb] }));
-  };
+  const mailboxHealth = (me?.mailbox_health ?? []) as MailboxHealth[];
+  const connectedMailboxes: Array<{ provider: string; email: string | null; status: MailboxHealth["status"] }> = (
+    mailboxHealth.length > 0
+      ? mailboxHealth.map((h) => ({ provider: h.provider, email: h.email, status: h.status }))
+      : ([
+          tenant?.gmail_enabled ? { provider: "gmail", email: userEmail || null, status: "unknown" as const } : null,
+          tenant?.outlook_enabled ? { provider: "outlook", email: userEmail || null, status: "unknown" as const } : null,
+        ].filter((m): m is { provider: string; email: string | null; status: "unknown" } => m !== null))
+  ).filter(
+    (m, i, arr) =>
+      arr.findIndex(
+        (x) => (x.email || x.provider).toLowerCase() === (m.email || m.provider).toLowerCase(),
+      ) === i,
+  );
 
   const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
     <button
@@ -162,43 +196,47 @@ export default function Einstellungen() {
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold">UseEasy pro Mailbox</h2>
               <span className="text-xs text-muted-foreground">
-                {activeMailboxes} / {mailboxLimit} genutzt
+                {activeMailboxes} / {mailboxLimit} verbunden
               </span>
             </div>
-            {mailboxLimit > 0 && activeMailboxes >= mailboxLimit && (
+            {mailboxLimit > 0 && activeMailboxes > mailboxLimit && (
               <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-md px-3 py-2">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                Mailbox-Limit erreicht. Plan upgraden für mehr Mailboxen.
+                Mehr Postfächer verbunden als der Plan erlaubt. Plan upgraden für mehr Mailboxen.
               </div>
             )}
             {isLoading ? (
               <div className="space-y-3">
                 {[1, 2].map(i => <Skeleton key={i} className="h-12 w-full" />)}
               </div>
-            ) : mailboxList.length === 0 ? (
+            ) : connectedMailboxes.length > 0 ? (
+              connectedMailboxes.map((mb) => (
+                <div key={`${mb.provider}:${mb.email ?? ""}`} className="flex items-center justify-between py-2">
+                  <div>
+                    <p className="text-sm font-medium">{mb.email ?? (PROVIDER_LABEL[mb.provider] ?? mb.provider)}</p>
+                    <p className="text-xs text-muted-foreground">{PROVIDER_LABEL[mb.provider] ?? mb.provider}</p>
+                  </div>
+                  <MailboxStatusBadge status={mb.status} />
+                </div>
+              ))
+            ) : activeMailboxes > 0 ? (
+              <p className="text-sm text-muted-foreground py-2">
+                {activeMailboxes} Postfach{activeMailboxes === 1 ? "" : "er"} verbunden.
+              </p>
+            ) : (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <Mail className="w-8 h-8 text-muted-foreground/50" />
                 <p className="text-sm text-muted-foreground">Noch keine Mailbox verbunden</p>
                 {userEmail && (
                   <p className="text-xs text-muted-foreground/70">Angemeldet als {userEmail}</p>
                 )}
-                <button
-                  onClick={() => setMailboxStates(prev => ({ ...prev, [userEmail]: false }))}
+                <a
+                  href="/einstellungen?tab=integrations"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
-                  Mailbox verbinden
-                </button>
+                  <Plug className="w-3.5 h-3.5" /> Mailbox verbinden
+                </a>
               </div>
-            ) : (
-              mailboxList.map((mb) => (
-                <div key={mb} className="flex items-center justify-between py-2">
-                  <div>
-                    <p className="text-sm font-medium">{mb}</p>
-                    <p className="text-xs text-muted-foreground">{mailboxStates[mb] ? "Aktiv" : "Inaktiv"}</p>
-                  </div>
-                  <Toggle checked={mailboxStates[mb] || false} onChange={() => toggleMailbox(mb)} />
-                </div>
-              ))
             )}
           </div>
 
