@@ -29,6 +29,7 @@ import { JanaChat } from "@/components/capital/JanaChat";
 import { WeeklyPriorities } from "@/components/capital/WeeklyPriorities";
 import { MorningBriefing } from "@/components/capital/MorningBriefing";
 import { RoiSavingsCard } from "@/components/RoiSavingsCard";
+import { MorningBriefingDialog } from "@/components/capital/MorningBriefingDialog";
 import { OnboardingCoach } from "@/components/onboarding/OnboardingCoach";
 import { GuidedTour } from "@/components/onboarding/GuidedTour";
 
@@ -285,6 +286,7 @@ export default function Signale() {
 
   return (
     <div className="space-y-5">
+      <MorningBriefingDialog />
       {/* ── Sticky Kontext-Header: Firma + Health + Freigabe-Status ── */}
       <div data-tour="header" className="sticky top-0 z-20 -mx-8 -mt-8 px-8 py-3 bg-background/85 backdrop-blur border-b border-border">
         <div className="flex items-center justify-between gap-3">
