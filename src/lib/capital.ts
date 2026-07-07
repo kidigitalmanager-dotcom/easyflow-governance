@@ -49,6 +49,41 @@ export function scoreLabel(v: number | null | undefined): string {
   if (v >= RED_THRESHOLD) return "Beobachten";
   return "Kritisch";
 }
+
+// ── Ehrlichkeits-Gate: ist der Score als Urteil belastbar? ───────────────
+// Ein roter Score bzw. Score 0 darf nur dann als "Kritisch" gelten, wenn die
+// Datenlage frisch und breit genug ist. Bei toten/veralteten Quellen, unter
+// einem Coverage-Minimum oder bei zu kurzer Historie zeigen wir stattdessen
+// "Eingeschränkt bewertbar" (grau, kein Score), damit fehlende Daten nie als
+// echter Distress erscheinen (Investor-Rangliste + eigener Health).
+export const COVERAGE_FLOOR_FOR_VERDICT = 0.4;   // unter 40 % Coverage = zu dünn
+export const MIN_MONTHS_FOR_VERDICT = 3;         // unter 3 Monatswerten = Historie im Aufbau
+
+export type HonestScoreKind = "healthy" | "watch" | "critical" | "limited" | "nodata";
+export type HonestScore = { limited: boolean; kind: HonestScoreKind; label: string; color: string; hint: string | null };
+export function honestScore(inp: {
+  score: number | null | undefined;
+  coverage?: number | null;
+  worstFreshness?: "fresh" | "stale" | "dead" | "none" | "no_sla" | null;
+  verificationTier?: VerificationTierKind | null;
+  historyMonths?: number | null;
+}): HonestScore {
+  const { score } = inp;
+  if (score == null) return { limited: false, kind: "nodata", label: "Keine Daten", color: "#5A6473", hint: null };
+  const staleSource = inp.worstFreshness === "dead" || inp.worstFreshness === "stale";
+  const staleTier = inp.verificationTier === "first_party_stale";
+  const thinCoverage = inp.coverage != null && inp.coverage < COVERAGE_FLOOR_FOR_VERDICT;
+  const thinHistory = inp.historyMonths != null && inp.historyMonths < MIN_MONTHS_FOR_VERDICT;
+  if (staleSource || staleTier || thinCoverage || thinHistory) {
+    const hint = staleSource || staleTier
+      ? "Datenquelle liefert aktuell keine frischen Werte, der Score ist noch nicht belastbar."
+      : thinHistory
+        ? "Historie im Aufbau (unter " + MIN_MONTHS_FOR_VERDICT + " Monaten), der Score ist noch nicht belastbar."
+        : "Datenlage noch zu dünn (Coverage unter " + Math.round(COVERAGE_FLOOR_FOR_VERDICT * 100) + " %), der Score ist noch nicht belastbar.";
+    return { limited: true, kind: "limited", label: "Eingeschränkt bewertbar", color: "#5A6473", hint };
+  }
+  return { limited: false, kind: score >= 70 ? "healthy" : score >= RED_THRESHOLD ? "watch" : "critical", label: scoreLabel(score), color: scoreColor(score), hint: null };
+}
 export function fmtPct(x: number | null | undefined): string {
   return x == null ? "–" : Math.round(x * 100) + "%";
 }

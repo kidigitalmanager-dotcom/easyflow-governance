@@ -94,6 +94,11 @@ export function AccountDashboard({ account, data, variant = "investor", onConnec
   const cat = (catalog.data?.categories ?? []);
   const metricsForCat = (catalog.data?.metrics ?? []).filter((m) => m.category_key === selectedCat);
   const sourceName = (k: string) => (catalog.data?.sources ?? []).find((s) => s.key === k)?.name ?? k;
+  // Ehrlichkeits-Gate fuer den Header-Score: schlechteste Frische ueber alle Quellen.
+  const ownWorstFresh: "fresh" | "stale" | "dead" | "none" =
+    freshnessRows.some((r) => r.status === "dead") ? "dead"
+    : freshnessRows.some((r) => r.status === "stale") ? "stale"
+    : freshnessRows.length ? "fresh" : "none";
 
   return (
     <div className="space-y-5">
@@ -107,7 +112,7 @@ export function AccountDashboard({ account, data, variant = "investor", onConnec
                 {model.latestHealth?.is_illustrative && <IllustrativeBadge />}
               </div>
               <div className="mt-1 flex items-center gap-4">
-                <ScoreBadge value={model.latestHealth?.health_score} size="lg" />
+                <ScoreBadge value={model.latestHealth?.health_score} size="lg" quality={{ coverage: model.latestHealth?.coverage, worstFreshness: ownWorstFresh, historyMonths: model.points }} />
                 <div className="text-xs text-muted-foreground space-y-1">
                   <div>Stand {fmtMonth(model.latestPeriod)}</div>
                   <div className="flex items-center gap-2 flex-wrap">

@@ -12,26 +12,46 @@ import { Fragment, useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { humanizeMetricValue, type MetricExplanation } from "@/data/capital-provenance";
 import {
-  RED_THRESHOLD, scoreColor, scoreLabel, fmtMonth, fmtPct, deriveKpiState, verificationTierMeta,
+  RED_THRESHOLD, scoreColor, scoreLabel, honestScore, fmtMonth, fmtPct, deriveKpiState, verificationTierMeta,
   type CapCategory, type CapMetric, type HealthPoint, type MetricValue, type VerificationTierKind,
 } from "@/lib/capital";
 
 /* ---------- small badges ---------- */
 
-export function ScoreBadge({ value, size = "md" }: { value: number | null | undefined; size?: "sm" | "md" | "lg" }) {
-  const color = scoreColor(value);
+export type ScoreQuality = {
+  coverage?: number | null;
+  worstFreshness?: "fresh" | "stale" | "dead" | "none" | "no_sla" | null;
+  verificationTier?: VerificationTierKind | null;
+  historyMonths?: number | null;
+};
+// quality (optional) speist das Ehrlichkeits-Gate: bei toter/veralteter Quelle,
+// zu dünner Coverage oder zu kurzer Historie zeigt der Badge "Eingeschränkt
+// bewertbar" + grau statt einer roten Zahl. Ohne quality identisch wie zuvor.
+export function ScoreBadge({ value, size = "md", quality }: { value: number | null | undefined; size?: "sm" | "md" | "lg"; quality?: ScoreQuality }) {
+  const h = honestScore({ score: value, ...(quality ?? {}) });
+  const color = h.color;
   const sz = size === "lg" ? "text-4xl" : size === "sm" ? "text-base" : "text-2xl";
-  return (
+  const chipSz = size === "lg" ? "text-xs" : "text-[11px]";
+  const badge = (
     <span className="inline-flex items-baseline gap-2">
       <span className={cn("font-bold tabular-nums leading-none", sz)} style={{ color }}>
-        {value == null ? "–" : Math.round(value)}
+        {h.limited || value == null ? "–" : Math.round(value)}
       </span>
-      <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full"
+      <span className={cn("font-medium px-1.5 py-0.5 rounded-full", chipSz)}
         style={{ color, backgroundColor: color + "1f", border: `1px solid ${color}33` }}>
-        {scoreLabel(value)}
+        {h.label}
       </span>
     </span>
   );
+  if (h.hint) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild><span className="cursor-help">{badge}</span></TooltipTrigger>
+        <TooltipContent className="max-w-xs text-xs">{h.hint}</TooltipContent>
+      </Tooltip>
+    );
+  }
+  return badge;
 }
 
 export function IllustrativeBadge() {

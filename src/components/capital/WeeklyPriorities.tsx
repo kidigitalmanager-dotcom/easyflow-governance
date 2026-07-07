@@ -1,8 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, AlertTriangle, TrendingDown, Zap, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Activity, AlertTriangle, TrendingDown, Zap, ShieldAlert, CheckCircle2, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useWeeklyPriorities } from "@/hooks/use-capital";
+import { useWeeklyPriorities, useMorningBriefing } from "@/hooks/use-capital";
 import { severityColor, ALERT_KIND_LABEL, fmtMonth, type WeeklyPriority, type AlertKind } from "@/lib/capital";
 
 function KindIcon({ kind }: { kind: string }) {
@@ -56,12 +56,20 @@ function PriorityRow({ p }: { p: WeeklyPriority }) {
 // Jede Prioritaet traegt ihre Handlung + den Beleg (KPI + Wert + Quelle).
 export function WeeklyPriorities() {
   const q = useWeeklyPriorities();
+  const mb = useMorningBriefing();
   if (q.isLoading) return <Skeleton className="h-28 w-full" />;
   const data = q.data;
   if (!data || !data.has_own_account) return null;
   const items = data.priorities ?? [];
+  // Konsistenz mit Health-Chip / Morgen-Briefing (v3): ist der eigene Antwort-
+  // Index kritisch, aber der Wochen-Feed leer, spiegeln wir das ehrlich statt
+  // "nichts Dringendes" zu behaupten. Bei duenner Datenlage: "im Aufbau".
+  const band = mb.data?.health?.band ?? null;
+  const freshLimited = mb.data?.data_freshness?.level === "limited";
+  const healthNow = mb.data?.health?.now ?? null;
+  const criticalNoData = items.length === 0 && band === "kritisch" && !freshLimited;
   return (
-    <Card className={cn("glass-card", items.length > 0 ? "border-primary/20" : "border-border")}>
+    <Card className={cn("glass-card", items.length > 0 || criticalNoData ? "border-primary/20" : "border-border")}>
       <CardContent className="pt-4 pb-4">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
@@ -72,15 +80,27 @@ export function WeeklyPriorities() {
             <h3 className="text-sm font-semibold text-foreground leading-tight mt-0.5">Deine Top-Prioritäten</h3>
           </div>
         </div>
-        {items.length === 0 ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-            Keine offenen Warnsignale — aktuell nichts Dringendes zu tun.
-          </div>
-        ) : (
+        {items.length > 0 ? (
           <ol className="space-y-2.5">
             {items.map((p) => <PriorityRow key={p.alert_id} p={p} />)}
           </ol>
+        ) : criticalNoData ? (
+          <div className="flex items-start gap-2 text-sm rounded-lg border px-3 py-2" style={{ borderColor: "#C0392B40", backgroundColor: "#C0392B0d" }}>
+            <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#C0392B" }} />
+            <span className="text-foreground">
+              Dein Antwort-Index ist aktuell kritisch{healthNow != null ? ` (${Math.round(healthNow)})` : ""}. Sieh dir die Frühwarn-Alerts oben an.
+            </span>
+          </div>
+        ) : (band === "kritisch" || band === "beobachten") && freshLimited ? (
+          <div className="flex items-start gap-2 text-sm text-muted-foreground">
+            <Database className="w-4 h-4 shrink-0 mt-0.5" />
+            Noch keine belastbaren Warnsignale. Deine Datenlage ist im Aufbau.
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+            Keine offenen Warnsignale, aktuell nichts Dringendes zu tun.
+          </div>
         )}
       </CardContent>
     </Card>

@@ -17,9 +17,10 @@ import {
   AlertTriangle, ArrowRight, Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { renderRichText } from "@/lib/richtext";
 import { useInvestorPortfolio } from "@/hooks/use-capital";
 import {
-  verticalLabelDe, scoreColor, worstFreshnessLabel, PORTFOLIO_FILTERS,
+  verticalLabelDe, scoreColor, worstFreshnessLabel, honestScore, PORTFOLIO_FILTERS,
   type PortfolioFilterKey, type PortfolioHit, type InvestorPortfolioResponse,
 } from "@/lib/capital";
 import { ScoreBadge, VerificationBadge, IllustrativeBadge } from "@/components/capital/CapitalBits";
@@ -106,6 +107,8 @@ export function DataRoom({ onSelect, selectedId }: { onSelect: (id: string) => v
   const ask = () => { const q = question.trim(); if (!q || portfolio.isPending) return; run(filter, q); };
 
   const hits = result?.hits ?? [];
+  const isLimited = (h: PortfolioHit) => honestScore({ score: h.health, coverage: h.coverage, worstFreshness: h.worst_freshness, verificationTier: h.verification_tier }).limited;
+  const rankedHits = filter === "stale_data" ? hits : [...hits.filter((h) => !isLimited(h)), ...hits.filter((h) => isLimited(h))];
   const answer = result?.answer ?? null;
   const citations = result?.citations ?? [];
   const citedSlugs = new Set(citations.map((c) => c.key));
@@ -184,14 +187,24 @@ export function DataRoom({ onSelect, selectedId }: { onSelect: (id: string) => v
 
         {/* Jana-Antwort (belegt) */}
         {(portfolio.isPending && askedQuestion) && (
-          <div className="rounded-xl border border-border bg-background/40 p-3"><Skeleton className="h-4 w-56" /></div>
+          <div className="rounded-xl border border-border bg-background/40 p-3">
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse shrink-0" />
+              <span>Jana liest das Portfolio\u2026</span>
+              <span className="inline-flex gap-0.5" aria-hidden>
+                <span className="w-1 h-1 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-1 h-1 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-1 h-1 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: "300ms" }} />
+              </span>
+            </p>
+          </div>
         )}
         {answer && (
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-2">
             <div className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
               <Sparkles className="w-3.5 h-3.5" /> Jana{askedQuestion ? "" : ""}
             </div>
-            <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{answer}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{renderRichText(answer)}</p>
             {citations.length > 0 && (
               <div className="flex items-center gap-1.5 flex-wrap pt-1.5 border-t border-border/60">
                 <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Belegte Firmen:</span>
@@ -225,7 +238,7 @@ export function DataRoom({ onSelect, selectedId }: { onSelect: (id: string) => v
               {result ? <>Reihung: <span className="text-foreground font-medium">{activeFilterLabel}</span> · {hits.length} von {result.universe_size} Firmen im sichtbaren Universe</> : "…"}
             </p>
             {hits.length > 0 && (
-              <PortfolioReportButton hits={hits} filter={filter} universeSize={result?.universe_size ?? hits.length} question={askedQuestion} answer={answer} citations={citations} />
+              <PortfolioReportButton hits={rankedHits} filter={filter} universeSize={result?.universe_size ?? hits.length} question={askedQuestion} answer={answer} citations={citations} />
             )}
           </div>
 
@@ -250,7 +263,7 @@ export function DataRoom({ onSelect, selectedId }: { onSelect: (id: string) => v
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {hits.map((h, i) => (
+                  {rankedHits.map((h, i) => (
                     <TableRow
                       key={h.slug}
                       className={cn("cursor-pointer", selectedId && h.id === selectedId && "bg-primary/5", citedSlugs.has(h.slug) && "bg-primary/[0.03]")}
@@ -273,7 +286,7 @@ export function DataRoom({ onSelect, selectedId }: { onSelect: (id: string) => v
                         </div>
                         {h.vertical && <p className="text-[11px] text-muted-foreground mt-0.5">{verticalLabelDe(h.vertical)}</p>}
                       </TableCell>
-                      <TableCell><ScoreBadge value={h.health} size="sm" /></TableCell>
+                      <TableCell><ScoreBadge value={h.health} size="sm" quality={{ coverage: h.coverage, worstFreshness: h.worst_freshness, verificationTier: h.verification_tier }} /></TableCell>
                       <TableCell><TrendCell hit={h} /></TableCell>
                       <TableCell><AlertCell hit={h} /></TableCell>
                       <TableCell><FreshCell w={h.worst_freshness} /></TableCell>

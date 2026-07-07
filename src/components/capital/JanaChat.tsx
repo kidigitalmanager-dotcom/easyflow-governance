@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkles, Send, ShieldCheck, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { renderRichText } from "@/lib/richtext";
 import { useJanaChat } from "@/hooks/use-capital";
 import type { CapAccount, JanaCitation } from "@/lib/capital";
 
@@ -117,7 +118,7 @@ export function JanaChat({ account, mode = "tenant" }: { account?: CapAccount | 
               {msgs.map((m, i) => (
                 <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
                   <div className={cn("max-w-[85%] rounded-2xl px-3.5 py-2.5", m.role === "user" ? "bg-primary/10 border border-primary/20" : "bg-card/70 border border-border")}>
-                    {m.content && <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{m.content}</p>}
+                    {m.content && <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{renderRichText(m.content)}</p>}
                     {m.note && (
                       <p className="text-xs text-muted-foreground flex items-start gap-1.5">
                         <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {m.note}
@@ -139,7 +140,15 @@ export function JanaChat({ account, mode = "tenant" }: { account?: CapAccount | 
               {chat.isPending && (
                 <div className="flex justify-start">
                   <div className="max-w-[85%] rounded-2xl px-3.5 py-2.5 bg-card/70 border border-border">
-                    <Skeleton className="h-4 w-40" />
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse shrink-0" />
+                      <span>{isInvestor ? "Jana liest die Signale dieser Firma\u2026" : "Jana liest deine Signale\u2026"}</span>
+                      <span className="inline-flex gap-0.5" aria-hidden>
+                        <span className="w-1 h-1 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-1 h-1 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-1 h-1 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </span>
+                    </p>
                   </div>
                 </div>
               )}
