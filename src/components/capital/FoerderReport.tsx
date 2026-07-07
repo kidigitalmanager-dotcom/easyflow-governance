@@ -45,7 +45,7 @@ export function FoerderReport({ radar, vertical, onClose }: { radar: FoerderRada
 
   useEffect(() => {
     const prev = document.title;
-    document.title = `UseEasy Foerder-Report · ${model.companyName} · ${dateStr}`;
+    document.title = `UseEasy Förder-Report · ${model.companyName} · ${dateStr}`;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => { document.title = prev; window.removeEventListener("keydown", onKey); };
@@ -53,7 +53,7 @@ export function FoerderReport({ radar, vertical, onClose }: { radar: FoerderRada
   }, [model.companyName, dateStr, onClose]);
 
   const latentLabel = model.latentIsRange ? `${fmtEur(model.latentLow)} bis ${fmtEur(model.latentHigh)}` : `bis ${fmtEur(model.latentHigh)}`;
-  const footerText = `UseEasy Foerder-Report · ${model.companyName} · ${dateStr}`;
+  const footerText = `UseEasy Förder-Report · ${model.companyName} · ${dateStr}`;
   const profileBits = [
     model.regionLabel,
     model.profile?.city,
@@ -69,7 +69,7 @@ export function FoerderReport({ radar, vertical, onClose }: { radar: FoerderRada
       <div className="cr-toolbar no-print">
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           <FileText className="w-4 h-4" />
-          <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Foerder-Report · {model.companyName}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Förder-Report · {model.companyName}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {llmPending && <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#cbd5e1" }}><Loader2 className="w-3.5 h-3.5 animate-spin" /> Begruendungen werden formuliert</span>}
@@ -84,7 +84,7 @@ export function FoerderReport({ radar, vertical, onClose }: { radar: FoerderRada
           <div className="cr-section">
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
               <div>
-                <p style={{ fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: "#64748b", margin: 0 }}>UseEasy · Foerder-Report</p>
+                <p style={{ fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: "#64748b", margin: 0 }}>UseEasy · Förder-Report</p>
                 <h1 style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", margin: "6px 0 2px" }}>{model.companyName}</h1>
                 <p style={{ fontSize: 12.5, color: "#475569", margin: 0 }}>
                   {model.verticalLabel}{profileBits ? ` · ${profileBits}` : ""}
@@ -256,7 +256,7 @@ const PRINT_CSS = `
 @page { size: A4; margin: 15mm 14mm 18mm; }
 `;
 
-// Button "Foerder-Report exportieren (PDF)" — oeffnet den druckbaren FoerderReport
+// Button "Förder-Report exportieren (PDF)" — oeffnet den druckbaren FoerderReport
 // als Overlay. Uebergibt die schon geladene FoerderRadar-Antwort (kein Doppel-Fetch).
 import { useState } from "react";
 
@@ -268,10 +268,10 @@ export function FoerderReportButton({ radar, vertical, className }: { radar: Foe
         type="button"
         onClick={() => setOpen(true)}
         className={"inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border border-primary/40 bg-primary/10 text-primary px-3 py-1.5 transition-colors hover:bg-primary/20 " + (className ?? "")}
-        title="Teilbaren Foerder-Report als PDF exportieren"
+        title="Teilbaren Förder-Report als PDF exportieren"
       >
         <FileText className="w-3.5 h-3.5" />
-        Foerder-Report exportieren (PDF)
+        Förder-Report exportieren (PDF)
       </button>
       {open && <FoerderReport radar={radar} vertical={vertical} onClose={() => setOpen(false)} />}
     </>
