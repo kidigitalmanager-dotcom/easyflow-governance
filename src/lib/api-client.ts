@@ -2313,3 +2313,49 @@ export async function openBillingPortal(): Promise<{ ok: boolean; url?: string; 
   if (!res.ok) throw new ApiError(res.status, data.error || `API Fehler ${res.status}`);
   return data;
 }
+
+
+// -- v4.98.0 (A1) KI-Transparenz: Zero-Export Token-Audit-Log --------------
+export interface AiTransparencyCall {
+  id: number;
+  ts: string;
+  purpose: string;
+  model_id: string | null;
+  region: string | null;
+  input_hash_sha256: string | null;
+  input_hash_short: string | null;
+  pii_entities_removed_count: number;
+  retention_note: string | null;
+}
+export interface AiTransparencyCallsResponse {
+  ok: boolean;
+  calls: AiTransparencyCall[];
+  limit: number;
+  offset: number;
+}
+export interface AiTransparencyByPurpose { purpose: string; n: number; }
+export interface AiTransparencyByRegion { region: string; n: number; }
+export interface AiTransparencySummary {
+  calls_total: number;
+  calls_7d: number;
+  calls_30d: number;
+  pii_entities_removed_total: number;
+  redacted_pct: number;
+  zero_export: boolean;
+  retention_note: string;
+  by_purpose: AiTransparencyByPurpose[];
+  by_region: AiTransparencyByRegion[];
+}
+export interface AiTransparencySummaryResponse { ok: boolean; summary: AiTransparencySummary; }
+
+export const fetchAiTransparencySummary = () =>
+  apiFetch<AiTransparencySummaryResponse>("/ai-transparency/summary");
+
+export const fetchAiTransparencyCalls = (params?: { limit?: number; purpose?: string; since_days?: number }) => {
+  const qs = new URLSearchParams();
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.purpose) qs.set("purpose", params.purpose);
+  if (params?.since_days) qs.set("since_days", String(params.since_days));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch<AiTransparencyCallsResponse>(`/ai-transparency/calls${suffix}`);
+};

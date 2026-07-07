@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchBillingSummary, startBillingCheckout, openBillingPortal } from "@/lib/api-client";
+import { fetchAiTransparencySummary, fetchAiTransparencyCalls } from "@/lib/api-client";
 import {
   fetchMe,
   fetchStats,
@@ -890,4 +891,14 @@ export function useBillingCheckout() {
 }
 export function useBillingPortal() {
   return useMutation({ mutationFn: openBillingPortal });
+}
+
+export function useAiTransparencySummary() {
+  return useQuery({ queryKey: ["ai-transparency-summary"], queryFn: fetchAiTransparencySummary });
+}
+export function useAiTransparencyCalls(params?: { limit?: number; purpose?: string; since_days?: number }) {
+  return useQuery({
+    queryKey: ["ai-transparency-calls", params ?? {}],
+    queryFn: () => fetchAiTransparencyCalls(params),
+  });
 }
