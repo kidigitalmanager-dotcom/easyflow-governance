@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useFoerderRadar, useSaveFoerderProfile } from "@/hooks/use-capital";
 import { fmtEur, FOERDER_VERTICALS, BUNDESLAENDER, type FoerderProgram } from "@/lib/capital";
+import { FoerderReportButton } from "@/components/capital/FoerderReport";
 
 // ── Foerder-Radar v2: latentes Kapital + konditionales Matching ──────────────
 // Kuratierter Katalog x Branche x Firmenprofil (Alter/Stadt/Region/Groesse).
@@ -188,6 +189,14 @@ export function FoerderRadarCard() {
                 {(kpi?.verified_count ?? 0) > 0 && <> · davon <span className="text-emerald-600 font-medium">{kpi?.verified_count} web-verifiziert</span> ({fmtEur(kpi?.latent_verified_max)} sofort belastbar)</>}
               </div>
             </div>
+
+            {/* Teilbarer Foerder-Report (PDF-Export) */}
+            {data && grants.length > 0 && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+                <span className="text-xs text-muted-foreground">Teilbarer Report für Kunde oder Fördermittelberater.</span>
+                <FoerderReportButton radar={data} vertical={activeVertical} />
+              </div>
+            )}
 
             {/* Zuschuss-Programme */}
             {grants.length > 0 && (

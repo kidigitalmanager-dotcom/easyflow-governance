@@ -550,6 +550,36 @@ export function useSaveFoerderProfile(vertical?: string) {
 
 
 // ── Jana-Chat: read-only Q&A + Wochen-Prioritaeten ueber die eigenen Signale ──
+// ── Foerder-Report-Textbausteine (LLM, optional) via foerder-radar action ────
+// Additive Aktion report_blurbs auf der foerder-radar Edge-Fn: liefert je Programm
+// einen kurzen belegten Begruendungs-Baustein (Bedrock-Proxy, redactPII, zitat-treu).
+// Faellt graziler auf {} zurueck, wenn LLM nicht scharfgeschaltet ist -> der Report
+// nutzt dann die deterministische Begruendung.
+export type FoerderBlurbs = { ok: boolean; has_tenant: boolean; llm_configured: boolean; model?: string | null; blurbs: Record<string, string> };
+async function callFoerderBlurbs(body: Record<string, unknown>): Promise<FoerderBlurbs> {
+  const empty: FoerderBlurbs = { ok: true, has_tenant: false, llm_configured: false, blurbs: {} };
+  const { data: { session } } = await authClient.auth.getSession();
+  const token = session?.access_token ?? "";
+  if (!token) return empty;
+  const res = await fetch(CAPITAL_FOERDER_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", apikey: CAPITAL_ANON, "x-console-token": token },
+    body: JSON.stringify({ action: "report_blurbs", ...body }),
+  });
+  if (!res.ok) return empty;
+  const j = await res.json().catch(() => ({} as any));
+  if (!j || !j.ok) return empty;
+  return { ok: true, has_tenant: !!j.has_tenant, llm_configured: !!j.llm_configured, model: j.model ?? null, blurbs: (j.blurbs && typeof j.blurbs === "object") ? j.blurbs : {} };
+}
+export function useFoerderReportBlurbs(vertical?: string) {
+  return useQuery<FoerderBlurbs>({
+    queryKey: ["cap", "foerder-blurbs", vertical ?? "self"],
+    refetchOnWindowFocus: false,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+    queryFn: () => callFoerderBlurbs(vertical ? { vertical } : {}),
+  });
+}
 // Spiegelt useMySignals/useFoerderRadar: Console-Session via x-console-token; die
 // jana-chat Edge-Function liest mit service_role und belegt jede Aussage (KPI + Quelle).
 const CAPITAL_JANA_CHAT_URL = "https://vunhcexnwbvxrwecymiy.functions.supabase.co/jana-chat";
