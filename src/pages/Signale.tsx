@@ -27,6 +27,7 @@ import { ComplianceRadarCard } from "@/components/capital/ComplianceRadarCard";
 import { FoerderRadarCard } from "@/components/capital/FoerderRadarCard";
 import { JanaChat } from "@/components/capital/JanaChat";
 import { WeeklyPriorities } from "@/components/capital/WeeklyPriorities";
+import { UpsellSuggestionCard } from "@/components/capital/UpsellSuggestionCard";
 import { MorningBriefing } from "@/components/capital/MorningBriefing";
 import { RoiSavingsCard } from "@/components/RoiSavingsCard";
 import { MorningBriefingDialog } from "@/components/capital/MorningBriefingDialog";
@@ -380,6 +381,7 @@ export default function Signale() {
             <MorningBriefing />
             <RoiSavingsCard />
             <div data-tour="weekly"><WeeklyPriorities /></div>
+            <UpsellSuggestionCard />
             <AccountDashboard account={account} data={dash} variant="tenant" onConnectSource={goConnect} />
             {anyIdle && (
               <button

@@ -99,7 +99,7 @@ export default function Einstellungen() {
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "excel") return "spreadsheet"; // Chrome-Extension Deep-Link Alias (?tab=excel)
     if (t === "jana" || t === "autopilot") return "autopilot"; // Phase 3C alias
-    return t === "knowledge" || t === "integrations" || t === "spreadsheet" || t === "autopilot" ? t : "general";
+    return t === "knowledge" || t === "integrations" || t === "spreadsheet" || t === "autopilot" || t === "billing" ? t : "general";
   })();
 
   return (
