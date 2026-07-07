@@ -28,6 +28,7 @@ import { FoerderRadarCard } from "@/components/capital/FoerderRadarCard";
 import { JanaChat } from "@/components/capital/JanaChat";
 import { WeeklyPriorities } from "@/components/capital/WeeklyPriorities";
 import { MorningBriefing } from "@/components/capital/MorningBriefing";
+import { RoiSavingsCard } from "@/components/RoiSavingsCard";
 import { OnboardingCoach } from "@/components/onboarding/OnboardingCoach";
 import { GuidedTour } from "@/components/onboarding/GuidedTour";
 
@@ -375,6 +376,7 @@ export default function Signale() {
               <ReportExportButton account={account} data={dash} variant="tenant" />
             </div>
             <MorningBriefing />
+            <RoiSavingsCard />
             <div data-tour="weekly"><WeeklyPriorities /></div>
             <AccountDashboard account={account} data={dash} variant="tenant" onConnectSource={goConnect} />
             {anyIdle && (
