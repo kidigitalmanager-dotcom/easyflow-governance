@@ -68,6 +68,7 @@ import {
   activateRuleSuggestion,
   fetchImproveSuggestion,
   consentImproveSuggestion,
+  disconnectMailbox,
 } from "@/lib/api-client";
 import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload, PlaybookActivePayload, AutopilotFeedbackInput,
   ReviewVerdictInput, AutopilotPromoteRequestInput, AutopilotPolicyPutInput, AutopilotCoreKey, AutopilotPromoteInput, DecideRuleSuggestionInput, ApplyRuleInput } from "@/lib/api-client";
@@ -80,6 +81,19 @@ export function useMe() {
     queryFn: fetchMe,
     enabled: !!session,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+// v4.103.0 — Mailbox-Governance: Postfach trennen (Einstellungen-Karte).
+// Nach Erfolg /me invalidieren, damit Zähler, Health-Liste und Swap-Status
+// überall (Topbar + Einstellungen) sofort die neue Wahrheit zeigen.
+export function useDisconnectMailbox() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: disconnectMailbox,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me"] });
+    },
   });
 }
 

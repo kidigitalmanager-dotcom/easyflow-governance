@@ -151,6 +151,8 @@ export interface PlanInfo {
   emails_used: number;
   draft_limit: number;
   drafts_used: number;
+  // v4.103.0 — Mailbox-Governance: Status des 30-Tage-Swap-Locks aus /me.
+  mailbox_swap?: MailboxSwapInfo;
 }
 
 export interface UserInfo {
@@ -202,6 +204,26 @@ export interface MailboxHealth {
   last_success_at: string | null;
   last_poll_at: string | null;
   last_error: string | null;
+}
+
+// v4.103.0 — Mailbox-Governance: Kunden-Disconnect + 30-Tage-Swap-Lock.
+// POST /v1/dashboard/mailbox/disconnect deaktiviert die Credentials (Tokens NULL,
+// Row bleibt fuers Audit); der Poller ueberspringt das Postfach ab dem naechsten Tick.
+export interface MailboxSwapInfo {
+  last_swap_at: string | null;
+  next_swap_possible_at: string | null;
+  locked: boolean;
+}
+
+export interface DisconnectMailboxResponse {
+  ok: boolean;
+  disconnected?: number;
+  swap?: MailboxSwapInfo;
+  error?: string;
+}
+
+export function disconnectMailbox(email: string): Promise<DisconnectMailboxResponse> {
+  return apiPost<DisconnectMailboxResponse>("/mailbox/disconnect", { email });
 }
 
 export interface PlaybookRule {

@@ -72,6 +72,10 @@ export default function Connect() {
   const [packs, setPacks] = useState<Pack[]>([]);
   const [selectedPack, setSelectedPack] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  // v4.103.0 — Gmail-Not-Aus: der Start-Endpoint antwortet 503 gmail_oauth_disabled,
+  // solange GMAIL_OAUTH_ENABLED=false (GCP-Billing-Sperre). Beim Laden ohne Token
+  // proben (enabled = 400 token_required, disabled = 503); fail-open bei Netzfehlern.
+  const [gmailAvailable, setGmailAvailable] = useState<boolean>(true);
 
   // Beim Laden: Token validieren + Pack-Liste holen.
   useEffect(() => {
@@ -83,10 +87,14 @@ export default function Connect() {
         return;
       }
       try {
-        const [vRes, pRes] = await Promise.all([
+        const [vRes, pRes, gAvail] = await Promise.all([
           fetch(`${API_BASE}/v1/onboarding/connect/validate?token=${encodeURIComponent(token)}`),
           fetch(`${API_BASE}/v1/onboarding/packs`),
+          fetch(`${API_BASE}/v1/onboarding/connect/google/start`)
+            .then((r) => r.status !== 503)
+            .catch(() => true),
         ]);
+        if (!cancelled) setGmailAvailable(gAvail);
         const vJson: ValidateResp = await vRes.json();
         if (!vRes.ok || !vJson.ok) {
           if (cancelled) return;
@@ -162,6 +170,15 @@ export default function Connect() {
   }
 
   async function connectMailbox(provider: "google" | "outlook") {
+    // Gmail-Not-Aus: nicht auf die Google-Fehlerseite laufen lassen.
+    if (provider === "google" && !gmailAvailable) {
+      toast({
+        title: "Gmail ist vorübergehend nicht verfügbar",
+        description: "Bitte verbinden Sie Ihr Outlook / Microsoft 365 Postfach. Gmail folgt in Kürze.",
+        variant: "destructive",
+      });
+      return;
+    }
     // Branche ist Pflicht — ohne Auswahl kein Connect (Buttons sind ohnehin inaktiv).
     if (!selectedPack) {
       toast({
@@ -248,11 +265,16 @@ export default function Connect() {
                 <Button
                   onClick={() => connectMailbox("google")}
                   className="w-full"
-                  disabled={saving || !selectedPack}
+                  disabled={saving || !selectedPack || !gmailAvailable}
                   size="lg"
                 >
-                  Gmail / Google Workspace verbinden
+                  {gmailAvailable ? "Gmail / Google Workspace verbinden" : "Gmail folgt in Kürze"}
                 </Button>
+                {!gmailAvailable && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Gmail ist vorübergehend nicht verfügbar. Bitte verbinden Sie Ihr Outlook / Microsoft 365 Postfach; Gmail wird in Kürze freigeschaltet.
+                  </p>
+                )}
                 <Button
                   onClick={() => connectMailbox("outlook")}
                   variant="outline"

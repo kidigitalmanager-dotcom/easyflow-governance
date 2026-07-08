@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { useMe } from "@/hooks/use-api";
+import { useMe, useDisconnectMailbox } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
-import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug, FileSpreadsheet, Phone, CreditCard, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
+import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug, FileSpreadsheet, Phone, CreditCard, ShieldCheck, Unplug } from "lucide-react";
 import { ChipDomainInput } from "@/components/ChipDomainInput";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -101,6 +102,33 @@ export default function Einstellungen() {
   // auf die Tenant-Flags, falls die Poller-Health-Migration (noch) fehlt (mailbox_health=[]).
   const mailboxLimit = plan?.mailbox_limit ?? 0;
   const activeMailboxes = plan?.active_mailboxes ?? 0;
+
+  // v4.103.0 — Mailbox-Governance: Postfach trennen (Inline-Confirm statt Dialog)
+  // + 30-Tage-Swap-Lock-Anzeige aus /me (plan.mailbox_swap). Der Wechsel-Schutz
+  // selbst wird serverseitig im OAuth-Callback erzwungen; hier nur Transparenz.
+  const disconnectMb = useDisconnectMailbox();
+  const [confirmDisconnect, setConfirmDisconnect] = useState<string | null>(null);
+  const mailboxSwap = plan?.mailbox_swap;
+
+  const handleDisconnect = (email: string) => {
+    disconnectMb.mutate(email, {
+      onSuccess: (r) => {
+        setConfirmDisconnect(null);
+        const lockHint = r.swap?.locked && r.swap.next_swap_possible_at
+          ? ` Ein Wechsel zu einem neuen Postfach ist ab dem ${new Date(r.swap.next_swap_possible_at).toLocaleDateString("de-DE")} möglich.`
+          : "";
+        toast.success("Postfach getrennt", {
+          description: `UseEasy verwaltet dieses Postfach ab sofort nicht mehr.${lockHint}`,
+        });
+      },
+      onError: (e) => {
+        setConfirmDisconnect(null);
+        toast.error("Trennen fehlgeschlagen", {
+          description: e instanceof Error ? e.message : "Unbekannter Fehler. Bitte support@useeasy.ai kontaktieren.",
+        });
+      },
+    });
+  };
 
   const mailboxHealth = (me?.mailbox_health ?? []) as MailboxHealth[];
   const connectedMailboxes: Array<{ provider: string; email: string | null; status: MailboxHealth["status"] }> = (
@@ -205,18 +233,54 @@ export default function Einstellungen() {
                 Mehr Postfächer verbunden als der Plan erlaubt. Plan upgraden für mehr Mailboxen.
               </div>
             )}
+            {mailboxSwap?.locked && mailboxSwap.next_swap_possible_at && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 border border-border rounded-md px-3 py-2">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                Postfach-Wechsel gesperrt bis zum {new Date(mailboxSwap.next_swap_possible_at).toLocaleDateString("de-DE")} (ein Wechsel pro Monat). Früher wechseln? Ticket an support@useeasy.ai.
+              </div>
+            )}
             {isLoading ? (
               <div className="space-y-3">
                 {[1, 2].map(i => <Skeleton key={i} className="h-12 w-full" />)}
               </div>
             ) : connectedMailboxes.length > 0 ? (
               connectedMailboxes.map((mb) => (
-                <div key={`${mb.provider}:${mb.email ?? ""}`} className="flex items-center justify-between py-2">
-                  <div>
-                    <p className="text-sm font-medium">{mb.email ?? (PROVIDER_LABEL[mb.provider] ?? mb.provider)}</p>
+                <div key={`${mb.provider}:${mb.email ?? ""}`} className="flex items-center justify-between gap-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{mb.email ?? (PROVIDER_LABEL[mb.provider] ?? mb.provider)}</p>
                     <p className="text-xs text-muted-foreground">{PROVIDER_LABEL[mb.provider] ?? mb.provider}</p>
                   </div>
-                  <MailboxStatusBadge status={mb.status} />
+                  <div className="flex items-center gap-3 shrink-0">
+                    <MailboxStatusBadge status={mb.status} />
+                    {mb.email && (
+                      confirmDisconnect === mb.email ? (
+                        <span className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleDisconnect(mb.email!)}
+                            disabled={disconnectMb.isPending}
+                            className="text-xs font-medium text-destructive hover:underline disabled:opacity-50"
+                          >
+                            {disconnectMb.isPending ? "Trenne …" : "Wirklich trennen"}
+                          </button>
+                          <button
+                            onClick={() => setConfirmDisconnect(null)}
+                            disabled={disconnectMb.isPending}
+                            className="text-xs text-muted-foreground hover:underline disabled:opacity-50"
+                          >
+                            Abbrechen
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDisconnect(mb.email!)}
+                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                          title="Postfach von UseEasy trennen (E-Mails bleiben unberührt)"
+                        >
+                          <Unplug className="w-3.5 h-3.5" /> Trennen
+                        </button>
+                      )
+                    )}
+                  </div>
                 </div>
               ))
             ) : activeMailboxes > 0 ? (
