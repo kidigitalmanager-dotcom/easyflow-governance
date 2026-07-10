@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { useMe, useDisconnectMailbox } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug, FileSpreadsheet, Phone, CreditCard, ShieldCheck, Unplug } from "lucide-react";
+import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug, FileSpreadsheet, Phone, CreditCard, ShieldCheck, Unplug, Brain } from "lucide-react";
 import { ChipDomainInput } from "@/components/ChipDomainInput";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { type MailboxHealth } from "@/lib/api-client";
 import KnowledgeBaseTab from "@/components/KnowledgeBaseTab";
+import JanaKnowledgeTab from "@/components/JanaKnowledgeTab";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
 import MicrosoftIntegration from "@/components/MicrosoftIntegration";
 import MailboxReconnectCard from "@/components/MailboxReconnectCard";
@@ -165,7 +166,7 @@ export default function Einstellungen() {
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "excel") return "spreadsheet"; // Chrome-Extension Deep-Link Alias (?tab=excel)
     if (t === "jana" || t === "autopilot") return "autopilot"; // Phase 3C alias
-    return t === "knowledge" || t === "integrations" || t === "spreadsheet" || t === "autopilot" || t === "billing" ? t : "general";
+    return t === "knowledge" || t === "jana-wissen" || t === "integrations" || t === "spreadsheet" || t === "autopilot" || t === "billing" ? t : "general";
   })();
 
   return (
@@ -184,6 +185,10 @@ export default function Einstellungen() {
           <TabsTrigger value="knowledge" className="gap-1.5">
             <BookOpen className="w-3.5 h-3.5" />
             Unternehmenswissen
+          </TabsTrigger>
+          <TabsTrigger value="jana-wissen" className="gap-1.5">
+            <Brain className="w-3.5 h-3.5" />
+            Jana-Wissen
           </TabsTrigger>
           <TabsTrigger value="spreadsheet" className="gap-1.5">
             <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -430,6 +435,10 @@ export default function Einstellungen() {
           </div>
 
           <SecurityMfaCard />
+        </TabsContent>
+
+        <TabsContent value="jana-wissen" className="mt-6">
+          <JanaKnowledgeTab />
         </TabsContent>
 
         <TabsContent value="knowledge" className="mt-6">

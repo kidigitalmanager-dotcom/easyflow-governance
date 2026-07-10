@@ -71,6 +71,9 @@ import {
   fetchImproveSuggestion,
   consentImproveSuggestion,
   disconnectMailbox,
+  fetchJanaKnowledge,
+  createJanaKnowledge,
+  patchJanaKnowledge,
 } from "@/lib/api-client";
 import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload, PlaybookActivePayload, AutopilotFeedbackInput,
   ReviewVerdictInput, AutopilotPromoteRequestInput, AutopilotPolicyPutInput, AutopilotCoreKey, AutopilotPromoteInput, DecideRuleSuggestionInput, ApplyRuleInput } from "@/lib/api-client";
@@ -212,6 +215,39 @@ export function useKnowledgeSearch(enabled: boolean, q: string) {
     enabled: !!session && enabled && q.trim().length > 1,
     staleTime: 30_000,
     retry: false,
+  });
+}
+
+// ── Jana-Wissen Hooks (UseEasy Brain B3, memory-engine v1.5.0) ─────────
+
+export function useJanaKnowledge() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["jana-knowledge"],
+    queryFn: () => fetchJanaKnowledge(),
+    enabled: !!session,
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
+export function useCreateJanaKnowledge() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createJanaKnowledge,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["jana-knowledge"] });
+    },
+  });
+}
+
+export function usePatchJanaKnowledge() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: patchJanaKnowledge,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["jana-knowledge"] });
+    },
   });
 }
 

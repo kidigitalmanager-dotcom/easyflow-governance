@@ -41,14 +41,45 @@ async function apiPost<T>(path: string, body: Record<string, unknown>): Promise<
   const token = await getToken();
   if (!token) throw new ApiError(401, "Nicht authentifiziert");
 
-  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital")
-    ? "https://api.useeasy.ai"   // knowledge + spreadsheet + capital endpoints sit outside /dashboard
+  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital") || path.startsWith("/v1/memory")
+    ? "https://api.useeasy.ai"   // knowledge + spreadsheet + capital + memory endpoints sit outside /dashboard
     : API_BASE.replace("/dashboard", "");
 
   const url = path.startsWith("/v1/") ? `${baseUrl}${path}` : `${API_BASE}${path}`;
 
   const res = await fetch(url, {
     method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (res.status === 401) {
+    await supabase.auth.signOut();
+    throw new ApiError(401, "Sitzung abgelaufen");
+  }
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`);
+  }
+  return data;
+}
+
+// B3 Jana-Wissen — PATCH gegen die absolute /v1-Basis (Spiegel apiPost).
+async function apiPatch<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const token = await getToken();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+
+  const baseUrl = path.startsWith("/v1/memory")
+    ? "https://api.useeasy.ai"
+    : API_BASE.replace("/dashboard", "");
+  const url = path.startsWith("/v1/") ? `${baseUrl}${path}` : `${API_BASE}${path}`;
+
+  const res = await fetch(url, {
+    method: "PATCH",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
@@ -717,6 +748,65 @@ export const searchKnowledgeBase = (q: string, limit = 6) =>
   apiGetV1<KnowledgeSearchResponse>(
     `/v1/memory/knowledge/search?q=${encodeURIComponent(q)}&limit=${limit}`
   );
+
+// ── Jana-Wissen (UseEasy Brain B3, memory-engine v1.5.0) ──
+// GET/POST/PATCH /v1/memory/knowledge — Tenant-Wissensmodell mit Confirm-Loop.
+// Tenant + Entscheider kommen serverseitig IMMER aus dem Token.
+
+export type JanaKnowledgeCategory = "product" | "process" | "sla" | "policy" | "team" | "style";
+export type JanaKnowledgeStatus = "proposed" | "confirmed" | "rejected";
+
+export interface JanaKnowledgeFact {
+  id: number;
+  category: JanaKnowledgeCategory;
+  fact_key: string;
+  fact_text: string;
+  status: JanaKnowledgeStatus;
+  source: "briefing" | "manual" | "learned";
+  evidence: {
+    kind?: "correction_cluster" | "entity_focus";
+    count?: number;
+    correction_ids?: number[];
+    entity_hashes?: string[];
+    label_total?: number;
+    [key: string]: unknown;
+  } | null;
+  confidence: number | string | null;
+  proposed_at: string | null;
+  decided_at: string | null;
+  decided_by: string | null;
+  updated_at: string | null;
+}
+
+export interface JanaKnowledgeListResponse {
+  ok: boolean;
+  tenant_id: string;
+  facts: JanaKnowledgeFact[];
+  counts: { proposed: number; confirmed: number; rejected: number };
+  limit: number;
+  offset: number;
+  categories: JanaKnowledgeCategory[];
+}
+
+export interface JanaKnowledgeMutationResponse {
+  ok: boolean;
+  fact?: JanaKnowledgeFact;
+  error?: string;
+}
+
+export const fetchJanaKnowledge = (params?: { status?: JanaKnowledgeStatus; category?: JanaKnowledgeCategory }) => {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.category) qs.set("category", params.category);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiGetV1<JanaKnowledgeListResponse>(`/v1/memory/knowledge${suffix}`);
+};
+
+export const createJanaKnowledge = (body: { category: JanaKnowledgeCategory; fact_text: string }) =>
+  apiPost<JanaKnowledgeMutationResponse>("/v1/memory/knowledge", body);
+
+export const patchJanaKnowledge = (body: { id: number; action: "confirm" | "reject" | "update"; fact_text?: string }) =>
+  apiPatch<JanaKnowledgeMutationResponse>("/v1/memory/knowledge", body);
 
 // ── Spreadsheet / Excel Live-Sync Fetchers (v4.4.1) ──
 
