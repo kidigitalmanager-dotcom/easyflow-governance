@@ -323,9 +323,11 @@ export const BUNDESLAENDER: { key: string; label: string }[] = [
 
 // ── Jana-Chat (Read-only Q&A ueber die eigenen Signale) ──────────────────────
 export type JanaCitation = {
-  type: "kpi" | "source" | "alert" | "category" | "health" | "divergence";
+  type: "kpi" | "source" | "alert" | "category" | "health" | "divergence" | "product";
   key: string; label?: string; value?: number | null; period?: string | null;
 };
+export type JanaSuggestion = { key: string; name: string; price_eur: number | null };
+export type JanaDeepLink = { label: string; path: string };
 export type JanaChatResponse = {
   ok: boolean; has_own_account: boolean; mode?: string; visible?: boolean;
   account?: { name: string; slug: string; vertical: string | null } | null;
@@ -334,6 +336,11 @@ export type JanaChatResponse = {
   used_data?: boolean | null; confidence?: number | null;
   dropped_citations?: number; parse_ok?: boolean;
   model?: string; latest_period?: string | null;
+  // Produktwissen (v14): action="product" | Deep-Link auf den Abo-Tab | Feature-Vorschlaege.
+  action?: string;
+  deep_link?: JanaDeepLink | null;
+  suggestions?: JanaSuggestion[];
+  unverified_prices?: number[];
 };
 export type WeeklyPriority = {
   rank: number; title: string; severity: AlertSeverity | string; kind: AlertKind | string;

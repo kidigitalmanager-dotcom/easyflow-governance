@@ -6,15 +6,24 @@ import { Sparkles, Send, ShieldCheck, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { renderRichText } from "@/lib/richtext";
 import { useJanaChat } from "@/hooks/use-capital";
-import type { CapAccount, JanaCitation } from "@/lib/capital";
+import { useMe } from "@/hooks/use-api";
+import { useNavigate } from "react-router-dom";
+import type { CapAccount, JanaCitation, JanaDeepLink, JanaSuggestion } from "@/lib/capital";
 
-type Msg = { role: "user" | "assistant"; content: string; citations?: JanaCitation[]; note?: string };
+type Msg = { role: "user" | "assistant"; content: string; citations?: JanaCitation[]; note?: string; deepLink?: JanaDeepLink | null; suggestions?: JanaSuggestion[] };
 
 const STARTERS = [
   "Warum hat sich mein Score verändert?",
   "Was sind meine Top-3-Prioritäten diese Woche?",
   "Welche meiner Datenquellen ist gerade am schwächsten?",
   "Welche Signale sind veraltet?",
+];
+
+// Produktwissen-Quick-Prompts (nur Tenant-Modus): Jana erklärt Produkte/Preise
+// und schlägt situativ passende Features vor.
+const PRODUCT_STARTERS = [
+  "Was kann UseEasy alles?",
+  "Was würde mir noch helfen?",
 ];
 
 const INVESTOR_STARTERS = [
@@ -36,6 +45,8 @@ function citeChip(c: JanaCitation): string {
 export function JanaChat({ account, mode = "tenant" }: { account?: CapAccount | null; mode?: "tenant" | "investor" }) {
   const isInvestor = mode === "investor";
   const chat = useJanaChat();
+  const me = useMe();
+  const navigate = useNavigate();
   const [input, setInput] = useState("");
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
@@ -55,7 +66,7 @@ export function JanaChat({ account, mode = "tenant" }: { account?: CapAccount | 
       return;
     }
     chat.mutate(
-      { message: q, history, ...(isInvestor ? { mode: "investor" as const, slug: account!.slug } : {}) },
+      { message: q, history, ...(isInvestor ? { mode: "investor" as const, slug: account!.slug } : { tenant_context: { plan: me.data?.plan?.name ?? null, active_mailboxes: me.data?.plan?.active_mailboxes ?? null } }) },
       {
         onSuccess: (r) => {
           let content = r.answer ?? "";
@@ -65,7 +76,7 @@ export function JanaChat({ account, mode = "tenant" }: { account?: CapAccount | 
           else if (r.llm_configured === false) { content = ""; note = "Jana-Chat ist noch nicht scharfgeschaltet (LLM-Verbindung fehlt). Die Wochen-Prioritäten funktionieren bereits."; }
           else if (r.llm_error) { content = ""; note = "Jana ist gerade nicht erreichbar. Bitte später erneut versuchen."; }
           else if (!content) { note = "Dazu liegen mir gerade keine belegten Daten vor."; }
-          setMsgs((prev) => [...prev, { role: "assistant", content, citations: r.citations ?? [], note }]);
+          setMsgs((prev) => [...prev, { role: "assistant", content, citations: r.citations ?? [], note, deepLink: r.deep_link ?? undefined, suggestions: r.suggestions }]);
           scrollDown();
         },
         onError: (e) => { setMsgs((prev) => [...prev, { role: "assistant", content: "", note: "Fehler: " + e.message }]); scrollDown(); },
@@ -112,6 +123,22 @@ export function JanaChat({ account, mode = "tenant" }: { account?: CapAccount | 
                   </button>
                 ))}
               </div>
+              {!isInvestor && (
+                <div className="pt-1">
+                  <p className="text-[11px] text-muted-foreground mb-1.5">Oder zu UseEasy selbst:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PRODUCT_STARTERS.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => send(s)}
+                        className="text-xs text-left px-3 py-1.5 rounded-full border border-primary/25 bg-primary/5 text-foreground hover:bg-primary/10 transition-colors"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -132,6 +159,27 @@ export function JanaChat({ account, mode = "tenant" }: { account?: CapAccount | 
                             {citeChip(c)}
                           </span>
                         ))}
+                      </div>
+                    )}
+                    {m.suggestions && m.suggestions.length > 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Passt dazu:</span>
+                        {m.suggestions.map((s) => (
+                          <span key={s.key} className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-border bg-muted/60 text-foreground">
+                            {s.name}{s.price_eur != null ? ` · ${s.price_eur} €` : ""}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {m.deepLink && (
+                      <div className="mt-2 pt-2 border-t border-border/60">
+                        <button
+                          type="button"
+                          onClick={() => navigate(m.deepLink!.path)}
+                          className="text-xs font-medium px-3 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 transition-colors"
+                        >
+                          {m.deepLink.label} →
+                        </button>
                       </div>
                     )}
                   </div>

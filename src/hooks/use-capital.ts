@@ -629,12 +629,13 @@ async function callJana(body: Record<string, unknown>): Promise<any> {
 }
 
 export function useJanaChat() {
-  return useMutation<JanaChatResponse, Error, { message: string; history?: { role: string; content: string }[]; mode?: "tenant" | "investor"; slug?: string }>({
+  return useMutation<JanaChatResponse, Error, { message: string; history?: { role: string; content: string }[]; mode?: "tenant" | "investor"; slug?: string; tenant_context?: { plan?: string | null; active_mailboxes?: number | null } }>({
     mutationFn: (v) => callJana({
       action: "chat",
       message: v.message,
       history: v.history ?? [],
       ...(v.mode === "investor" && v.slug ? { mode: "investor", slug: v.slug } : {}),
+      ...(v.tenant_context ? { tenant_context: v.tenant_context } : {}),
     }),
   });
 }
