@@ -75,7 +75,7 @@ async function apiGetV1<T>(path: string): Promise<T> {
   const token = await getToken();
   if (!token) throw new ApiError(401, "Nicht authentifiziert");
 
-  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital")
+  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital") || path.startsWith("/v1/memory")
     ? "https://api.useeasy.ai"
     : API_BASE.replace("/dashboard", "");
   const url = path.startsWith("/v1/") ? `${baseUrl}${path}` : `${API_BASE}${path}`;
@@ -683,6 +683,40 @@ export const crawlKnowledgeUrl = (payload: {
 
 export const deleteKnowledgeUpload = (uploadId: string) =>
   apiDelete<KnowledgeDeleteResponse>(`/knowledge/${uploadId}`);
+
+// ── Wissens-Suche (UseEasy Brain B5, memory-engine v1.4.0) ──
+// GET /v1/memory/knowledge/search — semantische, zitat-treue Suche ueber die
+// eigene Wissensbasis. Tenant kommt serverseitig IMMER aus dem Token.
+
+export interface KnowledgeSearchResult {
+  id: number;
+  title: string;
+  source_type: string;
+  source_url: string | null;
+  chunk_index: number;
+  score: number;
+  source_label: string;
+  text: string;
+}
+
+export interface KnowledgeSearchResponse {
+  ok: boolean;
+  tenant_id: string;
+  query: string;
+  results: KnowledgeSearchResult[];
+  reason: "no_documents" | "not_embedded_yet" | "no_relevant_match" | "migration_missing" | null;
+  meta: {
+    total_chunks: number;
+    embedded_chunks: number;
+    min_score: number;
+    top_k: number;
+  };
+}
+
+export const searchKnowledgeBase = (q: string, limit = 6) =>
+  apiGetV1<KnowledgeSearchResponse>(
+    `/v1/memory/knowledge/search?q=${encodeURIComponent(q)}&limit=${limit}`
+  );
 
 // ── Spreadsheet / Excel Live-Sync Fetchers (v4.4.1) ──
 

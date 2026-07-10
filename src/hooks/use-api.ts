@@ -15,6 +15,7 @@ import {
   uploadKnowledgeText,
   crawlKnowledgeUrl,
   deleteKnowledgeUpload,
+  searchKnowledgeBase,
   fetchSpreadsheets,
   fetchSpreadsheetMappings,
   fetchSpreadsheetAudit,
@@ -198,6 +199,19 @@ export function useKnowledgeDelete() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["knowledge"] });
     },
+  });
+}
+
+// useKnowledgeSearch: lazy — feuert erst nach abgeschickter Suche (enabled).
+// retry:false, damit ehrliche Fehler sofort sichtbar sind (Muster useOneDriveFiles).
+export function useKnowledgeSearch(enabled: boolean, q: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["knowledge-search", q],
+    queryFn: () => searchKnowledgeBase(q),
+    enabled: !!session && enabled && q.trim().length > 1,
+    staleTime: 30_000,
+    retry: false,
   });
 }
 

@@ -4,6 +4,7 @@ import {
   useKnowledgeUpload,
   useKnowledgeCrawl,
   useKnowledgeDelete,
+  useKnowledgeSearch,
 } from "@/hooks/use-api";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -17,6 +18,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   BookOpen,
+  Search,
+  Sparkles,
 } from "lucide-react";
 import type { KnowledgeUpload } from "@/lib/api-client";
 
@@ -94,6 +97,11 @@ export default function KnowledgeBaseTab() {
 
   // ── Delete Confirm ──
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  // ── Wissens-Suche (B5) ──
+  const [searchInput, setSearchInput] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
+  const knowledgeSearch = useKnowledgeSearch(submittedQuery.trim().length > 1, submittedQuery);
 
   const uploads: KnowledgeUpload[] = kb?.uploads ?? [];
   const totalChunks = kb?.total_chunks ?? 0;
@@ -192,6 +200,97 @@ export default function KnowledgeBaseTab() {
             <Link className="w-3.5 h-3.5" /> Website importieren
           </button>
         </div>
+      </div>
+
+      {/* Wissens-Suche (B5): semantisch + zitat-treu ueber die eigene Wissensbasis */}
+      <div className="glass-card p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-semibold">Was weiß Jana über …?</h3>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Durchsucht deine hochgeladenen Dokumente semantisch. Jeder Treffer nennt
+          seine Quelle (Dokument und Abschnitt), damit du jede Aussage nachprüfen kannst.
+        </p>
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSubmittedQuery(searchInput);
+          }}
+        >
+          <input
+            type="text"
+            placeholder='z.B. "Wie lange ist die Widerrufsfrist?" oder "Ruhezeiten im Haus"'
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="flex-1 bg-muted/50 border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50"
+          />
+          <button
+            type="submit"
+            disabled={searchInput.trim().length < 2 || knowledgeSearch.isFetching}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {knowledgeSearch.isFetching ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Search className="w-3.5 h-3.5" />
+            )}
+            Suchen
+          </button>
+        </form>
+
+        {knowledgeSearch.error && (
+          <div className="flex items-center gap-2 text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-3 py-2">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            Suche fehlgeschlagen, bitte später erneut versuchen.
+          </div>
+        )}
+
+        {knowledgeSearch.data && knowledgeSearch.data.results.length === 0 && (
+          <div className="text-xs text-muted-foreground bg-muted/30 border border-border rounded-md px-3 py-2">
+            {knowledgeSearch.data.reason === "no_documents" &&
+              "Noch keine Dokumente in der Wissensbasis. Lade unten ein Dokument hoch oder importiere deine Website, dann kann Jana daraus antworten."}
+            {knowledgeSearch.data.reason === "not_embedded_yet" &&
+              "Deine Dokumente sind gespeichert, die semantische Indexierung läuft im nächtlichen Lauf. Danach ist die Suche aktiv."}
+            {knowledgeSearch.data.reason === "migration_missing" &&
+              "Die semantische Suche ist für dieses System noch nicht freigeschaltet."}
+            {(knowledgeSearch.data.reason === "no_relevant_match" || !knowledgeSearch.data.reason) &&
+              "Dazu steht nichts in deinen Dokumenten. Jana behauptet nur, was belegt ist."}
+          </div>
+        )}
+
+        {knowledgeSearch.data && knowledgeSearch.data.results.length > 0 && (
+          <div className="space-y-2">
+            {knowledgeSearch.data.results.map((r) => {
+              const meta = SOURCE_TYPE_META[r.source_type] ?? SOURCE_TYPE_META.document;
+              return (
+                <div key={r.id} className="bg-muted/30 border border-border rounded-md px-3 py-2 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${meta.color}`}>
+                      <meta.icon className="w-3 h-3" />
+                      Quelle: {r.source_label}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      Relevanz {Math.round(r.score * 100)} %
+                    </span>
+                  </div>
+                  <p className="text-xs text-foreground/90 whitespace-pre-wrap line-clamp-4">{r.text}</p>
+                  {r.source_url && (
+                    <a
+                      href={r.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[10px] text-primary hover:underline break-all"
+                    >
+                      {r.source_url}
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Upload Form */}
