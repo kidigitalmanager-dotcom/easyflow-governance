@@ -30,6 +30,7 @@ import { WeeklyPriorities } from "@/components/capital/WeeklyPriorities";
 import { UpsellSuggestionCard } from "@/components/capital/UpsellSuggestionCard";
 import { MorningBriefing } from "@/components/capital/MorningBriefing";
 import { RoiSavingsCard } from "@/components/RoiSavingsCard";
+import { ReturnsInsightsCard } from "@/components/ReturnsInsightsCard";
 import { MorningBriefingDialog } from "@/components/capital/MorningBriefingDialog";
 import { OnboardingCoach } from "@/components/onboarding/OnboardingCoach";
 import { GuidedTour } from "@/components/onboarding/GuidedTour";
@@ -383,6 +384,7 @@ export default function Signale() {
             <div data-tour="weekly"><WeeklyPriorities /></div>
             <UpsellSuggestionCard />
             <AccountDashboard account={account} data={dash} variant="tenant" onConnectSource={goConnect} />
+            <ReturnsInsightsCard />
             {anyIdle && (
               <button
                 onClick={() => setSection("quellen")}

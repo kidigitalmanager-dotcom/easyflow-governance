@@ -624,6 +624,25 @@ export const fetchRoi = async (): Promise<RoiResponse> => {
   return { ...raw, week: norm(raw?.week), month: norm(raw?.month) };
 };
 
+// v4.104.0 — Retouren-Grund-Intelligenz (Shopify strukturiert + E-Mail-Fallback).
+export interface ReturnsReasonBucket { reason: string; count: number; }
+export interface ReturnsMonthPoint { month: string; by_reason: Record<string, number>; total: number; }
+export interface ReturnsSourceSummary { source: string; count: number; last_updated?: string | null; }
+export interface ReturnsInsightsResponse {
+  ok?: boolean;
+  tenant_id?: string;
+  buckets: string[];
+  distribution: ReturnsReasonBucket[];
+  monthly: ReturnsMonthPoint[];
+  sources: ReturnsSourceSummary[];
+  total: number;
+  has_data: boolean;
+  window_months?: number;
+  last_updated?: string | null;
+  generated_at?: string;
+}
+export const fetchReturnsInsights = () => apiFetch<ReturnsInsightsResponse>("/returns-insights");
+
 export const fetchRecentEmails = () => apiFetch<RecentEmail[]>("/emails/recent");
 export const fetchAuditLog = () => apiFetch<AuditLogEntry[]>("/audit");
 // v4.29.0 (1c): Operations-Assistenz — Timeout-Einstellung (Geduldig/Zügig).

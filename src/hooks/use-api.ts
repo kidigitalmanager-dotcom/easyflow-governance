@@ -5,6 +5,7 @@ import {
   fetchMe,
   fetchStats,
   fetchRoi,
+  fetchReturnsInsights,
   fetchRecentEmails,
   fetchAuditLog,
   fetchPlaybooks,
@@ -105,6 +106,17 @@ export function useDashboardRoi() {
     enabled: !!session,
     refetchInterval: 60_000,
     retry: false, // /roi ist optional (Fallback auf /stats) → keine Retry-Spam vor Deploy
+  });
+}
+
+export function useReturnsInsights() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["dashboard-returns-insights"],
+    queryFn: fetchReturnsInsights,
+    enabled: !!session,
+    refetchInterval: 300_000,
+    retry: false, // Endpoint optional bis Deploy -> keine Retry-Spam; Karte blendet sich sonst aus
   });
 }
 
