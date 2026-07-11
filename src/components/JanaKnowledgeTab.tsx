@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Brain, Check, X, Pencil, Plus, Loader2, Sparkles, BookOpen, Users, Timer, Scale, Package, Feather } from "lucide-react";
+import { Brain, Check, X, Pencil, Plus, Loader2, Sparkles, BookOpen, Users, Timer, Scale, Package, Feather, Wand2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useJanaKnowledge, useCreateJanaKnowledge, usePatchJanaKnowledge } from "@/hooks/use-api";
+import { useJanaKnowledge, useCreateJanaKnowledge, usePatchJanaKnowledge, useMe } from "@/hooks/use-api";
 import type { JanaKnowledgeCategory, JanaKnowledgeFact } from "@/lib/api-client";
+import JanaBriefingWizard from "@/components/JanaBriefingWizard";
 
 // ---------------------------------------------------------------------------
 // B3 Jana-Wissen: Tenant-Wissensmodell mit Confirm-Loop (memory-engine v1.5.0).
@@ -41,6 +42,9 @@ function evidenceLine(fact: JanaKnowledgeFact): string {
   }
   if (ev?.kind === "entity_focus") {
     return `Gelernt aus ${ev.label_total ?? "mehreren"} wiederkehrenden Vorgängen`;
+  }
+  if (ev?.kind === "kb_extract") {
+    return ev.title ? `Aus dem Dokument „${ev.title}“` : "Aus einem hochgeladenen Dokument";
   }
   return "Von Jana gelernt";
 }
@@ -84,6 +88,8 @@ export default function JanaKnowledgeTab() {
   const [newCategory, setNewCategory] = useState<JanaKnowledgeCategory>("process");
   const [newText, setNewText] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const { data: me } = useMe();
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const runPatch = (body: { id: number; action: "confirm" | "reject" | "update"; fact_text?: string }, okMsg: string) => {
     setBusyId(body.id);
@@ -137,6 +143,41 @@ export default function JanaKnowledgeTab() {
           und schlägt neue Einträge vor — nichts wird ohne eure Bestätigung wirksam.
         </p>
       </div>
+
+      {/* B3.1: gefuehrter Briefing-Wizard (prominenter Einstieg) */}
+      <section className="rounded-lg border bg-primary/5 p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1 space-y-1">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Wand2 className="w-4 h-4 text-primary" />
+              Jana briefen
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Beantworte in wenigen Minuten die wichtigsten Fragen, damit Jana euer Unternehmen
+              versteht. Aus euren Antworten werden direkt bestätigte Regeln.
+            </p>
+          </div>
+          <Button onClick={() => setWizardOpen(true)} className="shrink-0">
+            <Wand2 className="w-4 h-4" />
+            Briefing starten
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+          <FileText className="w-3 h-3 shrink-0" />
+          <span>
+            Schon Unterlagen? Lade PDFs oder Excel-Listen im Bereich{" "}
+            <a href="/einstellungen?tab=knowledge" className="text-primary hover:underline">Wissensbasis</a>{" "}
+            hoch, Jana schlägt daraus Regeln vor.
+          </span>
+        </p>
+      </section>
+
+      <JanaBriefingWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        domain={me?.user?.domain}
+        facts={data.facts}
+      />
 
       {proposed.length > 0 && (
         <section className="space-y-3">

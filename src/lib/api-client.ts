@@ -764,11 +764,17 @@ export interface JanaKnowledgeFact {
   status: JanaKnowledgeStatus;
   source: "briefing" | "manual" | "learned";
   evidence: {
-    kind?: "correction_cluster" | "entity_focus";
+    kind?: "correction_cluster" | "entity_focus" | "kb_extract";
     count?: number;
     correction_ids?: number[];
     entity_hashes?: string[];
     label_total?: number;
+    // B3.1 Detektor C (Regel-Vorschlag aus hochgeladenem Dokument)
+    upload_id?: string | null;
+    source_type?: string | null;
+    title?: string | null;
+    chunk_ids?: number[];
+    n_chunks?: number | null;
     [key: string]: unknown;
   } | null;
   confidence: number | string | null;
@@ -807,6 +813,29 @@ export const createJanaKnowledge = (body: { category: JanaKnowledgeCategory; fac
 
 export const patchJanaKnowledge = (body: { id: number; action: "confirm" | "reject" | "update"; fact_text?: string }) =>
   apiPatch<JanaKnowledgeMutationResponse>("/v1/memory/knowledge", body);
+
+// B3.1: gefuehrter Briefing-Wizard. Antworten -> Server-Destillation (Haiku) ->
+// bestaetigte Jana-Fakten (source='briefing'). Selber Endpoint wie createJanaKnowledge,
+// aber der Body traegt briefing_answers[] -> das Backend routet in die Destillation.
+export interface JanaBriefingAnswer {
+  question_id: string;
+  question: string;
+  answer: string;
+  category: JanaKnowledgeCategory;
+}
+
+export interface JanaBriefingResponse {
+  ok: boolean;
+  created: JanaKnowledgeFact[];
+  count: number;
+  processed: number;
+  skipped: number;
+  llm_used: number;
+  error?: string;
+}
+
+export const createJanaBriefing = (body: { briefing_answers: JanaBriefingAnswer[] }) =>
+  apiPost<JanaBriefingResponse>("/v1/memory/knowledge", body);
 
 // ── Spreadsheet / Excel Live-Sync Fetchers (v4.4.1) ──
 

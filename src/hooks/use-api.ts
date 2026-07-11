@@ -73,6 +73,7 @@ import {
   disconnectMailbox,
   fetchJanaKnowledge,
   createJanaKnowledge,
+  createJanaBriefing,
   patchJanaKnowledge,
 } from "@/lib/api-client";
 import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload, PlaybookActivePayload, AutopilotFeedbackInput,
@@ -235,6 +236,17 @@ export function useCreateJanaKnowledge() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createJanaKnowledge,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["jana-knowledge"] });
+    },
+  });
+}
+
+// B3.1: gefuehrter Briefing-Wizard -> Server-Destillation der Antworten.
+export function useCreateJanaBriefing() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createJanaBriefing,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["jana-knowledge"] });
     },

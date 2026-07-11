@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Globe,
   FileText,
+  FileSpreadsheet,
   Shield,
   Trash2,
   Upload,
@@ -22,6 +23,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { KnowledgeUpload } from "@/lib/api-client";
+import { extractFileText, estimateChunks } from "@/lib/doc-extract";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -64,16 +66,8 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// ── Extract plain text from PDF/DOCX in browser ─────────
-
-async function extractFileText(file: File): Promise<string> {
-  // For .txt and .md — just read as text
-  if (file.name.match(/\.(txt|md|csv|json)$/i)) {
-    return file.text();
-  }
-  // For anything else, read as text best-effort
-  return file.text();
-}
+// Datei-Text-Extraktion (Text/PDF/Excel) lebt in @/lib/doc-extract
+// (client-seitig; die Datei verlaesst den Browser nur als extrahierter Text).
 
 // ── Component ────────────────────────────────────────────
 
@@ -89,6 +83,9 @@ export default function KnowledgeBaseTab() {
   const [uploadText, setUploadText] = useState("");
   const [uploadType, setUploadType] = useState<"document" | "legal">("document");
   const fileRef = useRef<HTMLInputElement>(null);
+  // B3.1: Datei-Extraktion (PDF/Excel/Text) im Browser
+  const [extracting, setExtracting] = useState(false);
+  const [extractInfo, setExtractInfo] = useState<{ kind: string; chars: number; chunks: number; warnings: string[] } | null>(null);
 
   // ── Crawl Form State ──
   const [showCrawlForm, setShowCrawlForm] = useState(false);
@@ -109,13 +106,23 @@ export default function KnowledgeBaseTab() {
 
   // ── Handlers ──
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    extractFileText(file).then((text) => {
-      setUploadText(text);
-      if (!uploadTitle) setUploadTitle(file.name.replace(/\.[^.]+$/, ""));
-    });
+    setExtracting(true);
+    setExtractInfo(null);
+    try {
+      const res = await extractFileText(file);
+      setUploadText(res.text);
+      if (!uploadTitle.trim()) setUploadTitle(file.name.replace(/\.[^.]+$/, ""));
+      // Rechtliche Dokumente automatisch als "legal" vorschlagen bleibt dem Nutzer ueberlassen.
+      setExtractInfo({ kind: res.kind, chars: res.chars, chunks: estimateChunks(res.chars), warnings: res.warnings });
+    } catch (err) {
+      setUploadText("");
+      setExtractInfo({ kind: "text", chars: 0, chunks: 0, warnings: [(err as Error).message || "Die Datei konnte nicht gelesen werden."] });
+    } finally {
+      setExtracting(false);
+    }
   }
 
   async function handleUpload() {
@@ -128,6 +135,7 @@ export default function KnowledgeBaseTab() {
       });
       setUploadTitle("");
       setUploadText("");
+      setExtractInfo(null);
       setShowUploadForm(false);
       if (fileRef.current) fileRef.current.value = "";
     } catch {
@@ -188,7 +196,7 @@ export default function KnowledgeBaseTab() {
             }}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            <Upload className="w-3.5 h-3.5" /> Text hochladen
+            <Upload className="w-3.5 h-3.5" /> Datei hochladen
           </button>
           <button
             onClick={() => {
@@ -330,13 +338,43 @@ export default function KnowledgeBaseTab() {
 
           {/* File or Textarea */}
           <div className="space-y-2">
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".txt,.md,.csv"
-              onChange={handleFileSelect}
-              className="block text-xs text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-muted file:text-foreground hover:file:bg-muted/80"
-            />
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".txt,.md,.csv,.pdf,.xlsx,.xlsm,.xls"
+                onChange={handleFileSelect}
+                disabled={extracting}
+                className="block text-xs text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-muted file:text-foreground hover:file:bg-muted/80 disabled:opacity-50"
+              />
+              {extracting && (
+                <span className="inline-flex items-center gap-1 text-xs text-blue-400">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Text wird gelesen …
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1.5">
+              <FileSpreadsheet className="w-3 h-3 shrink-0" />
+              Unterstützt: Text, PDF und Excel. Die Datei bleibt im Browser, es wird nur der Text übernommen.
+            </p>
+
+            {/* Extraktions-Ergebnis: Umfang + Hinweise (Scan-PDF, Excel-Live-Sync-Abgrenzung) */}
+            {extractInfo && (
+              <div className="space-y-1.5">
+                {extractInfo.chars > 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {extractInfo.kind === "pdf" ? "PDF" : extractInfo.kind === "excel" ? "Excel" : "Text"} gelesen:{" "}
+                    {extractInfo.chars.toLocaleString("de-DE")} Zeichen · ca. {extractInfo.chunks} Abschnitt{extractInfo.chunks === 1 ? "" : "e"}.
+                  </p>
+                )}
+                {extractInfo.warnings.map((w, i) => (
+                  <div key={i} className="flex items-start gap-2 text-[11px] text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded-md px-2.5 py-1.5">
+                    <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                    <span>{w}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <textarea
               rows={6}
               placeholder="Oder füge den Text hier direkt ein…"
