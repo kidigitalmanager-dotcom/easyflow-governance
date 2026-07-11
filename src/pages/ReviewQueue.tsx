@@ -69,7 +69,7 @@ export default function ReviewQueue() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div data-tour="review-header" className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{REVIEW.title}</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -86,7 +86,7 @@ export default function ReviewQueue() {
         )}
       </div>
 
-      <div className="flex items-start gap-2 text-xs text-muted-foreground glass-card p-3">
+      <div data-tour="review-verdict" className="flex items-start gap-2 text-xs text-muted-foreground glass-card p-3">
         <Info className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
         <span>{REVIEW.hint}</span>
       </div>

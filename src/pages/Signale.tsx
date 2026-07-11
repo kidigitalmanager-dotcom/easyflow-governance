@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -34,13 +35,16 @@ import { RoiSavingsCard } from "@/components/RoiSavingsCard";
 import { ReturnsInsightsCard } from "@/components/ReturnsInsightsCard";
 import { MorningBriefingDialog } from "@/components/capital/MorningBriefingDialog";
 import { OnboardingCoach } from "@/components/onboarding/OnboardingCoach";
-import { GuidedTour } from "@/components/onboarding/GuidedTour";
+import { useOnboardingRunner } from "@/components/onboarding/OnboardingRunner";
 
 const SELF_SLUG = "self_demo";
 const TERMS_VERSION = "v1.0";
 const SECTION_STORAGE_KEY = "ue.signale.section";
+const SIGNALE_TOUR_DEMO = "signale-verstehen";
 
 type SectionKey = "signale" | "jana" | "risk_shield" | "foerder" | "quellen" | "freigabe";
+const SECTION_KEYS: SectionKey[] = ["signale", "jana", "risk_shield", "foerder", "quellen", "freigabe"];
+const isSectionKey = (v: string | null): v is SectionKey => !!v && (SECTION_KEYS as string[]).includes(v);
 
 const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon }[] = [
   { key: "signale", label: "Signale & Gesundheit", icon: Activity },
@@ -173,7 +177,10 @@ export default function Signale() {
   const consented = !!account?.consent_data_sharing;
   const consentDate = account?.consent_at ? new Date(account.consent_at).toLocaleDateString("de-DE") : null;
 
-  // Initial UI state: OAuth-Rücksprung > gemerkter Bereich > Default.
+  const runner = useOnboardingRunner();
+  const [searchParams] = useSearchParams();
+
+  // Initial UI state: ?sec= (Onboarding-Durchlauf) > OAuth-Rücksprung > gemerkter Bereich > Default.
   const boot = useMemo(() => {
     const cb = readCallbackTarget();
     let stored: SectionKey | null = null;
@@ -183,8 +190,15 @@ export default function Signale() {
     } catch {
       /* ignore */
     }
+    let secParam: SectionKey | null = null;
+    try {
+      const s = new URLSearchParams(window.location.search).get("sec");
+      if (isSectionKey(s)) secParam = s;
+    } catch {
+      /* ignore */
+    }
     return {
-      section: (cb?.section ?? stored ?? "signale") as SectionKey,
+      section: (secParam ?? cb?.section ?? stored ?? "signale") as SectionKey,
       groups: cb ? [cb.group] : [],
       sources: cb ? [cb.source] : [],
     };
@@ -193,7 +207,13 @@ export default function Signale() {
   const [section, setSection] = useState<SectionKey>(boot.section);
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(boot.groups));
   const [openSources, setOpenSources] = useState<Set<string>>(() => new Set(boot.sources));
-  const [tourOpen, setTourOpen] = useState(false);
+
+  // Onboarding-Durchlauf schaltet die /signale-Sektion per ?sec= (Szenario-Runner).
+  // Wir strippen den Param NICHT (race-frei); Sidebar-Klicks ändern nur den State, nicht die URL.
+  useEffect(() => {
+    const sec = searchParams.get("sec");
+    if (isSectionKey(sec)) setSection(sec);
+  }, [searchParams]);
 
   useEffect(() => {
     try {
@@ -304,7 +324,7 @@ export default function Signale() {
           </div>
           <div className="flex items-center gap-2.5 shrink-0">
             <button
-              onClick={() => setTourOpen(true)}
+              onClick={() => runner.startDemo(SIGNALE_TOUR_DEMO)}
               className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full border border-primary/25 bg-primary/5 text-primary hover:bg-primary/10"
               title="Geführte Tour"
             >
@@ -370,7 +390,7 @@ export default function Signale() {
         <div className="flex-1 min-w-0">
           {/* ══ Bereich 1: Signale & Gesundheit (nur Auswertung) ══ */}
           <section className={cn("space-y-4", section !== "signale" && "hidden")}>
-            <OnboardingCoach setSection={setSection} onStartTour={() => setTourOpen(true)} />
+            <OnboardingCoach setSection={setSection} onStartTour={() => runner.startDemo(SIGNALE_TOUR_DEMO)} />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-medium text-muted-foreground">
@@ -554,7 +574,6 @@ export default function Signale() {
           </section>
         </div>
       </div>
-      <GuidedTour open={tourOpen} onClose={() => setTourOpen(false)} setSection={setSection} />
     </div>
   );
 }

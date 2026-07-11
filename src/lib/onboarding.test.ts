@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   computeMilestones, onboardingCounts, nextMilestone, showCoach, firstValueReady,
-  overlaySeen, kpiExplained, addToSet,
+  overlaySeen, kpiExplained, addToSet, demoDone, demosDoneCount,
   type OnboardingFacts, type OnboardingProgress,
 } from "./onboarding";
 
@@ -80,5 +80,20 @@ describe("set helpers", () => {
     expect(addToSet(["a"], "b").sort()).toEqual(["a", "b"]);
     expect(addToSet(["a"], "a")).toEqual(["a"]);
     expect(addToSet(undefined, "x")).toEqual(["x"]);
+  });
+});
+
+describe("demo catalog progress", () => {
+  it("demoDone reads the demos_done flag", () => {
+    const p: OnboardingProgress = { demos_done: ["signale-verstehen", "review-freigeben"] };
+    expect(demoDone(p, "signale-verstehen")).toBe(true);
+    expect(demoDone(p, "excel-livesync")).toBe(false);
+    expect(demoDone({}, "signale-verstehen")).toBe(false);
+  });
+  it("demosDoneCount counts only listed slugs that are done", () => {
+    const p: OnboardingProgress = { demos_done: ["a", "b", "x"] };
+    expect(demosDoneCount(p, ["a", "b", "c"])).toBe(2);
+    expect(demosDoneCount({}, ["a", "b"])).toBe(0);
+    expect(demosDoneCount(p, [])).toBe(0);
   });
 });

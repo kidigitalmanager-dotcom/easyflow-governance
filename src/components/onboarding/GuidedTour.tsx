@@ -1,35 +1,45 @@
-import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Sparkles, ArrowLeft, ArrowRight, X, MessageCircle, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSetOnboardingProgress } from "@/hooks/use-onboarding";
-import { TOUR_STEPS, type TourSection } from "@/data/onboarding-content";
+import type { Demo } from "@/data/onboarding-content";
 
 type Box = { top: number; left: number; width: number; height: number };
 
-// Geführte Tour: Schritt-für-Schritt durch die KPIs auf /signale, jede Zahl beim ersten
-// Erscheinen von Jana erklärt (Spotlight-Overlay). Hybrid: statische Kurztexte + "Frag Jana"
-// öffnet den echten jana-chat. Überspringbar, jederzeit wieder aufrufbar.
+// Szenario-Runner: spielt einen kuratierten Demo-Durchlauf ab. Jeder Step kann eine
+// Zielroute ansteuern (useNavigate) und einen data-tour-Anker spotlighten; fehlt der
+// Anker, wird der Step sauber übersprungen statt zu hängen. Statische Jana-Copy pro
+// Step; "Frag Jana dazu" öffnet den echten jana-chat mit vorbefülltem Prompt.
+// Global gemountet (überlebt Routenwechsel), Persistenz läuft über die Callbacks.
+const LOCATE_ATTEMPTS = 14;   // Wiederholversuche, den Anker zu finden ...
+const LOCATE_INTERVAL = 180;  // ... alle 180ms (~2,5s Fenster für Routenwechsel + Mount)
+
 export function GuidedTour({
-  open, onClose, setSection,
+  demo, onClose, onFinish, onAskJana,
 }: {
-  open: boolean;
+  demo: Demo | null;
   onClose: () => void;
-  setSection: (s: TourSection) => void;
+  onFinish?: (slug: string, mode: "completed" | "skipped") => void;
+  onAskJana?: (slug: string, starter?: string) => void;
 }) {
-  const setter = useSetOnboardingProgress();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [step, setStep] = useState(0);
   const [box, setBox] = useState<Box | null>(null);
   const closedRef = useRef(false);
 
-  const total = TOUR_STEPS.length;
-  const current = TOUR_STEPS[Math.min(step, total - 1)];
+  const open = !!demo;
+  const steps = demo?.steps ?? [];
+  const total = steps.length;
+  const current = total > 0 ? steps[Math.min(step, total - 1)] : null;
 
-  // Frischer Start bei jedem Öffnen.
+  // Frischer Start bei jedem Öffnen (neuer Demo-Slug -> von vorn).
   useEffect(() => {
     if (open) { setStep(0); setBox(null); closedRef.current = false; }
-  }, [open]);
+  }, [open, demo?.slug]);
 
+  // Spotlight-Box aus dem Ziel-Element berechnen.
   const locate = useCallback(() => {
     if (!current?.target) { setBox(null); return; }
     const el = document.querySelector(`[data-tour="${current.target}"]`) as HTMLElement | null;
@@ -45,23 +55,58 @@ export function GuidedTour({
     });
   }, [current]);
 
-  // Section aktivieren, Ziel einscrollen, dann Spotlight positionieren.
-  useLayoutEffect(() => {
-    if (!open || !current) return;
-    setSection(current.section);
-    let raf = 0;
-    const t1 = window.setTimeout(() => {
-      const el = current.target ? (document.querySelector(`[data-tour="${current.target}"]`) as HTMLElement | null) : null;
-      if (el) { try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch { /* noop */ } }
-      raf = requestAnimationFrame(locate);
-    }, 90);
-    // Nachlaufende Neuberechnung während des smooth-scrolls.
-    const t2 = window.setTimeout(locate, 380);
-    const t3 = window.setTimeout(locate, 700);
-    return () => { window.clearTimeout(t1); window.clearTimeout(t2); window.clearTimeout(t3); cancelAnimationFrame(raf); };
-  }, [open, step, current, setSection, locate]);
+  const next = useCallback(() => {
+    setStep((s) => Math.min(total - 1, s + 1));
+  }, [total]);
 
-  // Reposition bei Scroll (capture: der Scroll passiert im <main>-Container) + Resize.
+  // Route ansteuern, Ziel finden (mit Wiederholung), sonst Step überspringen.
+  useEffect(() => {
+    if (!open || !current) return;
+    let cancelled = false;
+    const timers: number[] = [];
+    const clearAll = () => timers.forEach((t) => window.clearTimeout(t));
+
+    // 1) Zielroute ansteuern (wenn abweichend). Spotlight vorher leeren -> kein Flash.
+    if (current.route) {
+      const here = location.pathname + location.search;
+      if (here !== current.route) {
+        setBox(null);
+        navigate(current.route);
+      }
+    }
+
+    // 2) Anker finden. Narrative Steps (kein target) = Vollflächen-Dimmung, kein Skip.
+    if (!current.target) { setBox(null); return; }
+
+    let attempts = 0;
+    const tryLocate = () => {
+      if (cancelled) return;
+      const el = document.querySelector(`[data-tour="${current.target}"]`) as HTMLElement | null;
+      const r = el?.getBoundingClientRect();
+      if (el && r && (r.width > 0 || r.height > 0)) {
+        try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch { /* noop */ }
+        timers.push(window.setTimeout(locate, 60));
+        timers.push(window.setTimeout(locate, 340));
+        timers.push(window.setTimeout(locate, 680));
+        return;
+      }
+      attempts += 1;
+      if (attempts < LOCATE_ATTEMPTS) {
+        timers.push(window.setTimeout(tryLocate, LOCATE_INTERVAL));
+      } else if (step < total - 1) {
+        // Ziel taucht nicht auf (Seite/Tab liefert den Anker nicht) -> Step überspringen.
+        setBox(null);
+        next();
+      } else {
+        // Letzter Step ohne Anker: einfach ohne Spotlight zeigen (Karte bleibt bedienbar).
+        setBox(null);
+      }
+    };
+    timers.push(window.setTimeout(tryLocate, 90));
+    return () => { cancelled = true; clearAll(); };
+  }, [open, step, current, navigate, location.pathname, location.search, locate, next, total]);
+
+  // Reposition bei Scroll (capture: Scroll passiert im <main>) + Resize.
   useEffect(() => {
     if (!open) return;
     const h = () => locate();
@@ -71,20 +116,19 @@ export function GuidedTour({
   }, [open, locate]);
 
   const finish = useCallback((mode: "completed" | "skipped") => {
-    if (closedRef.current) return;
+    if (closedRef.current || !demo) return;
     closedRef.current = true;
-    setter.mutate(mode === "completed" ? { tour_completed: true, tour_step: total } : { tour_skipped: true });
+    onFinish?.(demo.slug, mode);
     onClose();
-  }, [setter, total, onClose]);
+  }, [demo, onFinish, onClose]);
 
-  const next = () => { if (step >= total - 1) finish("completed"); else setStep((s) => s + 1); };
+  const goNext = () => { if (step >= total - 1) finish("completed"); else next(); };
   const prev = () => setStep((s) => Math.max(0, s - 1));
 
   const askJana = () => {
-    if (closedRef.current) return;
+    if (closedRef.current || !demo) return;
     closedRef.current = true;
-    setter.mutate({ asked_jana: true });
-    setSection("jana");
+    onAskJana?.(demo.slug, current?.janaStarter);
     onClose();
   };
 
@@ -93,12 +137,12 @@ export function GuidedTour({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") { e.preventDefault(); finish("skipped"); }
-      else if (e.key === "ArrowRight") { e.preventDefault(); next(); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); goNext(); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, step]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, step, total]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!open || !current) return null;
 
@@ -106,8 +150,8 @@ export function GuidedTour({
   const cardAtTop = box ? box.top + box.height / 2 > window.innerHeight / 2 : false;
 
   return createPortal(
-    <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Onboarding-Tour">
-      {/* Klick-Fänger: blockt Interaktion mit der Seite während der Tour. */}
+    <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={`Onboarding-Durchlauf: ${demo!.title}`}>
+      {/* Klick-Fänger: blockt Interaktion mit der Seite während des Durchlaufs. */}
       <div className="absolute inset-0" onClick={() => { /* bewusst kein Auto-Skip */ }} />
 
       {/* Spotlight: Ausschnitt via großem box-shadow. Ohne Ziel: Vollflächen-Dimmung. */}
@@ -143,7 +187,7 @@ export function GuidedTour({
                 <h3 className="text-sm font-semibold text-foreground leading-tight mt-1 truncate">{current.title}</h3>
               </div>
             </div>
-            <button onClick={() => finish("skipped")} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Tour überspringen">
+            <button onClick={() => finish("skipped")} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Durchlauf beenden">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -157,7 +201,7 @@ export function GuidedTour({
 
           {/* Fortschrittspunkte */}
           <div className="flex items-center gap-1.5 mt-3.5">
-            {TOUR_STEPS.map((_, i) => (
+            {steps.map((_, i) => (
               <span key={i} className={cn("h-1.5 rounded-full transition-all", i === step ? "w-5 bg-primary" : "w-1.5 bg-muted")} />
             ))}
           </div>
@@ -181,7 +225,7 @@ export function GuidedTour({
                   Überspringen
                 </button>
               )}
-              <button onClick={next} className="inline-flex items-center gap-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg px-3.5 py-2 hover:bg-primary/90">
+              <button onClick={goNext} className="inline-flex items-center gap-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg px-3.5 py-2 hover:bg-primary/90">
                 {step >= total - 1 ? "Fertig" : "Weiter"} <ArrowRight className="w-4 h-4" />
               </button>
             </div>

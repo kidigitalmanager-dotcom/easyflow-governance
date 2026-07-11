@@ -117,7 +117,7 @@ export default function Uebersicht() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Queue Widget */}
-        <div className="lg:col-span-2 glass-card p-6">
+        <div data-tour="ueb-queue" className="lg:col-span-2 glass-card p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold">Wartet auf Freigabe</h2>
             <Link to="/review" className="text-xs text-primary hover:underline flex items-center gap-1">

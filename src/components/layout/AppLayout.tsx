@@ -1,8 +1,9 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield, Activity } from "lucide-react";
+import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield, Activity, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
 import { MailboxHealthBanner } from "@/components/MailboxHealthBanner";
+import { OnboardingRunnerProvider } from "@/components/onboarding/OnboardingRunner";
 import logo from "@/assets/useeasy-logo.jpg";
 import { useMe } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +16,7 @@ const navItems = [
   { to: "/playbooks", label: "Playbooks", icon: BookOpen },
   { to: "/voice", label: "Voice & Calls", icon: PhoneCall },
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
+  { to: "/onboarding", label: "Onboarding", icon: GraduationCap },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -120,7 +122,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <MailboxHealthBanner />
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-6xl mx-auto px-8 py-8">
-            {children}
+            {/* Globaler Onboarding-Runner: EIN Tour-Overlay über alle Routen hinweg. */}
+            <OnboardingRunnerProvider>
+              {children}
+            </OnboardingRunnerProvider>
           </div>
         </main>
       </div>

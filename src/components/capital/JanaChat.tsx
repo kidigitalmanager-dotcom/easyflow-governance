@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { renderRichText } from "@/lib/richtext";
 import { useJanaChat } from "@/hooks/use-capital";
 import { useMe } from "@/hooks/use-api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { CapAccount, JanaCitation, JanaDeepLink, JanaSuggestion } from "@/lib/capital";
 
 type Msg = { role: "user" | "assistant"; content: string; citations?: JanaCitation[]; note?: string; deepLink?: JanaDeepLink | null; suggestions?: JanaSuggestion[] };
@@ -47,9 +47,23 @@ export function JanaChat({ account, mode = "tenant" }: { account?: CapAccount | 
   const chat = useJanaChat();
   const me = useMe();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [input, setInput] = useState("");
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+
+  // "Frag Jana dazu" aus einem Onboarding-Durchlauf: ?ask=<Prompt> vorbefüllen (nicht
+  // auto-senden - der Nutzer prüft und schickt selbst ab). Param danach entfernen, damit
+  // er nicht kleben bleibt oder erneut greift. Reaktiv -> greift auch, wenn /signale schon
+  // gemountet ist (Frag-Jana mitten in der Signale-Tour).
+  useEffect(() => {
+    const ask = searchParams.get("ask");
+    if (!ask) return;
+    setInput(ask);
+    const next = new URLSearchParams(searchParams);
+    next.delete("ask");
+    setSearchParams(next, { replace: true });
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const scrollDown = () => setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), 60);
 

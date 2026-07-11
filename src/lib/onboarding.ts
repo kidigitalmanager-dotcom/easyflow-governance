@@ -21,6 +21,10 @@ export type OnboardingProgress = {
   explained_kpis?: string[];
   seen_overlays?: string[];
   nudges_dismissed?: string[];
+  // Onboarding-Bereich: welche kuratierten Demo-Durchläufe der Nutzer schon abgeschlossen
+  // hat (Slugs). EIN Array-Flag deckt alle Demos ab (statt einem Bool pro Demo) und passt
+  // in die ARR-Whitelist der onboarding-progress Edge-Fn.
+  demos_done?: string[];
 };
 
 export type MilestoneId =
@@ -105,4 +109,17 @@ export function addToSet(existing: string[] | undefined, value: string): string[
   const set = new Set(existing ?? []);
   set.add(value);
   return Array.from(set);
+}
+
+// ── Onboarding-Demo-Katalog: Fortschritt (wiederholbare Durchläufe) ──────────────
+// "done" ist rein informativ (Haken auf der Karte) - ein Durchlauf lässt sich immer
+// erneut starten, "done" wird nie zurückgesetzt.
+export function demoDone(progress: OnboardingProgress, slug: string): boolean {
+  return (progress.demos_done ?? []).includes(slug);
+}
+
+// Wie viele der übergebenen Demo-Slugs sind abgeschlossen? (Katalog-Fortschrittsbalken)
+export function demosDoneCount(progress: OnboardingProgress, slugs: string[]): number {
+  const done = new Set(progress.demos_done ?? []);
+  return slugs.reduce((n, s) => (done.has(s) ? n + 1 : n), 0);
 }

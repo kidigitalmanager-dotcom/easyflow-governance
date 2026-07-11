@@ -18,6 +18,7 @@ import Playbooks from "./pages/Playbooks";
 import Einstellungen from "./pages/Einstellungen";
 import VoiceCalls from "./pages/VoiceCalls";
 import Signale from "./pages/Signale";
+import Onboarding from "./pages/Onboarding";
 import Investoren from "./pages/Investoren";
 import NotFound from "./pages/NotFound";
 import AdminPromotion from "./pages/AdminPromotion";
@@ -73,6 +74,7 @@ const App = () => (
                     <Routes>
                       <Route path="/" element={<RoleHome />} />
                       <Route path="/signale" element={<Signale />} />
+                      <Route path="/onboarding" element={<Onboarding />} />
                       <Route path="/review" element={<ReviewQueue />} />
                       <Route path="/audit" element={<AuditTrail />} />
                       <Route path="/playbooks" element={<Playbooks />} />

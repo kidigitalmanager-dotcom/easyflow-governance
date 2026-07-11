@@ -437,7 +437,7 @@ export default function Einstellungen() {
           <SecurityMfaCard />
         </TabsContent>
 
-        <TabsContent value="jana-wissen" className="mt-6">
+        <TabsContent value="jana-wissen" data-tour="jana-wissen-tab" className="mt-6">
           <JanaKnowledgeTab />
         </TabsContent>
 
@@ -445,7 +445,7 @@ export default function Einstellungen() {
           <KnowledgeBaseTab />
         </TabsContent>
 
-        <TabsContent value="spreadsheet" className="mt-6">
+        <TabsContent value="spreadsheet" data-tour="excel-tab" className="mt-6">
           <SpreadsheetConfigTab />
         </TabsContent>
 
@@ -458,7 +458,7 @@ export default function Einstellungen() {
           <TenantSetupSelfCard />
         </TabsContent>
 
-        <TabsContent value="email-autopilot" className="mt-6 space-y-6">
+        <TabsContent value="email-autopilot" data-tour="email-autopilot-tab" className="mt-6 space-y-6">
           <EmailAutopilotTab />
         </TabsContent>
 
