@@ -15,6 +15,7 @@ import Uebersicht from "./pages/Uebersicht";
 import ReviewQueue from "./pages/ReviewQueue";
 import AuditTrail from "./pages/AuditTrail";
 import Playbooks from "./pages/Playbooks";
+import Forderungen from "./pages/Forderungen";
 import Einstellungen from "./pages/Einstellungen";
 import VoiceCalls from "./pages/VoiceCalls";
 import Signale from "./pages/Signale";
@@ -78,6 +79,7 @@ const App = () => (
                       <Route path="/review" element={<ReviewQueue />} />
                       <Route path="/audit" element={<AuditTrail />} />
                       <Route path="/playbooks" element={<Playbooks />} />
+                      <Route path="/forderungen" element={<Forderungen />} />
                       <Route path="/voice" element={<VoiceCalls />} />
                       <Route path="/einstellungen" element={<Einstellungen />} />
                       <Route path="/admin" element={<Admin />} />

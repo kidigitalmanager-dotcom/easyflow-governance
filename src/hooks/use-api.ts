@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchBillingSummary, startBillingCheckout, openBillingPortal } from "@/lib/api-client";
+import { listDocuments, scanSentForAr, generateDunning, submitDocumentVerdict, markArPaid, addManualAr, importArXlsx } from "@/lib/api-client";
 import { fetchAiTransparencySummary, fetchAiTransparencyCalls } from "@/lib/api-client";
 import {
   fetchMe,
@@ -988,5 +989,60 @@ export function useAiTransparencyCalls(params?: { limit?: number; purpose?: stri
   return useQuery({
     queryKey: ["ai-transparency-calls", params ?? {}],
     queryFn: () => fetchAiTransparencyCalls(params),
+  });
+}
+
+export function useDocuments(docType: "ar_invoice" | "dunning" = "ar_invoice", status?: string) {
+  return useQuery({
+    queryKey: ["documents", docType, status ?? ""],
+    queryFn: () => listDocuments(docType, status),
+  });
+}
+
+export function useScanSentForAr() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sinceHours?: number) => scanSentForAr(sinceHours),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["documents"] }),
+  });
+}
+
+export function useGenerateDunning() {
+  return useMutation({
+    mutationFn: (v: { arInvoiceId: number; mahnstufe?: number; use_llm?: boolean }) =>
+      generateDunning(v.arInvoiceId, { mahnstufe: v.mahnstufe, use_llm: v.use_llm }),
+  });
+}
+
+export function useDocumentVerdict() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { documentId: number; action: "approve" | "reject"; subject?: string; body?: string }) =>
+      submitDocumentVerdict(v.documentId, v.action, { subject: v.subject, body: v.body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["documents"] }),
+  });
+}
+
+export function useMarkArPaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { arInvoiceId: number; undo?: boolean }) => markArPaid(v.arInvoiceId, v.undo),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["documents"] }),
+  });
+}
+
+export function useAddManualAr() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: addManualAr,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["documents"] }),
+  });
+}
+
+export function useImportArXlsx() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: importArXlsx,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["documents"] }),
   });
 }

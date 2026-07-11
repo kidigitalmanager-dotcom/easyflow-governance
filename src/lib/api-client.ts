@@ -2553,3 +2553,80 @@ export const fetchAiTransparencyCalls = (params?: { limit?: number; purpose?: st
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   return apiFetch<AiTransparencyCallsResponse>(`/ai-transparency/calls${suffix}`);
 };
+
+// ---- v4.108.0 Dokumente / Zahlungserinnerungen (AR) ----
+export interface TenantDocument {
+  id: number;
+  doc_type: "ar_invoice" | "dunning";
+  status: string;
+  counterpart_name: string | null;
+  counterpart_email: string | null;
+  invoice_ref: string | null;
+  amount_gross: number | null;
+  currency: string | null;
+  issue_date: string | null;
+  due_date: string | null;
+  detected_from: string | null;
+  confidence: number | null;
+  needs_confirmation: boolean | null;
+  mahnstufe: number | null;
+  parent_document_id: number | null;
+  reminder_count: number | null;
+  last_reminded_at: string | null;
+  paid_at: string | null;
+  subject: string | null;
+  cover_text: string | null;
+  source_subject: string | null;
+  created_at: string | null;
+  // vom Backend berechnet:
+  days_overdue: number | null;
+  overdue: boolean;
+  suggested_mahnstufe: number | null;
+  amount_display: string | null;
+}
+export interface DocumentsListResponse { ok: boolean; items: TenantDocument[]; }
+export interface DunningDraft {
+  ok: boolean; dunning_document_id: number; ar_invoice_id: number; mahnstufe: number;
+  subject: string; body: string; to_email: string | null; to_name: string | null;
+  amount: string; days_overdue: number; used_llm: boolean;
+}
+export interface ScanResult {
+  ok: boolean; tenant_id?: string; scanned?: number; structured?: number;
+  text_fallback?: number; upserted?: number; skipped?: number | string;
+}
+export interface ImportResult { ok: boolean; imported?: number; updated?: number; marked_paid?: number; skipped?: number; }
+
+export async function listDocuments(docType: "ar_invoice" | "dunning" = "ar_invoice", status?: string): Promise<DocumentsListResponse> {
+  const qs = new URLSearchParams({ doc_type: docType });
+  if (status) qs.set("status", status);
+  return apiFetch<DocumentsListResponse>(`/documents?${qs.toString()}`);
+}
+export async function scanSentForAr(sinceHours?: number): Promise<ScanResult> {
+  return apiPost<ScanResult>("/documents/scan", sinceHours ? { since_hours: sinceHours } : {});
+}
+export async function generateDunning(arInvoiceId: number, opts?: { mahnstufe?: number; use_llm?: boolean }): Promise<DunningDraft> {
+  return apiPost<DunningDraft>("/documents/dunning/generate", { ar_invoice_id: arInvoiceId, ...(opts || {}) });
+}
+export async function submitDocumentVerdict(documentId: number, action: "approve" | "reject", edited?: { subject?: string; body?: string }): Promise<{ ok: boolean; document_id: number; status: string }> {
+  return apiPost<{ ok: boolean; document_id: number; status: string }>("/documents/verdict", { document_id: documentId, action, edited_subject: edited?.subject, edited_body: edited?.body });
+}
+export async function markArPaid(arInvoiceId: number, undo = false): Promise<{ ok: boolean; ar_invoice_id: number; status: string }> {
+  return apiPost<{ ok: boolean; ar_invoice_id: number; status: string }>("/documents/mark-paid", { ar_invoice_id: arInvoiceId, undo });
+}
+export async function addManualAr(rec: { invoice_ref?: string; counterpart_name?: string; counterpart_email?: string; amount_gross: string | number; currency?: string; issue_date?: string; due_date?: string }): Promise<{ ok: boolean; ar_invoice_id: number }> {
+  return apiPost<{ ok: boolean; ar_invoice_id: number }>("/documents/ar", rec as Record<string, unknown>);
+}
+export async function importArXlsx(fileBase64: string): Promise<ImportResult> {
+  return apiPost<ImportResult>("/documents/import", { file_base64: fileBase64 });
+}
+// Binary .xlsx-Download (nutzt getToken + API_BASE aus diesem Modul)
+export async function exportArXlsx(): Promise<void> {
+  const token = await getToken();
+  const res = await fetch(`${API_BASE}/documents/export`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error("export_failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "forderungen.xlsx"; a.click();
+  URL.revokeObjectURL(url);
+}
