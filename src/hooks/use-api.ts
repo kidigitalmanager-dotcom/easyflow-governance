@@ -1046,3 +1046,47 @@ export function useImportArXlsx() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["documents"] }),
   });
 }
+
+import {
+  listRequests, getOffer, generateOffer, updateOffer, submitOfferVerdict,
+  type GenerateOfferBody, type UpdateOfferBody,
+} from "@/lib/api-client";
+
+export function useRequests(limit = 40) {
+  return useQuery({
+    queryKey: ["documents-requests", limit],
+    queryFn: () => listRequests(limit),
+  });
+}
+export function useOffer(id: number | null) {
+  return useQuery({
+    queryKey: ["documents-offer", id],
+    queryFn: () => getOffer(id as number),
+    enabled: id != null,
+  });
+}
+export function useGenerateOffer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: GenerateOfferBody) => generateOffer(body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["documents-requests"] }); },
+  });
+}
+export function useUpdateOffer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateOfferBody) => updateOffer(body),
+    onSuccess: (_res, vars) => { qc.invalidateQueries({ queryKey: ["documents-offer", vars.document_id] }); },
+  });
+}
+export function useOfferVerdict() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { documentId: number; action: "approve" | "reject"; send_cover_letter?: boolean }) =>
+      submitOfferVerdict(v.documentId, v.action, { send_cover_letter: v.send_cover_letter }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["documents-requests"] });
+      qc.invalidateQueries({ queryKey: ["documents-offer"] });
+    },
+  });
+}

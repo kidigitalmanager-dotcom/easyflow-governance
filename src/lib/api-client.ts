@@ -2630,3 +2630,78 @@ export async function exportArXlsx(): Promise<void> {
   a.href = url; a.download = "forderungen.xlsx"; a.click();
   URL.revokeObjectURL(url);
 }
+
+import type { OfferPosition, OfferTotals } from "@/lib/offer-calc";
+
+export interface TenantOffer {
+  id: number;
+  doc_type: string;
+  status: string; // draft | approved | sent | void
+  counterpart_name: string | null;
+  counterpart_email: string | null;
+  subject: string | null;
+  cover_text: string | null;
+  positions: OfferPosition[] | null;
+  totals: OfferTotals | null;
+  valid_until: string | null;
+  doc_number: string | null;
+  source_provider: string | null;
+  source_message_id: string | null;
+  source_subject: string | null;
+  thread_key: string | null;
+  amount_gross: number | null;
+  currency: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  approved_at: string | null;
+}
+export interface RequestItem {
+  thread_key: string | null;
+  source_message_id: string | null;
+  provider: string | null;
+  subject: string;
+  sender: string;
+  summary: string | null;
+  event_at: string | null;
+  has_offer: boolean;
+  offer_id: number | null;
+  offer_status: string | null;
+}
+export interface GenerateOfferBody {
+  source_message_id?: string; source_provider?: string; thread_key?: string; thread_text?: string;
+  counterpart_name?: string; counterpart_email?: string; source_subject?: string;
+  reverse_charge?: boolean; kleinunternehmer?: boolean; valid_days?: number; valid_until?: string;
+}
+export interface OfferGenerateResult {
+  ok: boolean; document_id: number; positions: OfferPosition[]; totals: OfferTotals;
+  cover_text: string; subject: string; valid_until: string | null;
+  llm_used: boolean; incomplete: boolean; has_price_list: boolean;
+  price_list_source: { id: number; name: string; provider?: string } | null; kleinunternehmer_default: boolean;
+  skipped?: string;
+}
+export interface UpdateOfferBody {
+  document_id: number; positions: OfferPosition[]; subject?: string; cover_text?: string;
+  valid_until?: string; doc_number?: string; counterpart_name?: string; counterpart_email?: string;
+  reverse_charge?: boolean; kleinunternehmer?: boolean;
+  rabatt_gesamt_prozent?: number | string | null; rabatt_gesamt_betrag?: number | string | null;
+  skonto_prozent?: number | string | null; skonto_tage?: number | string | null;
+}
+export interface OfferUpdateResult { ok: boolean; document_id: number; positions: OfferPosition[]; totals: OfferTotals; incomplete: boolean; error?: string; details?: string[]; }
+
+export async function listRequests(limit = 40): Promise<{ ok: boolean; items: RequestItem[] }> {
+  return apiFetch<{ ok: boolean; items: RequestItem[] }>(`/documents/requests?limit=${limit}`);
+}
+export async function getOffer(id: number): Promise<{ ok: boolean; offer: TenantOffer }> {
+  return apiFetch<{ ok: boolean; offer: TenantOffer }>(`/documents/offer?id=${id}`);
+}
+export async function generateOffer(body: GenerateOfferBody): Promise<OfferGenerateResult> {
+  return apiPost<OfferGenerateResult>("/documents/offer/generate", body as Record<string, unknown>);
+}
+export async function updateOffer(body: UpdateOfferBody): Promise<OfferUpdateResult> {
+  return apiPost<OfferUpdateResult>("/documents/offer/update", body as unknown as Record<string, unknown>);
+}
+export async function submitOfferVerdict(
+  documentId: number, action: "approve" | "reject", opts?: { send_cover_letter?: boolean },
+): Promise<{ ok: boolean; document_id: number; status: string; mailbox?: { provider: string | null; draft: boolean } | null; error?: string }> {
+  return apiPost("/documents/offer/verdict", { document_id: documentId, action, ...(opts || {}) });
+}
