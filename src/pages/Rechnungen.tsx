@@ -11,6 +11,7 @@ import {
   useFinalizeInvoice, useVoidInvoice, useBillingProfile,
 } from "@/hooks/use-api";
 import type { TenantInvoice, ApprovedOfferItem, InvoiceListItem } from "@/lib/api-client";
+import { downloadZugferdInvoice } from "@/lib/api-client";
 import type { OfferPosition, OfferOpts } from "@/lib/offer-calc";
 import { computeOffer, fmtEUR, fmtDateDe } from "@/lib/offer-calc";
 import { InvoicePositionsTable, type InvoiceDraftState } from "@/components/documents/InvoicePositionsTable";
@@ -25,7 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
-  ReceiptText, ArrowLeft, Save, CheckCircle2, Loader2, Printer, Plus, Trash2, Settings, AlertTriangle, ArrowRightLeft,
+  ReceiptText, ArrowLeft, Save, CheckCircle2, Loader2, Printer, FileDown, Plus, Trash2, Settings, AlertTriangle, ArrowRightLeft,
 } from "lucide-react";
 
 const EMPTY_DRAFT: InvoiceDraftState = {
@@ -92,6 +93,7 @@ export default function Rechnungen() {
   const [draft, setDraft] = useState<InvoiceDraftState>(EMPTY_DRAFT);
   const [dirty, setDirty] = useState(false);
   const [showPdf, setShowPdf] = useState(false);
+  const [zugferdBusy, setZugferdBusy] = useState(false);
 
   const invoices = useInvoices(50);
   const approved = useApprovedOffers(40);
@@ -189,6 +191,18 @@ export default function Rechnungen() {
     } catch { toast.error("Stornieren fehlgeschlagen."); }
   }
 
+  async function doDownloadZugferd() {
+    if (editId == null) return;
+    setZugferdBusy(true);
+    try {
+      await downloadZugferdInvoice(editId, loaded?.doc_number || null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "ZUGFeRD-Download fehlgeschlagen.");
+    } finally {
+      setZugferdBusy(false);
+    }
+  }
+
   function backToList() { setEditId(null); setDraft(EMPTY_DRAFT); setDirty(false); setView("list"); invoices.refetch(); approved.refetch(); }
 
   const computed = computeOffer(draft.positions, draft.opts);
@@ -236,7 +250,13 @@ export default function Rechnungen() {
               </>
             )}
             {!isDraft && loaded?.status === "final" && (
-              <Button variant="ghost" size="sm" onClick={doVoid} disabled={busy}><Trash2 className="mr-1 h-4 w-4" /> Stornieren</Button>
+              <>
+                <Button variant="outline" size="sm" onClick={doDownloadZugferd} disabled={zugferdBusy}
+                  title="Rechnung als ZUGFeRD-PDF (PDF/A-3b mit eingebettetem EN-16931-XML) herunterladen">
+                  {zugferdBusy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />} ZUGFeRD-PDF
+                </Button>
+                <Button variant="ghost" size="sm" onClick={doVoid} disabled={busy}><Trash2 className="mr-1 h-4 w-4" /> Stornieren</Button>
+              </>
             )}
           </div>
         </div>

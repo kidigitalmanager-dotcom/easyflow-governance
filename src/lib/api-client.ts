@@ -1337,6 +1337,44 @@ export async function downloadSpreadsheet(spreadsheetId: number): Promise<void> 
   setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
+// v4.111.0 - ZUGFeRD-PDF (PDF/A-3b + eingebettetes EN-16931-CII-XML) einer FINALISIERTEN
+// Rechnung als binaeren Download. Spiegelt downloadSpreadsheet; prueft zusaetzlich den
+// Content-Type (der Endpoint liefert bei feature/tenant-disabled ODER nicht-final ein JSON mit 200).
+export async function downloadZugferdInvoice(documentId: number, docNumber?: string | null): Promise<void> {
+  const token = await getToken();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+  const url = `https://api.useeasy.ai/v1/dashboard/documents/invoice/zugferd?document_id=${encodeURIComponent(String(documentId))}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) {
+    await supabase.auth.signOut();
+    throw new ApiError(401, "Sitzung abgelaufen");
+  }
+  const ct = res.headers.get("Content-Type") || "";
+  if (!res.ok || !ct.includes("application/pdf")) {
+    let msg = `ZUGFeRD-Download fehlgeschlagen (${res.status})`;
+    try {
+      const data = await res.json();
+      if (data?.error === "invoice_not_finalized") msg = "Nur finalisierte Rechnungen koennen als ZUGFeRD exportiert werden.";
+      else if (data?.error === "billing_profile_missing") msg = "Bitte zuerst die Verkaeufer-Stammdaten hinterlegen.";
+      else if (data?.error) msg = String(data.error);
+      else if (data?.skipped) msg = "ZUGFeRD-Export ist fuer dieses Konto nicht aktiviert.";
+    } catch { /* ignore */ }
+    throw new ApiError(res.status, msg);
+  }
+  const cd = res.headers.get("Content-Disposition") || "";
+  const match = cd.match(/filename="?([^";]+)"?/i);
+  const filename = match ? match[1] : `${docNumber || "rechnung-" + documentId}.pdf`;
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
 // ── Stripe ────────────────────────────────────────────
 
 export async function createStripePortalSession(): Promise<{ ok?: boolean; url?: string; fallback?: boolean; error?: string }> {
