@@ -5,7 +5,8 @@
 // Positionen offen) → editierbarer Positions-Tisch (Live-Neuberechnung) → Freigabe
 // → PDF. Kein Auto-Send; die Freigabe legt optional das Anschreiben ins Postfach.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   useRequests, useOffer, useGenerateOffer, useUpdateOffer, useOfferVerdict,
 } from "@/hooks/use-api";
@@ -58,6 +59,8 @@ export default function Angebote() {
   const [dirty, setDirty] = useState(false);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [showPdf, setShowPdf] = useState(false);
+  const [pendingMsg, setPendingMsg] = useState<{ messageId: string; provider: string } | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const requests = useRequests(40);
   const genOffer = useGenerateOffer();
@@ -77,6 +80,42 @@ export default function Angebote() {
     setDraft(draftState); setEditId(id); setDirty(false);
   };
   const onDraftChange = (s: OfferDraftState) => { setDraft(s); setDirty(true); };
+
+  // Postfach-Ausloeser: das Outlook-Add-in oeffnet
+  // /angebote?generate_from_message=<id>&provider=outlook. Nur message-id + Provider kommen an;
+  // den Mail-Text liest offer/generate selbst (fetchInboundMessageText) -> kein PII im Client.
+  // Bewusst KEIN Auto-Generieren: erst eine Bestaetigungs-Karte, dann Generieren auf Klick.
+  useEffect(() => {
+    const mid = searchParams.get("generate_from_message");
+    if (!mid) return;
+    setPendingMsg({ messageId: mid, provider: searchParams.get("provider") || "outlook" });
+    const next = new URLSearchParams(searchParams);
+    next.delete("generate_from_message");
+    next.delete("provider");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function generateFromMessage(messageId: string, provider: string) {
+    const body: GenerateOfferBody = { source_message_id: messageId, source_provider: provider };
+    try {
+      const res = await genOffer.mutateAsync(body);
+      if (res.skipped) { toast.error("Angebote sind noch nicht aktiviert (Feature/Postfach)."); return; }
+      setPendingMsg(null);
+      const d: OfferDraftState = {
+        positions: res.positions || [],
+        opts: { kleinunternehmer: !!res.kleinunternehmer_default },
+        subject: res.subject || "", cover_text: res.cover_text || "",
+        valid_until: res.valid_until || "", doc_number: "",
+        counterpart_name: "", counterpart_email: "",
+      };
+      openEditor(d, res.document_id);
+      if (res.has_price_list) toast.success("Angebot erstellt. Preise aus der Preisliste übernommen.");
+      else toast.message("Angebot erstellt. Keine Preisliste gefunden — bitte Preise eintragen.");
+    } catch {
+      toast.error("Angebot konnte nicht erstellt werden.");
+    }
+  }
 
   async function generateFrom(req?: RequestItem) {
     const body: GenerateOfferBody = req
@@ -240,6 +279,21 @@ export default function Angebote() {
           </Button>
         </div>
       </div>
+
+      {pendingMsg && (
+        <Card className="border-primary/50">
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4" /> Angebot aus dieser Postfach-Nachricht?</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">Jana liest den Mail-Text der ausgewählten Nachricht und schlägt Positionen und Anschreiben vor. Danach prüfen Sie den Positions-Tisch und geben frei.</p>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={() => generateFromMessage(pendingMsg.messageId, pendingMsg.provider)} disabled={genOffer.isPending}>
+                {genOffer.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1 h-4 w-4" />} Angebot erstellen
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setPendingMsg(null)} disabled={genOffer.isPending}>Abbrechen</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Offene Anfragen</CardTitle></CardHeader>
