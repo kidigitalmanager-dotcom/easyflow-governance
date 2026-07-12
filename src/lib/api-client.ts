@@ -2705,3 +2705,171 @@ export async function submitOfferVerdict(
 ): Promise<{ ok: boolean; document_id: number; status: string; mailbox?: { provider: string | null; draft: boolean } | null; error?: string }> {
   return apiPost("/documents/offer/verdict", { document_id: documentId, action, ...(opts || {}) });
 }
+
+// ============================================================================
+// >>> In src/lib/api-client.ts ANHAENGEN (am Ende) <<<
+// Phase 2a - Rechnung. Nutzt apiFetch / apiPost. OfferPosition/OfferTotals sind
+// aus der Phase-1b-Ergaenzung bereits importiert (reuse der Rechen-Engine-Typen).
+// ============================================================================
+
+export interface BuyerAddress {
+  address_line1?: string | null;
+  address_line2?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+  country_code?: string | null;
+}
+export interface TenantInvoice {
+  id: number;
+  doc_type: string;
+  status: string; // draft | final | void
+  counterpart_name: string | null;
+  counterpart_email: string | null;
+  counterpart_address: BuyerAddress | null;
+  buyer_vat_id: string | null;
+  subject: string | null;
+  cover_text: string | null;
+  positions: OfferPosition[] | null;
+  totals: OfferTotals | null;
+  doc_number: string | null;
+  issue_date: string | null;
+  service_date: string | null;
+  due_date: string | null;
+  amount_gross: number | null;
+  currency: string | null;
+  parent_document_id: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+  approved_at: string | null;
+}
+export interface InvoiceListItem {
+  id: number;
+  status: string;
+  doc_number: string | null;
+  counterpart_name: string | null;
+  counterpart_email: string | null;
+  subject: string | null;
+  amount_gross: number | null;
+  currency: string | null;
+  issue_date: string | null;
+  service_date: string | null;
+  due_date: string | null;
+  parent_document_id: number | null;
+  created_at: string | null;
+}
+export interface ApprovedOfferItem {
+  id: number;
+  status: string;
+  doc_number: string | null;
+  counterpart_name: string | null;
+  counterpart_email: string | null;
+  subject: string | null;
+  amount_gross: number | null;
+  currency: string | null;
+  valid_until: string | null;
+  created_at: string | null;
+  approved_at: string | null;
+  has_invoice: boolean;
+  invoice_id: number | null;
+}
+export interface BillingProfile {
+  tenant_id?: string;
+  company_name: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  postal_code: string | null;
+  city: string | null;
+  country_code: string | null;
+  vat_id: string | null;
+  tax_number: string | null;
+  iban: string | null;
+  bic: string | null;
+  bank_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  contact_web: string | null;
+  logo_url: string | null;
+  invoice_prefix: string | null;
+  default_payment_terms_days: number | null;
+  kleinunternehmer: boolean;
+}
+export interface UpdateInvoiceBody {
+  document_id: number;
+  positions: OfferPosition[];
+  subject?: string;
+  cover_text?: string;
+  counterpart_name?: string;
+  counterpart_email?: string;
+  counterpart_address?: BuyerAddress | null;
+  buyer_vat_id?: string;
+  service_date?: string;
+  issue_date?: string;
+  reverse_charge?: boolean;
+  kleinunternehmer?: boolean;
+  rabatt_gesamt_prozent?: number | string | null;
+  rabatt_gesamt_betrag?: number | string | null;
+  skonto_prozent?: number | string | null;
+  skonto_tage?: number | string | null;
+}
+export interface InvoiceUpdateResult {
+  ok: boolean;
+  document_id: number;
+  positions: OfferPosition[];
+  totals: OfferTotals;
+  incomplete: boolean;
+  error?: string;
+  details?: string[];
+}
+export interface GenerateInvoiceResult {
+  ok: boolean;
+  document_id: number;
+  from_offer?: number;
+  positions?: OfferPosition[];
+  totals?: OfferTotals;
+  incomplete?: boolean;
+  error?: string;
+  status?: string;
+  skipped?: string;
+}
+export interface FinalizeInvoiceResult {
+  ok: boolean;
+  document_id?: number;
+  status?: string;
+  doc_number?: string;
+  issue_date?: string;
+  due_date?: string;
+  totals?: OfferTotals;
+  error?: string;
+  missing?: string[];
+  skipped?: string;
+}
+
+export async function listInvoices(limit = 50): Promise<{ ok: boolean; items: InvoiceListItem[] }> {
+  return apiFetch<{ ok: boolean; items: InvoiceListItem[] }>(`/documents/invoices?limit=${limit}`);
+}
+export async function listApprovedOffers(limit = 40): Promise<{ ok: boolean; items: ApprovedOfferItem[] }> {
+  return apiFetch<{ ok: boolean; items: ApprovedOfferItem[] }>(`/documents/offers/approved?limit=${limit}`);
+}
+export async function getInvoice(id: number): Promise<{ ok: boolean; invoice: TenantInvoice }> {
+  return apiFetch<{ ok: boolean; invoice: TenantInvoice }>(`/documents/invoice?id=${id}`);
+}
+export async function generateInvoice(
+  body: { offer_id?: number; counterpart_name?: string; subject?: string; reverse_charge?: boolean; kleinunternehmer?: boolean },
+): Promise<GenerateInvoiceResult> {
+  return apiPost<GenerateInvoiceResult>("/documents/invoice/generate", body as Record<string, unknown>);
+}
+export async function updateInvoice(body: UpdateInvoiceBody): Promise<InvoiceUpdateResult> {
+  return apiPost<InvoiceUpdateResult>("/documents/invoice/update", body as unknown as Record<string, unknown>);
+}
+export async function finalizeInvoice(documentId: number): Promise<FinalizeInvoiceResult> {
+  return apiPost<FinalizeInvoiceResult>("/documents/invoice/finalize", { document_id: documentId });
+}
+export async function voidInvoice(documentId: number): Promise<{ ok: boolean; document_id?: number; status?: string; error?: string }> {
+  return apiPost("/documents/invoice/void", { document_id: documentId });
+}
+export async function getBillingProfile(): Promise<{ ok: boolean; profile: BillingProfile | null; complete: boolean }> {
+  return apiFetch<{ ok: boolean; profile: BillingProfile | null; complete: boolean }>(`/documents/billing-profile`);
+}
+export async function updateBillingProfile(body: Partial<BillingProfile>): Promise<{ ok: boolean; profile: BillingProfile | null }> {
+  return apiPost<{ ok: boolean; profile: BillingProfile | null }>("/documents/billing-profile", body as Record<string, unknown>);
+}

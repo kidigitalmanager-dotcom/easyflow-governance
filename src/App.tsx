@@ -17,6 +17,7 @@ import AuditTrail from "./pages/AuditTrail";
 import Playbooks from "./pages/Playbooks";
 import Forderungen from "./pages/Forderungen";
 import Angebote from "./pages/Angebote";
+import Rechnungen from "./pages/Rechnungen";
 import Einstellungen from "./pages/Einstellungen";
 import VoiceCalls from "./pages/VoiceCalls";
 import Signale from "./pages/Signale";
@@ -82,6 +83,7 @@ const App = () => (
                       <Route path="/playbooks" element={<Playbooks />} />
                       <Route path="/forderungen" element={<Forderungen />} />
                       <Route path="/angebote" element={<Angebote />} />
+                      <Route path="/rechnungen" element={<Rechnungen />} />
                       <Route path="/voice" element={<VoiceCalls />} />
                       <Route path="/einstellungen" element={<Einstellungen />} />
                       <Route path="/admin" element={<Admin />} />

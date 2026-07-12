@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield, Activity, GraduationCap, Receipt, FileText } from "lucide-react";
+import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield, Activity, GraduationCap, Receipt, ReceiptText, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
 import { MailboxHealthBanner } from "@/components/MailboxHealthBanner";
@@ -16,6 +16,7 @@ const navItems = [
   { to: "/playbooks", label: "Playbooks", icon: BookOpen },
   { to: "/forderungen", label: "Forderungen", icon: Receipt },
   { to: "/angebote", label: "Angebote", icon: FileText },
+  { to: "/rechnungen", label: "Rechnungen", icon: ReceiptText },
   { to: "/voice", label: "Voice & Calls", icon: PhoneCall },
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
   { to: "/onboarding", label: "Onboarding", icon: GraduationCap },

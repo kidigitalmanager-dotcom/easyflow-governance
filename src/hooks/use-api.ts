@@ -1090,3 +1090,81 @@ export function useOfferVerdict() {
     },
   });
 }
+
+// ============================================================================
+// >>> In src/hooks/use-api.ts ANHAENGEN (am Ende) <<<
+// Phase 2a - Rechnungs-Hooks (react-query, Muster wie useOffer/useUpdateOffer).
+// ============================================================================
+import {
+  listInvoices, listApprovedOffers, getInvoice, generateInvoice, updateInvoice, finalizeInvoice, voidInvoice,
+  getBillingProfile, updateBillingProfile,
+  type UpdateInvoiceBody, type BillingProfile,
+} from "@/lib/api-client";
+
+export function useInvoices(limit = 50) {
+  return useQuery({
+    queryKey: ["documents-invoices", limit],
+    queryFn: () => listInvoices(limit),
+  });
+}
+export function useApprovedOffers(limit = 40) {
+  return useQuery({
+    queryKey: ["documents-approved-offers", limit],
+    queryFn: () => listApprovedOffers(limit),
+  });
+}
+export function useInvoice(id: number | null) {
+  return useQuery({
+    queryKey: ["documents-invoice", id],
+    queryFn: () => getInvoice(id as number),
+    enabled: id != null,
+  });
+}
+export function useGenerateInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { offer_id?: number; counterpart_name?: string; subject?: string; reverse_charge?: boolean; kleinunternehmer?: boolean }) => generateInvoice(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["documents-invoices"] });
+      qc.invalidateQueries({ queryKey: ["documents-approved-offers"] });
+    },
+  });
+}
+export function useUpdateInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateInvoiceBody) => updateInvoice(body),
+    onSuccess: (_res, vars) => { qc.invalidateQueries({ queryKey: ["documents-invoice", vars.document_id] }); },
+  });
+}
+export function useFinalizeInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (documentId: number) => finalizeInvoice(documentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["documents-invoices"] });
+      qc.invalidateQueries({ queryKey: ["documents-invoice"] });
+      qc.invalidateQueries({ queryKey: ["documents-approved-offers"] });
+    },
+  });
+}
+export function useVoidInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (documentId: number) => voidInvoice(documentId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["documents-invoices"] }); },
+  });
+}
+export function useBillingProfile() {
+  return useQuery({
+    queryKey: ["documents-billing-profile"],
+    queryFn: () => getBillingProfile(),
+  });
+}
+export function useUpdateBillingProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<BillingProfile>) => updateBillingProfile(body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["documents-billing-profile"] }); },
+  });
+}
