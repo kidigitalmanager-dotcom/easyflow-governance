@@ -51,6 +51,10 @@ interface CallItem {
 }
 interface Template { id: string; name: string; firstMessage: string; systemPrompt: string }
 interface PoolNumber { number: string; status: string; tenant_id: string | null; assigned_at: string | null }
+interface TwilioNumber {
+  number: string; friendlyName: string; voice: boolean; sms: boolean;
+  poolStatus: string; tenantId: string | null;
+}
 
 const VERTICALS = [
   { value: "handwerk", label: "Handwerk" },
@@ -95,6 +99,8 @@ export default function VoiceAgentsTab() {
   const [pool, setPool] = useState<PoolNumber[]>([]);
   const [poolAdd, setPoolAdd] = useState({ number: "", sid: "", token: "" });
   const [poolBusy, setPoolBusy] = useState(false);
+  const [twNumbers, setTwNumbers] = useState<TwilioNumber[]>([]);
+  const [twConfigured, setTwConfigured] = useState(true);
 
   const loadTenants = useCallback(async () => {
     setLoading(true);
@@ -114,7 +120,19 @@ export default function VoiceAgentsTab() {
   const loadPool = useCallback(async () => {
     try { setPool((await va<{ numbers: PoolNumber[] }>("GET", "/admin/numbers")).numbers); }
     catch { /* Pool optional */ }
+    try {
+      const d = await va<{ configured: boolean; numbers: TwilioNumber[] }>("GET", "/admin/numbers/twilio");
+      setTwConfigured(d.configured); setTwNumbers(d.numbers);
+    } catch { /* optional */ }
   }, []);
+
+  const importNumber = async (number: string) => {
+    try {
+      await va("POST", "/admin/numbers/import", { number });
+      toast.success(`${number} in den Pool aufgenommen.`);
+      loadPool();
+    } catch (e) { toast.error((e as Error).message); }
+  };
 
   const refillPool = async () => {
     setPoolBusy(true);
@@ -422,22 +440,63 @@ export default function VoiceAgentsTab() {
               {poolBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}In Pool aufnehmen
             </Button>
           </div>
-          {pool.length > 0 && (
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Nummer</TableHead><TableHead>Status</TableHead><TableHead>Kunde</TableHead><TableHead>Zugewiesen</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {pool.map((n) => (
-                  <TableRow key={n.number}>
-                    <TableCell className="font-medium">{n.number}</TableCell>
-                    <TableCell><Badge variant={n.status === "free" ? "secondary" : "default"}>{n.status === "free" ? "frei" : n.status}</Badge></TableCell>
-                    <TableCell>{n.tenant_id || "—"}</TableCell>
-                    <TableCell className="text-xs">{n.assigned_at?.slice(0, 16).replace("T", " ") || "—"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div>
+            <p className="text-sm font-medium mb-2">Alle Nummern im Twilio-Account</p>
+            {!twConfigured ? (
+              <p className="text-sm text-muted-foreground">
+                Twilio noch nicht verbunden — <code>accountSid</code>, <code>authToken</code>, <code>bundleSid</code>,{" "}
+                <code>addressSid</code> ins AWS-Secret <code>useeasy/voice/twilio</code> eintragen, dann erscheinen hier alle Nummern.
+              </p>
+            ) : twNumbers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Keine Nummern im Twilio-Account.</p>
+            ) : (
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Nummer</TableHead><TableHead>Name</TableHead><TableHead>Fähigkeiten</TableHead>
+                  <TableHead>Pool-Status</TableHead><TableHead>Kunde</TableHead><TableHead></TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {twNumbers.map((n) => (
+                    <TableRow key={n.number}>
+                      <TableCell className="font-medium">{n.number}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{n.friendlyName}</TableCell>
+                      <TableCell className="text-xs">{[n.voice && "Voice", n.sms && "SMS"].filter(Boolean).join(" · ")}</TableCell>
+                      <TableCell>
+                        <Badge variant={n.poolStatus === "free" ? "secondary" : n.poolStatus === "assigned" ? "default" : "outline"}>
+                          {n.poolStatus === "free" ? "frei" : n.poolStatus === "assigned" ? "zugewiesen" : "nicht im Pool"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{n.tenantId || "—"}</TableCell>
+                      <TableCell>
+                        {n.poolStatus === "nicht_im_pool" && (
+                          <Button variant="outline" size="sm" onClick={() => importNumber(n.number)}>In Pool</Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          {pool.filter((n) => !twNumbers.find((t) => t.number === n.number)).length > 0 && (
+            <div>
+              <p className="text-sm font-medium mb-2">Weitere Pool-Nummern (anderer Twilio-Account)</p>
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Nummer</TableHead><TableHead>Status</TableHead><TableHead>Kunde</TableHead><TableHead>Zugewiesen</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {pool.filter((n) => !twNumbers.find((t) => t.number === n.number)).map((n) => (
+                    <TableRow key={n.number}>
+                      <TableCell className="font-medium">{n.number}</TableCell>
+                      <TableCell><Badge variant={n.status === "free" ? "secondary" : "default"}>{n.status === "free" ? "frei" : n.status}</Badge></TableCell>
+                      <TableCell>{n.tenant_id || "—"}</TableCell>
+                      <TableCell className="text-xs">{n.assigned_at?.slice(0, 16).replace("T", " ") || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
