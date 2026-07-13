@@ -116,6 +116,16 @@ export default function VoiceAgentsTab() {
     catch { /* Pool optional */ }
   }, []);
 
+  const refillPool = async () => {
+    setPoolBusy(true);
+    try {
+      const r = await va<{ ok: boolean; bought?: string[]; error?: string }>("POST", "/admin/numbers/refill");
+      toast.success(r.bought?.length ? `${r.bought.length} Nummer(n) automatisch gekauft.` : "Pool ist bereits ausreichend gefüllt.");
+      loadPool();
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setPoolBusy(false); }
+  };
+
   const addPoolNumber = async () => {
     if (!poolAdd.number.trim() || !poolAdd.sid.trim() || !poolAdd.token.trim())
       { toast.error("Nummer, Account SID und Auth Token sind Pflicht."); return; }
@@ -390,9 +400,18 @@ export default function VoiceAgentsTab() {
 
       {/* Nummern-Pool */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Twilio-Nummern-Pool</CardTitle>
-          <CardDescription>Vorprovisionierte Nummern — werden Kunden bei der Provisionierung automatisch zugewiesen.</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="text-base">Twilio-Nummern-Pool</CardTitle>
+            <CardDescription>
+              Kauf & Zuweisung laufen automatisch: Puffer wird stündlich aufgefüllt, bei leerem Pool kauft
+              das Provisioning on-demand nach (Regulatory Bundle in AWS-Secret nötig).
+            </CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={refillPool} disabled={poolBusy} className="gap-1.5">
+            {poolBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            Jetzt auffüllen
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-2">
