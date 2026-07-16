@@ -73,7 +73,12 @@ const JANA_MODES = [
 const statusBadge = (s: string) =>
   s === "live" || s === "done" ? "default" : s === "failed" || s === "off" ? "destructive" : "secondary";
 
-export default function VoiceAgentsTab() {
+interface VoiceAgentsTabProps {
+  /** Optionaler Tenant-Kontext (z.B. aus dem Tenant-Setup) — belegt Auswahl + Provisioning vor. */
+  tenantId?: string;
+}
+
+export default function VoiceAgentsTab({ tenantId }: VoiceAgentsTabProps) {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState("");
@@ -93,7 +98,7 @@ export default function VoiceAgentsTab() {
   const [provOpen, setProvOpen] = useState(false);
   const [provBusy, setProvBusy] = useState(false);
   const [prov, setProv] = useState({
-    tenantId: "", vertical: "handwerk", janaMode: "end_customer",
+    tenantId: tenantId ?? "", vertical: "handwerk", janaMode: "end_customer",
     firma: "", beschreibung: "", zeiten: "", notdienst: "", gewerke: "", gebiet: "", faq: "",
   });
   const [pool, setPool] = useState<PoolNumber[]>([]);
@@ -107,10 +112,13 @@ export default function VoiceAgentsTab() {
     try {
       const d = await va<{ tenants: Tenant[] }>("GET", "/admin/tenants");
       setTenants(d.tenants);
-      if (!selected && d.tenants[0]) setSelected(d.tenants[0].tenant_id);
+      if (!selected) {
+        const pre = tenantId && d.tenants.some((x) => x.tenant_id === tenantId) ? tenantId : d.tenants[0]?.tenant_id;
+        if (pre) setSelected(pre);
+      }
     } catch (e) { toast.error(`Kunden laden fehlgeschlagen: ${(e as Error).message}`); }
     finally { setLoading(false); }
-  }, [selected]);
+  }, [selected, tenantId]);
 
   const loadQueue = useCallback(async () => {
     try { setQueue((await va<{ queue: QueueItem[] }>("GET", "/admin/queue")).queue); }
@@ -158,6 +166,13 @@ export default function VoiceAgentsTab() {
   };
 
   useEffect(() => { loadTenants(); loadQueue(); loadPool(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tenant-Kontext aus dem Tenant-Setup: folgt Prop-Wechseln (sanfte Vorbelegung, keine Sperre)
+  useEffect(() => {
+    if (!tenantId) return;
+    setProv((p) => ({ ...p, tenantId }));
+    setSelected((cur) => (tenants.some((t) => t.tenant_id === tenantId) ? tenantId : cur));
+  }, [tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!selected) return;
