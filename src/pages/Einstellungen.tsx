@@ -14,6 +14,7 @@ import HubSpotIntegration from "@/components/HubSpotIntegration";
 import MicrosoftIntegration from "@/components/MicrosoftIntegration";
 import MailboxReconnectCard from "@/components/MailboxReconnectCard";
 import TelegramIntegration from "@/components/TelegramIntegration";
+import DhlTrackingCard from "@/components/DhlTrackingCard"; // v4.116.0 — Per-Tenant-DHL-Key
 import AssistantConfigCard from "@/components/AssistantConfigCard";
 import TenantSetupSelfCard from "@/components/TenantSetupSelfCard";
 import SpreadsheetConfigTab from "@/components/SpreadsheetConfigTab";
@@ -454,6 +455,7 @@ export default function Einstellungen() {
           <MicrosoftIntegration />
           <HubSpotIntegration />
           <TelegramIntegration />
+          <DhlTrackingCard />
           <AssistantConfigCard />
           <TenantSetupSelfCard />
         </TabsContent>
