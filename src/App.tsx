@@ -49,6 +49,15 @@ function RoleGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Umgekehrtes Gate: die Unternehmer-Rolle bleibt in der Operator-Console.
+// Investor und Unternehmen sind getrennte Frontends; die Rolle wird beim Login
+// gewaehlt (2 Kacheln), Wechsel nur ueber Abmelden + neue Rollenwahl.
+function InvestorGate({ children }: { children: React.ReactNode }) {
+  const role = typeof window !== "undefined" ? localStorage.getItem("ue_role") : null;
+  if (role !== "investor") return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -65,9 +74,11 @@ const App = () => (
               path="/investoren"
               element={
                 <ProtectedRoute>
+                  <InvestorGate>
                   <InvestorLayout>
                     <Investoren />
                   </InvestorLayout>
+                  </InvestorGate>
                 </ProtectedRoute>
               }
             />

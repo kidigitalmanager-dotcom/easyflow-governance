@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield,
   Activity, GraduationCap, Receipt, ReceiptText, FileText, AlertTriangle, Sparkles,
-  Database, Building2, type LucideIcon,
+  Database, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
@@ -15,9 +15,11 @@ import { useMe } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
- * Redesign 07.07.2026: Sidebar in 4 Gruppen - ARBEIT (taeglich) · SIGNALE (verstehen) ·
- * SYSTEM (einrichten) · PERSPEKTIVE. Alle bisherigen Bereiche bleiben erhalten
- * (nichts faellt weg), neu dazu: Fruehwarnung, Chancen, Datenquellen.
+ * Redesign 07.07.2026: Sidebar in 3 Gruppen - ARBEIT (taeglich) · SIGNALE (verstehen) ·
+ * SYSTEM (einrichten). Alle bisherigen Bereiche bleiben erhalten, neu dazu:
+ * Fruehwarnung, Chancen, Datenquellen. Die Investoren-Sicht ist BEWUSST kein
+ * Nav-Punkt: Investor und Unternehmen sind getrennte Frontends, die Rolle wird
+ * beim Login gewaehlt (2 Kacheln) - Wechsel nur ueber Abmelden.
  */
 type NavItem = { to: string; label: string; icon: LucideIcon };
 
@@ -50,10 +52,6 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { to: "/einstellungen", label: "Einstellungen", icon: Settings },
       { to: "/onboarding", label: "Onboarding", icon: GraduationCap },
     ],
-  },
-  {
-    label: "Perspektive",
-    items: [{ to: "/investoren", label: "Investoren-Sicht", icon: Building2 }],
   },
 ];
 
