@@ -46,8 +46,13 @@ export default function Uebersicht() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Übersicht</h1>
-        <p className="text-sm text-muted-foreground mt-1">Dein UseEasy Dashboard – KPIs, offene Reviews und Eskalationen.</p>
+        {/* Redesign 07.07.2026: "Heute" mit Begruessung statt generischer "Uebersicht" */}
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {(() => { const h = new Date().getHours(); return h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend"; })()}
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          {new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })} · KPIs, offene Freigaben und Eskalationen auf einen Blick.
+        </p>
       </div>
 
       <OnboardingNudges />

@@ -167,63 +167,71 @@ export default function Einstellungen() {
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "excel") return "spreadsheet"; // Chrome-Extension Deep-Link Alias (?tab=excel)
     if (t === "jana" || t === "autopilot") return "autopilot"; // Phase 3C alias
-    return t === "knowledge" || t === "jana-wissen" || t === "integrations" || t === "spreadsheet" || t === "autopilot" || t === "billing" ? t : "general";
+    return t === "knowledge" || t === "jana-wissen" || t === "integrations" || t === "spreadsheet" || t === "autopilot" || t === "billing" || t === "email-autopilot" || t === "email-autopilot-audit" || t === "email-autopilot-samples" || t === "ki-transparenz" ? t : "general";
   })();
 
   return (
-    <div className="space-y-8 max-w-3xl">
+    <div className="space-y-8 max-w-5xl">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Einstellungen</h1>
         <p className="text-sm text-muted-foreground mt-1">UseEasy-Konfiguration für deine Mailboxen.</p>
       </div>
 
-      <Tabs defaultValue={initialTab} className="w-full">
-        <TabsList className="w-full !grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 !h-auto gap-1">
-          <TabsTrigger value="general" className="gap-1.5">
+      <Tabs defaultValue={initialTab} className="w-full md:grid md:grid-cols-[230px_minmax(0,1fr)] md:gap-6 md:items-start">
+        {/* Redesign 07.07.2026: vertikale Navigation in 4 Gruppen statt 11 horizontaler Tabs.
+            Tab-Werte und Deep-Links (?tab=…) bleiben identisch. */}
+        <TabsList className="md:sticky md:top-20 w-full !flex flex-col !h-auto items-stretch justify-start gap-0.5 bg-card border border-border rounded-2xl p-2 mb-6 md:mb-0">
+          <div className="px-3 pt-3 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground/60">Postfächer &amp; Konto</div>
+          <TabsTrigger value="general" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <Settings className="w-3.5 h-3.5" />
-            Allgemein
+            Allgemein &amp; Postfächer
           </TabsTrigger>
-          <TabsTrigger value="knowledge" className="gap-1.5">
-            <BookOpen className="w-3.5 h-3.5" />
-            Unternehmenswissen
-          </TabsTrigger>
-          <TabsTrigger value="jana-wissen" className="gap-1.5">
-            <Brain className="w-3.5 h-3.5" />
-            Jana-Wissen
-          </TabsTrigger>
-          <TabsTrigger value="spreadsheet" className="gap-1.5">
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            Excel Live-Sync
-          </TabsTrigger>
-          <TabsTrigger value="integrations" className="gap-1.5">
-            <Plug className="w-3.5 h-3.5" />
-            Integrationen
-          </TabsTrigger>
-          <TabsTrigger value="email-autopilot" className="gap-1.5">
+          <div className="px-3 pt-3 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground/60">Autopilot</div>
+          <TabsTrigger value="email-autopilot" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <Mail className="w-3.5 h-3.5" />
-            Email-Autopilot
+            Stufen &amp; Reife
           </TabsTrigger>
-          <TabsTrigger value="email-autopilot-audit" className="gap-1.5">
+          <TabsTrigger value="email-autopilot-audit" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <Mail className="w-3.5 h-3.5" />
             Autopilot Audit
           </TabsTrigger>
-          <TabsTrigger value="email-autopilot-samples" className="gap-1.5">
+          <TabsTrigger value="email-autopilot-samples" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <Mail className="w-3.5 h-3.5" />
             Nachträglich prüfen
           </TabsTrigger>
-          <TabsTrigger value="autopilot" className="gap-1.5">
+          <TabsTrigger value="autopilot" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <Phone className="w-3.5 h-3.5" />
-            Jana-Autopilot
+            Jana Voice
           </TabsTrigger>
-          <TabsTrigger value="billing" className="gap-1.5">
+          <div className="px-3 pt-3 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground/60">Wissen &amp; Daten</div>
+          <TabsTrigger value="jana-wissen" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
+            <Brain className="w-3.5 h-3.5" />
+            Jana-Wissen
+          </TabsTrigger>
+          <TabsTrigger value="knowledge" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
+            <BookOpen className="w-3.5 h-3.5" />
+            Unternehmenswissen
+          </TabsTrigger>
+          <TabsTrigger value="spreadsheet" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            Excel Live-Sync
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
+            <Plug className="w-3.5 h-3.5" />
+            Integrationen
+          </TabsTrigger>
+          <div className="px-3 pt-3 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground/60">Konto</div>
+          <TabsTrigger value="billing" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <CreditCard className="w-3.5 h-3.5" />
-            Abo & Zusatz
+            Abo &amp; Zusatz
           </TabsTrigger>
-          <TabsTrigger value="ki-transparenz" className="gap-1.5">
+          <TabsTrigger value="ki-transparenz" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <ShieldCheck className="w-3.5 h-3.5" />
             KI-Transparenz
           </TabsTrigger>
         </TabsList>
+
+        <div className="min-w-0">
 
         <TabsContent value="general" className="space-y-8 mt-6">
           <div className="glass-card p-6 space-y-4">
@@ -483,6 +491,7 @@ export default function Einstellungen() {
         <TabsContent value="ki-transparenz" className="mt-6 space-y-6">
           <AiTransparencyTab />
         </TabsContent>
+        </div>
       </Tabs>
     </div>
   );

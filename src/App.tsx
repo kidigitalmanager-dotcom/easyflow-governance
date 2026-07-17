@@ -21,6 +21,9 @@ import Rechnungen from "./pages/Rechnungen";
 import Einstellungen from "./pages/Einstellungen";
 import VoiceCalls from "./pages/VoiceCalls";
 import Signale from "./pages/Signale";
+import Fruehwarnung from "./pages/Fruehwarnung";
+import Chancen from "./pages/Chancen";
+import Datenquellen from "./pages/Datenquellen";
 import Onboarding from "./pages/Onboarding";
 import Investoren from "./pages/Investoren";
 import NotFound from "./pages/NotFound";
@@ -77,6 +80,9 @@ const App = () => (
                     <Routes>
                       <Route path="/" element={<RoleHome />} />
                       <Route path="/signale" element={<Signale />} />
+                      <Route path="/fruehwarnung" element={<Fruehwarnung />} />
+                      <Route path="/chancen" element={<Chancen />} />
+                      <Route path="/datenquellen" element={<Datenquellen />} />
                       <Route path="/onboarding" element={<Onboarding />} />
                       <Route path="/review" element={<ReviewQueue />} />
                       <Route path="/audit" element={<AuditTrail />} />

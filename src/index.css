@@ -4,64 +4,70 @@
 
 @layer base {
   :root {
-    /* UseEasy Dark Theme - Navy/Emerald */
-    --background: 220 33% 5%;
-    --foreground: 0 0% 100%;
+    /* UseEasy Console Redesign 07.07.2026 - Palette aus Konsole-Redesign-Preview.html
+       bg #0b0f15 · card #111722 · line #1e2733 · tx #e8edf2 · mut #8b96a5
+       emerald #10b981 · amber #e8a33d · red #e0685e · blue #5b8def · radius 14px */
+    --background: 216 31% 6%;
+    --foreground: 210 28% 93%;
 
-    --card: 220 50% 9%;
-    --card-foreground: 0 0% 100%;
+    --card: 219 33% 10%;
+    --card-foreground: 210 28% 93%;
 
-    --popover: 220 50% 9%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 219 33% 10%;
+    --popover-foreground: 210 28% 93%;
 
-    --primary: 168 78% 43%;
-    --primary-foreground: 220 33% 5%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 165 62% 4%;
 
-    --secondary: 220 40% 14%;
-    --secondary-foreground: 0 0% 92%;
+    --secondary: 217 30% 15%;
+    --secondary-foreground: 213 16% 80%;
 
-    --muted: 220 30% 12%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 217 29% 12%;
+    --muted-foreground: 215 13% 60%;
 
-    --accent: 168 60% 23%;
-    --accent-foreground: 0 0% 92%;
+    --accent: 160 60% 20%;
+    --accent-foreground: 160 45% 90%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 5 68% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 100% / 0.06;
-    --input: 0 0% 100% / 0.08;
-    --ring: 168 78% 43%;
+    --border: 214 26% 16%;
+    --input: 214 26% 20%;
+    --ring: 160 84% 39%;
 
-    --radius: 1.25rem;
+    --radius: 0.875rem;
 
-    --sidebar-background: 220 45% 7%;
-    --sidebar-foreground: 0 0% 92%;
-    --sidebar-primary: 168 78% 43%;
-    --sidebar-primary-foreground: 220 33% 5%;
-    --sidebar-accent: 220 40% 12%;
-    --sidebar-accent-foreground: 0 0% 92%;
-    --sidebar-border: 0 0% 100% / 0.06;
-    --sidebar-ring: 168 78% 43%;
+    --sidebar-background: 217 32% 8%;
+    --sidebar-foreground: 213 16% 85%;
+    --sidebar-primary: 160 84% 39%;
+    --sidebar-primary-foreground: 165 62% 4%;
+    --sidebar-accent: 216 31% 11%;
+    --sidebar-accent-foreground: 210 20% 88%;
+    --sidebar-border: 214 26% 16%;
+    --sidebar-ring: 160 84% 39%;
 
     /* Custom tokens */
-    --emerald: 168 78% 43%;
-    --emerald-dark: 168 80% 23%;
-    --emerald-glow: 168 78% 43% / 0.15;
-    --surface: 220 50% 9%;
-    --surface-hover: 220 45% 12%;
+    --emerald: 160 84% 39%;
+    --emerald-dark: 163 85% 26%;
+    --emerald-glow: 160 84% 39% / 0.15;
+    --surface: 219 33% 10%;
+    --surface-hover: 216 30% 12%;
 
-    /* Priority colors */
-    --p0: 0 72% 51%;
-    --p1: 35 92% 50%;
-    --p2: 45 93% 47%;
-    --p3: 168 78% 43%;
+    /* Priority colors (Prototyp: red #e0685e · amber #e8a33d) */
+    --p0: 5 68% 62%;
+    --p1: 36 79% 57%;
+    --p2: 45 85% 55%;
+    --p3: 160 84% 39%;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
+  }
+  html {
+    /* Prototyp-Dichte: 14px-Basis dort, 15px hier als sanfter Mittelweg */
+    font-size: 15px;
   }
   body {
     @apply bg-background text-foreground antialiased;
@@ -71,9 +77,16 @@
 
 @layer utilities {
   .glass-card {
-    @apply bg-card/80 backdrop-blur-xl border border-border rounded-[var(--radius)] shadow-lg;
+    /* Redesign: solide Karten mit sichtbarer Linie statt Glas/Blur */
+    @apply bg-card border border-border rounded-[var(--radius)] shadow-[0_8px_24px_rgba(0,0,0,0.22)];
   }
   .glass-card-hover {
-    @apply glass-card transition-all duration-200 hover:border-primary/20 hover:shadow-primary/5;
+    @apply glass-card transition-all duration-200 hover:border-primary/40;
   }
+}
+
+/* Druck: Reports (Capital/Foerder/Angebot/Rechnung) bleiben hell */
+@media print {
+  html { font-size: 16px; }
+  body { background: #fff; color: #000; }
 }

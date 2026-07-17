@@ -1,26 +1,67 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield, Activity, GraduationCap, Receipt, ReceiptText, FileText } from "lucide-react";
+import {
+  LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield,
+  Activity, GraduationCap, Receipt, ReceiptText, FileText, AlertTriangle, Sparkles,
+  Database, Building2, type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
 import { MailboxHealthBanner } from "@/components/MailboxHealthBanner";
 import { OnboardingRunnerProvider } from "@/components/onboarding/OnboardingRunner";
+import { CommandPalette } from "@/components/CommandPalette";
+import { JanaFab } from "@/components/JanaFab";
 import logo from "@/assets/useeasy-logo.jpg";
 import { useMe } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
 
-const navItems = [
-  { to: "/", label: "Übersicht", icon: LayoutDashboard },
-  { to: "/signale", label: "Signale", icon: Activity },
-  { to: "/review", label: "Review Queue", icon: ListChecks },
-  { to: "/audit", label: "Audit Trail", icon: History },
-  { to: "/playbooks", label: "Playbooks", icon: BookOpen },
-  { to: "/forderungen", label: "Forderungen", icon: Receipt },
-  { to: "/angebote", label: "Angebote", icon: FileText },
-  { to: "/rechnungen", label: "Rechnungen", icon: ReceiptText },
-  { to: "/voice", label: "Voice & Calls", icon: PhoneCall },
-  { to: "/einstellungen", label: "Einstellungen", icon: Settings },
-  { to: "/onboarding", label: "Onboarding", icon: GraduationCap },
+/**
+ * Redesign 07.07.2026: Sidebar in 4 Gruppen - ARBEIT (taeglich) · SIGNALE (verstehen) ·
+ * SYSTEM (einrichten) · PERSPEKTIVE. Alle bisherigen Bereiche bleiben erhalten
+ * (nichts faellt weg), neu dazu: Fruehwarnung, Chancen, Datenquellen.
+ */
+type NavItem = { to: string; label: string; icon: LucideIcon };
+
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Arbeit",
+    items: [
+      { to: "/", label: "Heute", icon: LayoutDashboard },
+      { to: "/review", label: "Freigaben", icon: ListChecks },
+      { to: "/audit", label: "Verlauf", icon: History },
+      { to: "/forderungen", label: "Forderungen", icon: Receipt },
+      { to: "/angebote", label: "Angebote", icon: FileText },
+      { to: "/rechnungen", label: "Rechnungen", icon: ReceiptText },
+    ],
+  },
+  {
+    label: "Signale",
+    items: [
+      { to: "/signale", label: "Gesundheit", icon: Activity },
+      { to: "/fruehwarnung", label: "Frühwarnung", icon: AlertTriangle },
+      { to: "/chancen", label: "Chancen", icon: Sparkles },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { to: "/playbooks", label: "Playbooks", icon: BookOpen },
+      { to: "/datenquellen", label: "Datenquellen", icon: Database },
+      { to: "/voice", label: "Voice & Co-Pilot", icon: PhoneCall },
+      { to: "/einstellungen", label: "Einstellungen", icon: Settings },
+      { to: "/onboarding", label: "Onboarding", icon: GraduationCap },
+    ],
+  },
+  {
+    label: "Perspektive",
+    items: [{ to: "/investoren", label: "Investoren-Sicht", icon: Building2 }],
+  },
 ];
+
+function initials(s: string): string {
+  const parts = s.replace(/[@._-]+/g, " ").trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return (s.slice(0, 2) || "UE").toUpperCase();
+}
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -39,80 +80,80 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       : setupStatus === "needs_pack" ? "Pack zuweisen"
       : "Setup ausstehend");
 
+  const navLinkClass = (isActive: boolean) =>
+    cn(
+      "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all duration-150 border border-transparent",
+      isActive
+        ? "bg-primary/10 text-primary border-primary/25"
+        : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
+    );
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col">
+      <aside className="w-60 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col">
         {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-6 border-b border-sidebar-border">
-          <img src={logo} alt="UseEasy Logo" className="w-9 h-9 rounded-lg" />
-          <div>
-            <span className="text-lg font-semibold tracking-tight text-sidebar-foreground">
-              Use<span className="text-primary">Easy</span>
-            </span>
-            <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/20">
-              {planName}
-            </span>
-          </div>
+        <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
+          <img src={logo} alt="UseEasy Logo" className="w-8 h-8 rounded-lg" />
+          <span className="text-[15px] font-bold tracking-tight text-sidebar-foreground">
+            Use<span className="text-primary">Easy</span>
+          </span>
         </div>
 
-        {/* Tenant info */}
-        {(
-          <div className="px-6 py-3 border-b border-sidebar-border">
-            <p className="text-xs text-muted-foreground truncate">{tenantLabel}</p>
-            {user?.email && <p className="text-[10px] text-muted-foreground/60 truncate">{user.email}</p>}
-          </div>
-        )}
+        {/* Tenant-Karte (Anzeige: Firma + Plan + Rolle) */}
+        <div className="mx-3 mb-1 flex items-center gap-2.5 bg-card border border-border rounded-xl px-3 py-2">
+          <span className="w-6 h-6 rounded-md bg-secondary grid place-items-center text-[10px] font-extrabold text-muted-foreground">
+            {initials(String(tenantLabel))}
+          </span>
+          <span className="min-w-0">
+            <span className="block text-xs font-bold truncate">{tenantLabel}</span>
+            <span className="block text-[10px] text-muted-foreground/80 truncate">
+              {planName} · Betrieb{user?.email ? ` · ${user.email}` : ""}
+            </span>
+          </span>
+        </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.to;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
+        <nav className="flex-1 px-3 py-2 overflow-y-auto">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label}>
+              <p className="px-3 pt-3.5 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground/60">
+                {group.label}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const isActive = location.pathname === item.to;
+                  return (
+                    <NavLink key={item.to} to={item.to} className={navLinkClass(isActive)}>
+                      <item.icon className="w-4 h-4" />
+                      {item.label}
+                    </NavLink>
+                  );
+                })}
+                {/* v4.23.0 (3B-0): Admin nur fuer Super-Admins — Kunden sehen den Eintrag nie */}
+                {group.label === "System" && me?.user?.is_super_admin && (
+                  <NavLink to="/admin" className={navLinkClass(location.pathname.startsWith("/admin"))}>
+                    <Shield className="w-4 h-4" />
+                    Admin
+                  </NavLink>
                 )}
-              >
-                <item.icon className="w-[18px] h-[18px]" />
-                {item.label}
-              </NavLink>
-            );
-          })}
-          {/* v4.23.0 (3B-0): Admin nur fuer Super-Admins — Kunden sehen den Eintrag nie */}
-          {me?.user?.is_super_admin && (
-            <NavLink
-              to="/admin"
-              className={cn(
-                "flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150",
-                location.pathname.startsWith("/admin")
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
-              )}
-            >
-              <Shield className="w-[18px] h-[18px]" />
-              Admin
-            </NavLink>
-          )}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Footer */}
-        <div className="px-4 py-4 border-t border-sidebar-border space-y-3">
+        <div className="px-4 py-3 border-t border-sidebar-border space-y-2.5">
           {user && (
             <button
               onClick={signOut}
-              className="flex items-center gap-2 w-full px-4 py-2 rounded-md text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              className="flex items-center gap-2 w-full px-3 py-1.5 rounded-lg text-[13px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             >
               <LogOut className="w-4 h-4" />
               Abmelden
             </button>
           )}
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-[10.5px] text-muted-foreground/80 leading-relaxed">
             UseEasy erstellt nur Entwürfe.<br />Senden erfolgt immer durch dich.
           </p>
         </div>
@@ -132,6 +173,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </main>
       </div>
+
+      {/* Redesign 07.07.2026: globale Begleiter */}
+      <CommandPalette />
+      <JanaFab />
     </div>
   );
 }
