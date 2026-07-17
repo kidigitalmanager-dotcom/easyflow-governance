@@ -363,6 +363,10 @@ export interface AuditLogEntry {
   label_reason_source?: string | null;
   label_reason_kind?: "rule" | "ki" | "risk" | "optout" | "noise" | null;
   label_reason_confidence_pct?: number | null;
+  // v4.122.0 (Spam-Rescue): audit_log.action — "spam_rescue" (aus Spam gerettet)
+  // bzw. "spam_phishing_flag" (Phishing im Spam abgefangen) + Provenienz-Detail.
+  audit_action?: string | null;
+  audit_detail?: unknown;
   [key: string]: unknown;
 }
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { ResponseTypeBadge } from "@/components/ResponseTypeBadge";
+import { SpamRescueBadge, spamRescueAction } from "@/components/SpamRescueBadge"; // v4.122.0
 import { useAuditLog, useUndoAction, useCorrectLabel, useMe } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -162,6 +163,9 @@ export default function AuditTrail() {
                   <div className="flex items-center gap-2">
                     <ResponseTypeBadge type={responseType(entry)} />
                     <PriorityBadge priority={entry.priority} />
+                    {spamRescueAction(entry.audit_action) && (
+                      <SpamRescueBadge action={spamRescueAction(entry.audit_action)!} />
+                    )}
                     <span className="text-xs text-muted-foreground">{humanizeCategory(entry.category)}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -213,6 +217,18 @@ export default function AuditTrail() {
                     <div className="mt-0.5"><PriorityBadge priority={detail.priority} showLabel labelOverride={responseLabel(detail)} /></div>
                   </div>
                 </div>
+
+                {spamRescueAction(detail.audit_action) && (
+                  <div>
+                    <span className="text-muted-foreground">Spam-Schutz:</span>
+                    <div className="mt-1"><SpamRescueBadge action={spamRescueAction(detail.audit_action)!} /></div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {spamRescueAction(detail.audit_action) === "spam_rescue"
+                        ? "Diese E-Mail lag im Spam-Ordner. UseEasy hat sie geprüft (kein Phishing-Signal) und automatisch in den Posteingang zurückgeholt."
+                        : "Phishing-/Betrugs-Signal erkannt — die E-Mail wurde bewusst NICHT aus dem Spam geholt."}
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <span className="text-muted-foreground">Konfidenz:</span>
