@@ -2,17 +2,18 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { ResponseTypeBadge } from "@/components/ResponseTypeBadge";
-import { useRecentEmails, useGenerateDraft, useDismissReview } from "@/hooks/use-api";
+import { useRecentEmails, useGenerateDraft, useDismissReview, useSubmitReviewVerdict, useCorrectLabel, useMe } from "@/hooks/use-api";
 import ReviewVerdictButtons from "@/components/ReviewVerdictButtons";
 import { ShadowModePill, ShadowWouldDoLine } from "@/components/ShadowHint";
 import { LabelReasonLine } from "@/components/LabelReasonLine";
 import { REVIEW } from "@/data/strings.de";
 import { humanizeCategory, responseType, prettyRedaction } from "@/data/humanize";
-import { Inbox, Sparkles, Loader2, Info, X, Trash2, MailOpen } from "lucide-react";
+import { Inbox, Sparkles, Loader2, Info, X, Trash2, MailOpen, CheckCheck, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ContactDossier } from "@/components/ContactDossier";
 
 const onErr = (e: unknown) =>
   toast.error("Fehler: " + (e instanceof Error ? e.message : String(e)));
@@ -55,6 +56,11 @@ type FilterKey = "alle" | "P0" | "P1" | "P2" | "P3" | "ohne";
 export default function ReviewQueue() {
   const { data: emails, isLoading, error } = useRecentEmails();
   const dismissBulk = useDismissReview();
+  const bulkVerdict = useSubmitReviewVerdict();
+  const correctLabel = useCorrectLabel();
+  const { data: me } = useMe();
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [correctKey, setCorrectKey] = useState<string>("");
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get("item"));
   const [filter, setFilter] = useState<FilterKey>("alle");
@@ -109,6 +115,28 @@ export default function ReviewQueue() {
     });
   };
 
+  // Redesign Follow-up: Routine-Entwuerfe (P3, Entwurf vorhanden) gesammelt freigeben.
+  // Nutzt denselben Verdict-Endpunkt wie der Einzel-Button — kein Auto-Versand,
+  // die Entwuerfe landen im Entwurfsordner des Postfachs.
+  const bulkEligible = items.filter((e) => e.priority === "P3" && e.has_draft && !!e.draft_id);
+  const runBulkApprove = async () => {
+    if (bulkEligible.length === 0 || bulkRunning) return;
+    if (!window.confirm(`${bulkEligible.length} Routine-Entwurf/-Entwürfe (P3) freigeben? Sie werden als Entwürfe in dein Postfach gelegt — gesendet wird nichts.`)) return;
+    setBulkRunning(true);
+    let ok = 0, fail = 0;
+    for (const it of bulkEligible) {
+      try {
+        await bulkVerdict.mutateAsync({ draft_id: it.draft_id!, human_verdict: "approve" });
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    setBulkRunning(false);
+    if (fail === 0) toast.success(`${ok} Entwürfe in dein Postfach gelegt.`);
+    else toast.warning(`${ok} freigegeben, ${fail} fehlgeschlagen.`);
+  };
+
   const rtSelected = selected ? responseType(selected) : null;
   const selectedHasRealDraft = !!(selected && selected.has_draft && selected.draft_id);
 
@@ -121,6 +149,14 @@ export default function ReviewQueue() {
             {isLoading ? "Lade…" : `${items.length} in der Warteschlange · ${withDraft} mit Entwurf, ${awaitingGen} warten auf Generierung.`}
           </p>
         </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+        {bulkEligible.length > 0 && (
+          <Button size="sm" disabled={bulkRunning} onClick={runBulkApprove}>
+            {bulkRunning
+              ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Gebe frei…</>
+              : <><CheckCheck className="h-3.5 w-3.5 mr-1" /> Routine freigeben ({bulkEligible.length})</>}
+          </Button>
+        )}
         {noSubjectCount > 0 && (
           <Button size="sm" variant="outline" disabled={dismissBulk.isPending}
             onClick={clearWithoutSubject} className="flex-shrink-0">
@@ -129,6 +165,7 @@ export default function ReviewQueue() {
               : <><Trash2 className="h-3.5 w-3.5 mr-1" /> Ohne Betreff verwerfen ({noSubjectCount})</>}
           </Button>
         )}
+        </div>
       </div>
 
       <div data-tour="review-verdict" className="flex items-start gap-2 text-xs text-muted-foreground glass-card p-3">
@@ -224,7 +261,11 @@ export default function ReviewQueue() {
 
               <div className="px-5 py-4 border-b border-border space-y-2">
                 <p className="text-sm font-semibold">{prettyRedaction(selected.subject)}</p>
-                <p className="text-xs text-muted-foreground">{selected.sender}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  <span className="truncate">{selected.sender}</span>
+                  {/* Redesign Follow-up: Kontakt-Dossier (memory-engine B1) */}
+                  <ContactDossier sender={selected.sender} />
+                </p>
                 <ShadowWouldDoLine mode={selected.autopilot_mode} decision={selected.shadow_decision} />
                 {/* v4.57.0 (J4): Warum dieses Label? — Quelle-Badge + Klartext-Satz */}
                 <LabelReasonLine
@@ -262,6 +303,41 @@ export default function ReviewQueue() {
                     </>
                   )}
                   <span className="ml-auto text-[10.5px] text-muted-foreground">Kein Auto-Versand · Senden erfolgt immer durch dich</span>
+                </div>
+
+                {/* Redesign Follow-up: 1-Klick-Label-Korrektur direkt im Freigaben-Detail
+                    (gleicher Endpunkt + Lernschleife wie im Verlauf). */}
+                <div className="pt-3 border-t border-border space-y-2">
+                  <p className="text-xs text-muted-foreground">Falsch einsortiert? Kategorie korrigieren — UseEasy ersetzt das Label im Postfach und lernt daraus.</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      className="text-sm rounded-md border border-border bg-background text-foreground px-2 py-1.5 disabled:opacity-60"
+                      value={correctKey}
+                      onChange={(e) => setCorrectKey(e.target.value)}
+                      disabled={correctLabel.isPending}
+                    >
+                      <option value="">Kategorie wählen …</option>
+                      {(me?.core_labels ?? []).map((c) => (
+                        <option key={c.core_key} value={c.core_key}>{c.display}</option>
+                      ))}
+                      <option value="noise">Kein passendes Label (nur entfernen)</option>
+                    </select>
+                    <Button size="sm" variant="outline"
+                      disabled={correctLabel.isPending || !correctKey}
+                      onClick={() => {
+                        const isNoise = correctKey === "noise";
+                        const chosen = (me?.core_labels ?? []).find((c) => c.core_key === correctKey);
+                        const label = isNoise ? "kein UseEasy-Label (entfernen)" : (chosen?.display ?? correctKey);
+                        if (!window.confirm(`Label dieser E-Mail auf „${label}“ korrigieren?`)) return;
+                        correctLabel.mutate({ event_id: selected.id, to_core_key: correctKey }, {
+                          onSuccess: (r) => { toast.success(isNoise ? "UseEasy-Label entfernt." : `Label gesetzt: ${r.applied ?? label}`); setCorrectKey(""); },
+                          onError: onErr,
+                        });
+                      }}>
+                      {correctLabel.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Tag className="w-3.5 h-3.5 mr-1" />}
+                      Richtiges Label setzen
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

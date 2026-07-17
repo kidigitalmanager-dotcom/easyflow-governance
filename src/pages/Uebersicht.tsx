@@ -12,6 +12,9 @@ import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { storeProviderTokens } from "@/lib/api-client";
 import { OnboardingNudges } from "@/components/onboarding/OnboardingNudges";
+import { FristenBoard } from "@/components/FristenBoard";
+import { AutopilotReifeWidget } from "@/components/AutopilotReifeWidget";
+import { WochenRueckblick } from "@/components/WochenRueckblick";
 
 export default function Uebersicht() {
   useEffect(() => {
@@ -120,6 +123,9 @@ export default function Uebersicht() {
         </>
       )}
 
+      {/* Redesign Follow-up: erkannte Fristen/Zusagen (nightly, rendert nur mit Daten) */}
+      <FristenBoard />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Queue Widget */}
         <div data-tour="ueb-queue" className="lg:col-span-2 glass-card p-6">
@@ -208,6 +214,9 @@ export default function Uebersicht() {
               </div>
             )}
           </div>
+          {/* Redesign Follow-up: Reife-Fortschritt + Wochen-Rueckblick (rendern nur mit Daten) */}
+          <AutopilotReifeWidget />
+          <WochenRueckblick />
         </div>
       </div>
     </div>

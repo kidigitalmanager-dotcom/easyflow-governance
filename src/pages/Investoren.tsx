@@ -9,6 +9,8 @@ import { AccountDashboard } from "@/components/capital/AccountDashboard";
 import { JanaChat } from "@/components/capital/JanaChat";
 import { ReportExportButton } from "@/components/capital/ReportExportButton";
 import { DataRoom } from "@/components/capital/DataRoom";
+import { SinceLastVisit } from "@/components/capital/SinceLastVisit";
+import { CompareFirms } from "@/components/capital/CompareFirms";
 import { ScoreBadge, Sparkline, IllustrativeBadge, CoverageBadge, VerificationBadge } from "@/components/capital/CapitalBits";
 import { RiskBadge, WatchButton, TieredAlertFeed, FeedHeader } from "@/components/capital/CapitalAlerts";
 import { useWatchlist, syncWatchlistFromServer } from "@/lib/watchlist";
@@ -201,8 +203,14 @@ export default function Investoren() {
         </button>
       </header>
 
+      {/* Investor Follow-up: neue Warnsignale seit dem letzten Besuch */}
+      <SinceLastVisit onSelect={openFirm} />
+
       {/* Data-Room · Portfolio-Screening (M2 Investor-Tier) */}
       <DataRoom onSelect={openFirm} selectedId={selectedId} />
+
+      {/* Investor Follow-up: bis zu 3 Firmen nebeneinander vergleichen */}
+      <CompareFirms accounts={[...consentedList, ...externalList]} />
 
       {/* Frühwarn-Alert-Feed (Datenfreigabe-Firmen + Markt-Index) */}
       <section className="space-y-3">

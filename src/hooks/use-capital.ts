@@ -374,6 +374,31 @@ export function useFreshnessBulk(accountIds: string[]) {
   });
 }
 
+// Investor Follow-up (PIT-Nachweis): Revisionshistorie je Firma — beweist, dass
+// nachtraegliche Wert-Aenderungen versioniert archiviert statt ueberschrieben werden.
+// RLS gespiegelt zu cap_metric_values (anon: external/demo/consented) — verifiziert 17.07.
+export function usePitRevisions(accountId?: string) {
+  return useQuery({
+    enabled: !!accountId,
+    queryKey: ["cap", "pit-revisions", accountId],
+    staleTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { count, error } = await capital.from("cap_metric_value_revisions")
+        .select("id", { count: "exact", head: true })
+        .eq("account_id", accountId!);
+      if (error) throw error;
+      const { data, error: e2 } = await capital.from("cap_metric_value_revisions")
+        .select("replaced_at")
+        .eq("account_id", accountId!)
+        .order("replaced_at", { ascending: false })
+        .limit(1);
+      if (e2) throw e2;
+      return { count: count ?? 0, latest: (data?.[0]?.replaced_at as string | undefined) ?? null };
+    },
+  });
+}
+
 export function useFreshness(accountId?: string) {
   return useQuery({
     enabled: !!accountId,

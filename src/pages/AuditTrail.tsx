@@ -10,6 +10,7 @@ import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2, 
 import { Skeleton } from "@/components/ui/skeleton";
 import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence, responseLabel, responseType } from "@/data/humanize";
 import DecisionStory from "@/components/DecisionStory";
+import { ContactDossier } from "@/components/ContactDossier";
 import { LabelReasonLine } from "@/components/LabelReasonLine";
 
 const priorities = ["Alle", "P0", "P1", "P2", "P3"] as const;
@@ -62,6 +63,26 @@ export default function AuditTrail() {
   });
 
   const detail = entries.find((e) => e.id === selectedEntry);
+
+  // Redesign Follow-up: der Export-Button war bisher ohne Funktion — client-seitiger
+  // CSV-Export der GEFILTERTEN Liste (BOM + Semikolon fuer deutsches Excel).
+  const exportCsv = () => {
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const header = ["Zeitpunkt", "Betreff", "Postfach", "Priorität", "Kategorie", "Entscheidung", "Grund", "Konfidenz", "Aktion", "Akteur"];
+    const lines = filtered.map((e) => [
+      e.timestamp, e.subject, e.mailbox, e.priority, humanizeCategory(e.category),
+      humanizeDecision(e.decision), humanizeReason(e.reason), humanizeConfidence(e.confidence),
+      ACTION_LABELS[e.user_action] || e.user_action, humanizeActor(e.actor),
+    ].map(esc).join(";"));
+    const csv = "\uFEFF" + [header.map(esc).join(";"), ...lines].join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `useeasy-verlauf_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${filtered.length} Einträge als CSV exportiert.`);
+  };
 
   return (
     <div className="space-y-6">
@@ -170,6 +191,12 @@ export default function AuditTrail() {
                 </button>
               </div>
 
+
+              <div className="flex items-center gap-2 text-xs text-muted-foreground -mt-1">
+                <span className="truncate">{detail.mailbox}</span>
+                {/* Redesign Follow-up: Kontakt-Dossier auch aus dem Verlauf heraus */}
+                <ContactDossier sender={detail.mailbox} />
+              </div>
 
               <DecisionStory entry={detail} />
 
@@ -329,8 +356,8 @@ export default function AuditTrail() {
 
               <div className="pt-3 border-t border-border">
                 {plan.exportEnabled ? (
-                  <button className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors w-full justify-center">
-                    <Download className="w-4 h-4" /> Exportieren
+                  <button onClick={exportCsv} className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors w-full justify-center">
+                    <Download className="w-4 h-4" /> Exportieren (CSV, {filtered.length})
                   </button>
                 ) : (
                   <button

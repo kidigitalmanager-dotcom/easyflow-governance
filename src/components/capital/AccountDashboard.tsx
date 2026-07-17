@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingDown, Layers, BellRing, BarChart3 } from "lucide-react";
+import { TrendingDown, Layers, BellRing, BarChart3, Lock } from "lucide-react";
 import {
   useHealthSeries, useCategorySeries, useMetricValues, useCapCatalog,
-  useAccountAlerts, useHealthBenchmark, useFreshness,
+  useAccountAlerts, useHealthBenchmark, useCategoryBenchmark, useFreshness, usePitRevisions,
 } from "@/hooks/use-capital";
 import {
   ScoreBadge, IllustrativeBadge, CoverageBadge, HealthTimeline, CategoryBars, KpiTable, ProvenancePanel,
@@ -45,6 +45,10 @@ export function AccountDashboard({ account, data, variant = "investor", onConnec
   const valuesHook = useMetricValues(injected ? undefined : account.id);
   const acctAlertsHook = useAccountAlerts(injected ? undefined : account.id);
   const benchmarks = useHealthBenchmark();
+  const catBenchmarks = useCategoryBenchmark();
+  // PIT-Nachweis nur im anon-/Investor-Pfad (der Capital-Client liest den eigenen
+  // Tenant nicht — injected/my-signals bleibt unberuehrt).
+  const pit = usePitRevisions(injected ? undefined : account.id);
   const freshness = useFreshness(injected ? undefined : account.id);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
 
@@ -88,6 +92,15 @@ export function AccountDashboard({ account, data, variant = "investor", onConnec
     () => (benchmarks.data ?? []).find((b) => b.vertical === account.vertical) ?? null,
     [benchmarks.data, account.vertical],
   );
+
+  // Investor Follow-up: Sektor-Median je Kategorie (cap_category_benchmark).
+  const catBenchByKey = useMemo(() => {
+    const m = new Map<string, { median: number | null; n: number }>();
+    (catBenchmarks.data ?? [])
+      .filter((b) => b.vertical === account.vertical)
+      .forEach((b) => m.set(b.category_key, { median: b.median_score, n: b.n_accounts }));
+    return m;
+  }, [catBenchmarks.data, account.vertical]);
 
   if (loading) return <Skeleton className="h-72 w-full" />;
 
@@ -176,6 +189,36 @@ export function AccountDashboard({ account, data, variant = "investor", onConnec
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Hauptkategorien</CardTitle></CardHeader>
           <CardContent>
             <CategoryBars categories={cat} scoreByKey={model.scoreByKey} onSelect={setSelectedCat} selected={selectedCat} />
+            {/* Investor Follow-up: Δ zum Sektor-Median je Kategorie (nur wo beides vorliegt) */}
+            {(() => {
+              const deltas = cat
+                .map((c) => {
+                  const own = model.scoreByKey[c.key]?.score;
+                  const b = catBenchByKey.get(c.key);
+                  if (own == null || b?.median == null || b.n < 2) return null;
+                  return { name: c.name, d: Math.round(own - b.median) };
+                })
+                .filter((x): x is { name: string; d: number } => x !== null);
+              if (deltas.length === 0) return null;
+              return (
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {deltas.map((x) => (
+                    <span
+                      key={x.name}
+                      title={`${x.name}: Differenz zum Sektor-Median (${account.vertical ? account.vertical : "Sektor"})`}
+                      className={
+                        "text-[10px] font-semibold px-1.5 py-0.5 rounded-full border " +
+                        (x.d >= 5 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                          : x.d <= -5 ? "border-p0/30 bg-p0/10 text-p0"
+                          : "border-border bg-muted/40 text-muted-foreground")
+                      }
+                    >
+                      {x.name.split(" ")[0]} {x.d > 0 ? `+${x.d}` : x.d} vs. Sektor
+                    </span>
+                  ))}
+                </div>
+              );
+            })()}
             <p className="text-[11px] text-muted-foreground mt-3">Kategorie wählen für KPI-Drill-down ↓</p>
           </CardContent>
         </Card>
@@ -200,6 +243,21 @@ export function AccountDashboard({ account, data, variant = "investor", onConnec
         <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Provenance & Transparenz</CardTitle></CardHeader>
         <CardContent><ProvenancePanel used={model.usedArr} missing={model.missing} illustrative={!!model.latestHealth?.is_illustrative} /></CardContent>
       </Card>
+
+      {/* Investor Follow-up: PIT-Nachweis — Revisionen werden archiviert, nie ueberschrieben */}
+      {!injected && pit.data && (
+        <Card className="glass-card">
+          <CardContent className="py-3.5 flex items-start gap-2.5 text-xs text-muted-foreground">
+            <Lock className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <span>
+              <span className="font-semibold text-foreground">Werte-Integrität (Point-in-Time): </span>
+              {pit.data.count > 0
+                ? <>Jede nachträgliche Wert-Änderung wird versioniert archiviert, nie überschrieben — {pit.data.count} Revisionen dokumentiert{pit.data.latest ? `, zuletzt am ${new Date(pit.data.latest).toLocaleDateString("de-DE")}` : ""}. Scores lassen sich für jeden Stichtag rekonstruieren.</>
+                : <>Alle Werte im Erststand — bisher keine nachträglichen Änderungen. Falls Quellen nachliefern, wird jede Änderung versioniert archiviert, nie überschrieben.</>}
+            </span>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
