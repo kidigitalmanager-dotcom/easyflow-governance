@@ -162,12 +162,24 @@ export default function Einstellungen() {
     { label: "Entwürfe / Monat", used: plan?.drafts_used ?? 0, limit: plan?.draft_limit ?? 0 },
   ];
 
+  // Redesign Follow-up: Untersektion des verschmolzenen Email-Autopilot-Bereichs.
+  const [apSection, setApSection] = useState<"reife" | "audit" | "samples">(() => {
+    if (typeof window === "undefined") return "reife";
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "email-autopilot-audit") return "audit";
+    if (t === "email-autopilot-samples") return "samples";
+    return "reife";
+  });
+
   const initialTab = (() => {
     if (typeof window === "undefined") return "general";
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "excel") return "spreadsheet"; // Chrome-Extension Deep-Link Alias (?tab=excel)
     if (t === "jana" || t === "autopilot") return "autopilot"; // Phase 3C alias
-    return t === "knowledge" || t === "jana-wissen" || t === "integrations" || t === "spreadsheet" || t === "autopilot" || t === "billing" || t === "email-autopilot" || t === "email-autopilot-audit" || t === "email-autopilot-samples" || t === "ki-transparenz" ? t : "general";
+    // Redesign Follow-up: die frueheren Einzel-Tabs Audit/Stichproben leben als
+    // Untersektionen im verschmolzenen Email-Autopilot-Bereich weiter.
+    if (t === "email-autopilot-audit" || t === "email-autopilot-samples") return "email-autopilot";
+    return t === "knowledge" || t === "jana-wissen" || t === "integrations" || t === "spreadsheet" || t === "autopilot" || t === "billing" || t === "email-autopilot" || t === "ki-transparenz" ? t : "general";
   })();
 
   return (
@@ -189,15 +201,7 @@ export default function Einstellungen() {
           <div className="px-3 pt-3 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground/60">Autopilot</div>
           <TabsTrigger value="email-autopilot" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <Mail className="w-3.5 h-3.5" />
-            Stufen &amp; Reife
-          </TabsTrigger>
-          <TabsTrigger value="email-autopilot-audit" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
-            <Mail className="w-3.5 h-3.5" />
-            Autopilot Audit
-          </TabsTrigger>
-          <TabsTrigger value="email-autopilot-samples" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
-            <Mail className="w-3.5 h-3.5" />
-            Nachträglich prüfen
+            Email-Autopilot
           </TabsTrigger>
           <TabsTrigger value="autopilot" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <Phone className="w-3.5 h-3.5" />
@@ -469,15 +473,26 @@ export default function Einstellungen() {
         </TabsContent>
 
         <TabsContent value="email-autopilot" data-tour="email-autopilot-tab" className="mt-6 space-y-6">
-          <EmailAutopilotTab />
-        </TabsContent>
-
-        <TabsContent value="email-autopilot-audit" className="mt-6 space-y-6">
-          <EmailAutopilotAuditView />
-        </TabsContent>
-
-        <TabsContent value="email-autopilot-samples" className="mt-6 space-y-6">
-          <StichprobenAuditTab />
+          {/* Redesign Follow-up: EIN Autopilot-Bereich mit Untersektionen statt drei Tabs.
+              Deep-Links ?tab=email-autopilot-audit / -samples landen hier in der passenden Sektion. */}
+          <div className="flex flex-wrap gap-1.5">
+            {([["reife", "Stufen & Reife"], ["audit", "Audit"], ["samples", "Stichproben (nachträglich prüfen)"]] as const).map(([k, l]) => (
+              <button
+                key={k}
+                onClick={() => setApSection(k)}
+                className={`text-xs font-semibold rounded-full border px-3 py-1.5 transition-colors ${
+                  apSection === k
+                    ? "border-primary/50 bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+          {apSection === "reife" && <EmailAutopilotTab />}
+          {apSection === "audit" && <EmailAutopilotAuditView />}
+          {apSection === "samples" && <StichprobenAuditTab />}
         </TabsContent>
 
         <TabsContent value="autopilot" className="mt-6 space-y-6">

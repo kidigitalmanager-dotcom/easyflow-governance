@@ -266,12 +266,12 @@ export function DataRoom({ onSelect, selectedId }: { onSelect: (id: string) => v
                   {rankedHits.map((h, i) => (
                     <TableRow
                       key={h.slug}
-                      className={cn("cursor-pointer", selectedId && h.id === selectedId && "bg-primary/5", citedSlugs.has(h.slug) && "bg-primary/[0.03]")}
+                      className={cn("cursor-pointer", selectedId && h.id === selectedId && "bg-primary/5", citedSlugs.has(h.slug) && "bg-primary/[0.03]", isLimited(h) && "opacity-60")}
                       onClick={() => h.id && onSelect(h.id)}
                     >
                       <TableCell>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-mono text-muted-foreground tabular-nums">{i + 1}.</span>
+                          <span className="text-[10px] font-mono text-muted-foreground tabular-nums">{isLimited(h) ? "—" : `${i + 1}.`}</span>
                           <span className="text-sm font-medium text-foreground truncate max-w-[160px]">{h.name}</span>
                           {h.is_illustrative && <IllustrativeBadge />}
                           <VerificationBadge tier={h.verification_tier} />
@@ -304,7 +304,7 @@ export function DataRoom({ onSelect, selectedId }: { onSelect: (id: string) => v
 
         <p className="text-[11px] text-muted-foreground leading-relaxed flex items-start gap-1.5">
           <ShieldCheck className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />
-          Nur Firmen mit Datenfreigabe oder öffentlichem Markt-Index (extern). Illustrativ markierte Firmen sind Demonstrationsdaten. Aggregierte 0–100-Signale, kein PII, keine Anlageberatung.
+          Nur Firmen mit Datenfreigabe oder öffentlichem Markt-Index (extern). Illustrativ markierte Firmen sind Demonstrationsdaten. Firmen mit veralteter Datenlage werden nicht gerankt, sondern ausgegraut ans Listenende sortiert. Aggregierte 0–100-Signale, kein PII, keine Anlageberatung.
         </p>
       </CardContent>
     </Card>

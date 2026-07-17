@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Landmark, ShieldCheck, Star, Globe } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useCapAccounts, useHealthSeries, useAlerts, useVerificationTiers } from "@/hooks/use-capital";
+import { useCapAccounts, useHealthSeries, useAlerts, useVerificationTiers, useFreshnessBulk } from "@/hooks/use-capital";
 import { AccountDashboard } from "@/components/capital/AccountDashboard";
 import { JanaChat } from "@/components/capital/JanaChat";
 import { ReportExportButton } from "@/components/capital/ReportExportButton";
@@ -12,20 +12,28 @@ import { DataRoom } from "@/components/capital/DataRoom";
 import { ScoreBadge, Sparkline, IllustrativeBadge, CoverageBadge, VerificationBadge } from "@/components/capital/CapitalBits";
 import { RiskBadge, WatchButton, TieredAlertFeed, FeedHeader } from "@/components/capital/CapitalAlerts";
 import { useWatchlist, syncWatchlistFromServer } from "@/lib/watchlist";
-import { trailingSlope, verticalLabelDe, type CapAccount } from "@/lib/capital";
+import { trailingSlope, verticalLabelDe, type CapAccount, type FreshnessRow } from "@/lib/capital";
+import { worstFreshness } from "@/components/capital/CapitalFreshness";
 
-function AccountCard({ account, active, onClick, tier }: { account: CapAccount; active: boolean; onClick: () => void; tier?: string | null }) {
+// Redesign Follow-up (Freshness-Gate): Firmen mit veralteten Quellen zeigen
+// "Daten veraltet" statt eines roten Schein-Scores und fallen ans Listenende.
+type FreshnessWorst = "fresh" | "stale" | "dead" | "no_sla";
+const isStaleWorst = (w?: FreshnessWorst | null) => w === "stale" || w === "dead";
+
+function AccountCard({ account, active, onClick, tier, worst }: { account: CapAccount; active: boolean; onClick: () => void; tier?: string | null; worst?: FreshnessWorst | null }) {
   const health = useHealthSeries(account.id);
   const series = health.data ?? [];
   const latest = series.length ? series[series.length - 1] : null;
   const slope = trailingSlope(series.map((s) => s.health_score));
   const isExternal = account.account_type === "external";
+  const gated = isStaleWorst(worst);
   return (
     <button
       onClick={onClick}
       className={cn(
         "text-left rounded-xl border p-4 transition-colors w-full",
         active ? "border-primary/40 bg-primary/5" : "border-border glass-card-hover",
+        gated && "opacity-70",
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -34,6 +42,18 @@ function AccountCard({ account, active, onClick, tier }: { account: CapAccount; 
             <span className="text-sm font-semibold text-foreground truncate">{account.name}</span>
             {latest?.is_illustrative && <IllustrativeBadge />}
             <VerificationBadge tier={tier as any} />
+            {gated && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-p1/10 text-p1 border border-p1/25">
+                    Daten veraltet
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs text-xs">
+                  Mindestens eine Quelle liefert keine frischen Werte. Die Firma wird nicht gerankt und der Score nicht als kritisch gewertet, bis die Datenlage wieder aktuell ist.
+                </TooltipContent>
+              </Tooltip>
+            )}
             {isExternal && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -53,7 +73,7 @@ function AccountCard({ account, active, onClick, tier }: { account: CapAccount; 
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <WatchButton slug={account.slug} />
-          <ScoreBadge value={latest?.health_score} size="sm" />
+          <ScoreBadge value={latest?.health_score} size="sm" quality={{ coverage: latest?.coverage, worstFreshness: worst ?? undefined }} />
         </div>
       </div>
       <div className="mt-3 flex items-center justify-between gap-2">
@@ -81,11 +101,11 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
   );
 }
 
-function FirmGrid({ accounts, selectedId, onSelect, tierMap }: { accounts: CapAccount[]; selectedId: string | null; onSelect: (id: string) => void; tierMap: Record<string, { verification_tier: string }> }) {
+function FirmGrid({ accounts, selectedId, onSelect, tierMap, freshMap }: { accounts: CapAccount[]; selectedId: string | null; onSelect: (id: string) => void; tierMap: Record<string, { verification_tier: string }>; freshMap: Record<string, FreshnessWorst | undefined> }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {accounts.map((a) => (
-        <AccountCard key={a.id} account={a} active={selectedId === a.id} onClick={() => onSelect(a.id)} tier={tierMap[a.id]?.verification_tier ?? null} />
+        <AccountCard key={a.id} account={a} active={selectedId === a.id} onClick={() => onSelect(a.id)} tier={tierMap[a.id]?.verification_tier ?? null} worst={freshMap[a.id] ?? null} />
       ))}
     </div>
   );
@@ -111,9 +131,27 @@ export default function Investoren() {
   const consentedList = accounts.data ?? [];
   const externalList = externals.data ?? [];
 
+  // Freshness-Gate: EINE Bulk-Query fuer alle sichtbaren Firmen.
+  const allIds = useMemo(() => [...consentedList, ...externalList].map((a) => a.id), [consentedList, externalList]);
+  const freshBulk = useFreshnessBulk(allIds);
+  const freshMap = useMemo(() => {
+    const byAcc = new Map<string, FreshnessRow[]>();
+    for (const r of freshBulk.data ?? []) {
+      const l = byAcc.get(r.account_id) ?? [];
+      l.push(r);
+      byAcc.set(r.account_id, l);
+    }
+    const m: Record<string, FreshnessWorst | undefined> = {};
+    byAcc.forEach((rows, id) => { m[id] = (worstFreshness(rows)?.status ?? undefined) as FreshnessWorst | undefined; });
+    return m;
+  }, [freshBulk.data]);
+  const gatedLast = (list: CapAccount[]) =>
+    [...list].sort((a, b) => Number(isStaleWorst(freshMap[a.id])) - Number(isStaleWorst(freshMap[b.id])));
+
   const visibleConsented = useMemo(
-    () => (watchOnly ? consentedList.filter((a) => watched.includes(a.slug)) : consentedList),
-    [consentedList, watchOnly, watched],
+    () => gatedLast(watchOnly ? consentedList.filter((a) => watched.includes(a.slug)) : consentedList),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [consentedList, watchOnly, watched, freshMap],
   );
   const marketVerticals = useMemo(
     () => Array.from(new Set(externalList.map((a) => a.vertical).filter((v): v is string => !!v))).sort(),
@@ -123,8 +161,9 @@ export default function Investoren() {
     let l = externalList;
     if (watchOnly) l = l.filter((a) => watched.includes(a.slug));
     if (marketVertical) l = l.filter((a) => a.vertical === marketVertical);
-    return l;
-  }, [externalList, watchOnly, watched, marketVertical]);
+    return gatedLast(l);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalList, watchOnly, watched, marketVertical, freshMap]);
 
   const feed = useMemo(() => {
     const all = alerts.data ?? [];
@@ -183,7 +222,7 @@ export default function Investoren() {
             {watchOnly ? "Keine beobachteten Firmen mit Datenfreigabe." : "Noch keine Firmen mit Datenfreigabe."}
           </CardContent></Card>
         ) : (
-          <FirmGrid accounts={visibleConsented} selectedId={selectedId} onSelect={openFirm} tierMap={tierMap} />
+          <FirmGrid accounts={visibleConsented} selectedId={selectedId} onSelect={openFirm} tierMap={tierMap} freshMap={freshMap} />
         )}
       </section>
 
@@ -214,7 +253,7 @@ export default function Investoren() {
             {watchOnly ? "Keine beobachteten Firmen im Markt-Index." : "Noch keine externen Firmen im Markt-Index."}
           </CardContent></Card>
         ) : (
-          <FirmGrid accounts={visibleExternal} selectedId={selectedId} onSelect={openFirm} tierMap={tierMap} />
+          <FirmGrid accounts={visibleExternal} selectedId={selectedId} onSelect={openFirm} tierMap={tierMap} freshMap={freshMap} />
         )}
       </section>
 

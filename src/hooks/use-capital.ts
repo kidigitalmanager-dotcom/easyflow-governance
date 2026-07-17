@@ -355,6 +355,25 @@ export function useAlerts(opts?: { openOnly?: boolean }) {
 }
 
 
+// Redesign Follow-up (Freshness-Gate): eine Bulk-Query statt N Einzel-Queries,
+// damit Listen (/investoren Karten-Grids) veraltete Firmen VOR dem Render kennen
+// und ans Listenende sortieren koennen. Gleiche RLS-Sicht wie useFreshness.
+export function useFreshnessBulk(accountIds: string[]) {
+  const key = [...accountIds].sort().join(",");
+  return useQuery({
+    enabled: accountIds.length > 0,
+    queryKey: ["cap", "freshness-bulk", key],
+    queryFn: async () => {
+      const { data, error } = await capital.from("cap_freshness").select("*")
+        .in("account_id", accountIds);
+      if (error) throw error;
+      return (data ?? []) as FreshnessRow[];
+    },
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useFreshness(accountId?: string) {
   return useQuery({
     enabled: !!accountId,

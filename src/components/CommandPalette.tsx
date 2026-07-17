@@ -3,11 +3,16 @@ import { useNavigate } from "react-router-dom";
 import {
   CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
+import { useRecentEmails, useAuditLog } from "@/hooks/use-api";
+import { humanizeCategory, prettyRedaction } from "@/data/humanize";
 
 /**
  * Redesign 07.07.2026: Globale Suche (Cmd-K) in der Topbar.
- * V1 bewusst client-seitig: Seiten, Signale-Bereiche und Einstellungs-Tabs.
- * Kein Backend-Call, keine neuen Endpunkte.
+ * Client-seitig: Seiten, Signale-Bereiche, Einstellungs-Tabs — plus E-Mail-Suche
+ * (Follow-up) über die vorhandenen Fenster /emails/recent (Freigaben) und /audit
+ * (Verlauf): Betreff, Absender/Postfach, Kategorie. Der Mail-BODY ist bewusst nicht
+ * durchsuchbar (wird aus PII-Gruenden nicht persistiert) — dafuer waere ein eigener
+ * api-router-Endpunkt noetig. Treffer springen zu /review?item= bzw. /audit?item=&q=.
  */
 type Entry = { label: string; to: string; group: string; keywords?: string };
 
@@ -41,8 +46,65 @@ const ENTRIES: Entry[] = [
 
 const GROUPS = ["Arbeit", "Signale", "System", "Einstellungen"];
 
+const NEEDS_ACTION = new Set(["pending", "needs_review", "pending_review"]);
+
+function EmailSearchResults({ q, onGo }: { q: string; onGo: (to: string) => void }) {
+  const { data: emails, isLoading: l1 } = useRecentEmails();
+  const { data: audit, isLoading: l2 } = useAuditLog();
+  const needle = q.toLowerCase();
+
+  const review = (emails ?? [])
+    .filter((e) => e.has_draft || NEEDS_ACTION.has(e.status))
+    .filter((e) => `${e.subject} ${e.sender} ${humanizeCategory(e.action_type)}`.toLowerCase().includes(needle))
+    .slice(0, 5);
+  const reviewIds = new Set(review.map((r) => r.id));
+  const hist = (audit ?? [])
+    .filter((a) => !reviewIds.has(a.id))
+    .filter((a) => `${a.subject} ${a.mailbox} ${humanizeCategory(a.category)}`.toLowerCase().includes(needle))
+    .slice(0, 6);
+
+  if (l1 || l2) {
+    return (
+      <CommandGroup heading="E-Mails">
+        <CommandItem value={`laden ${q}`} disabled>Durchsuche E-Mails …</CommandItem>
+      </CommandGroup>
+    );
+  }
+  if (review.length === 0 && hist.length === 0) return null;
+
+  return (
+    <CommandGroup heading="E-Mails (Betreff · Absender · Kategorie)">
+      {review.map((e) => (
+        <CommandItem
+          key={`r-${e.id}`}
+          value={`email ${e.subject} ${e.sender} ${q}`}
+          onSelect={() => onGo(`/review?item=${encodeURIComponent(e.id)}`)}
+        >
+          <div className="flex flex-col min-w-0">
+            <span className="truncate">{prettyRedaction(e.subject)}</span>
+            <span className="text-[10px] text-muted-foreground truncate">{e.sender} · wartet auf Freigabe</span>
+          </div>
+        </CommandItem>
+      ))}
+      {hist.map((a) => (
+        <CommandItem
+          key={`a-${a.id}`}
+          value={`email ${a.subject} ${a.mailbox} ${q}`}
+          onSelect={() => onGo(`/audit?item=${encodeURIComponent(a.id)}&q=${encodeURIComponent(q)}`)}
+        >
+          <div className="flex flex-col min-w-0">
+            <span className="truncate">{prettyRedaction(a.subject)}</span>
+            <span className="text-[10px] text-muted-foreground truncate">{a.mailbox} · Verlauf · {a.timestamp}</span>
+          </div>
+        </CommandItem>
+      ))}
+    </CommandGroup>
+  );
+}
+
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -63,14 +125,16 @@ export function CommandPalette() {
 
   const go = (to: string) => {
     setOpen(false);
+    setQ("");
     navigate(to);
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Suchen: Seite, Bereich, Einstellung …" />
+    <CommandDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setQ(""); }}>
+      <CommandInput value={q} onValueChange={setQ} placeholder="Suchen: E-Mail, Seite, Bereich, Einstellung …" />
       <CommandList>
         <CommandEmpty>Nichts gefunden.</CommandEmpty>
+        {q.trim().length >= 2 && <EmailSearchResults q={q.trim()} onGo={go} />}
         {GROUPS.map((g) => (
           <CommandGroup key={g} heading={g}>
             {ENTRIES.filter((e) => e.group === g).map((e) => (

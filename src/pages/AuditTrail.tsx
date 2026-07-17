@@ -6,7 +6,7 @@ import { useAuditLog, useUndoAction, useCorrectLabel, useMe } from "@/hooks/use-
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getCurrentPlan } from "@/data/plan";
-import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2, RotateCcw, Ban, Tag, Bot } from "lucide-react";
+import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2, RotateCcw, Ban, Tag, Bot, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence, responseLabel, responseType } from "@/data/humanize";
 import DecisionStory from "@/components/DecisionStory";
@@ -38,16 +38,26 @@ export default function AuditTrail() {
   const { data: me } = useMe();
   const [correctKey, setCorrectKey] = useState<string>("");
   const [selectedPriority, setSelectedPriority] = useState<string>("Alle");
-  const [selectedEntry, setSelectedEntry] = useState<string | null>(null);
+  // Redesign Follow-up: ?item=<event_id> oeffnet das Detail direkt (Cmd-K-Suche).
+  const [selectedEntry, setSelectedEntry] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("item"));
+  // Redesign Follow-up: ?q=<text> als Volltext-Filter (Betreff/Postfach/Kategorie).
+  const [textQuery, setTextQuery] = useState<string>(() =>
+    typeof window === "undefined" ? "" : (new URLSearchParams(window.location.search).get("q") ?? ""));
   // v4.43.0: Shadow-only Drill-down (von der Uebersicht-Kachel ?shadow=1).
   const [searchParams] = useSearchParams();
   const [shadowOnly, setShadowOnly] = useState(searchParams.get("shadow") === "1");
 
   const entries = auditData ?? [];
 
+  const q = textQuery.trim().toLowerCase();
   const filtered = entries.filter((entry) => {
     if (selectedPriority !== "Alle" && entry.priority !== selectedPriority) return false;
     if (shadowOnly && !entry.shadow_decision) return false;
+    if (q) {
+      const hay = `${entry.subject ?? ""} ${entry.mailbox ?? ""} ${humanizeCategory(entry.category)}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
     return true;
   });
 
@@ -77,6 +87,15 @@ export default function AuditTrail() {
             </button>
           ))}
         </div>
+        <label className="relative inline-flex items-center">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 text-muted-foreground pointer-events-none" />
+          <input
+            value={textQuery}
+            onChange={(e) => setTextQuery(e.target.value)}
+            placeholder="Betreff, Absender, Kategorie …"
+            className="pl-8 pr-3 py-1.5 rounded-md text-xs bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 w-56"
+          />
+        </label>
         <button
           onClick={() => setShadowOnly((v) => !v)}
           className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
