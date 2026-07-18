@@ -8,7 +8,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  useRequests, useOffer, useGenerateOffer, useUpdateOffer, useOfferVerdict,
+  useRequests, useOffer, useGenerateOffer, useUpdateOffer, useOfferVerdict, useBillingProfile,
 } from "@/hooks/use-api";
 import type { RequestItem, TenantOffer, GenerateOfferBody } from "@/lib/api-client";
 import type { OfferPosition, OfferOpts } from "@/lib/offer-calc";
@@ -57,12 +57,12 @@ export default function Angebote() {
   const [editId, setEditId] = useState<number | null>(null);
   const [draft, setDraft] = useState<OfferDraftState>(EMPTY_DRAFT);
   const [dirty, setDirty] = useState(false);
-  const [companyName, setCompanyName] = useState<string | null>(null);
   const [showPdf, setShowPdf] = useState(false);
   const [pendingMsg, setPendingMsg] = useState<{ messageId: string; provider: string } | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const requests = useRequests(40);
+  const billing = useBillingProfile();
   const genOffer = useGenerateOffer();
   const updOffer = useUpdateOffer();
   const verdict = useOfferVerdict();
@@ -257,7 +257,7 @@ export default function Angebote() {
           </CardContent>
         </Card>
 
-        {showPdf && <OfferPdf state={draft} companyName={companyName} onClose={() => setShowPdf(false)} />}
+        {showPdf && <OfferPdf state={draft} seller={billing.data?.profile} onClose={() => setShowPdf(false)} />}
       </div>
     );
   }

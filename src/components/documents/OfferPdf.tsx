@@ -7,11 +7,13 @@ import { createPortal } from "react-dom";
 import { Printer, X } from "lucide-react";
 import { computeOffer, fmtEUR, fmtDateDe, type OfferOpts, type OfferPosition } from "@/lib/offer-calc";
 import type { OfferDraftState } from "./OfferPositionsTable";
+import type { BillingProfile } from "@/lib/api-client";
 
 export function OfferPdf({
-  state, companyName, docNumberFallback, onClose,
+  state, seller, companyName, docNumberFallback, onClose,
 }: {
   state: OfferDraftState;
+  seller?: BillingProfile | null;
   companyName?: string | null;
   docNumberFallback?: string;
   onClose: () => void;
@@ -20,6 +22,12 @@ export function OfferPdf({
   const t = computed.totals;
   const today = new Date().toISOString().slice(0, 10);
   const coverParas = String(state.cover_text || "").split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+  const sel = seller || null;
+  const sellerName = sel?.company_name || companyName || null;
+  const sellerAddr = [
+    sel?.address_line1, sel?.address_line2,
+    [sel?.postal_code, sel?.city].filter(Boolean).join(" "),
+  ].filter(Boolean);
 
   const body = (
     <div id="offer-pdf-portal">
@@ -35,7 +43,14 @@ export function OfferPdf({
         <div className="op-page">
           {/* Kopf */}
           <div className="op-head">
-            <div className="op-firma">{companyName || "[Ihr Firmenname]"}</div>
+            <div className="op-firma">
+              <div className="op-firma-name">{sellerName || "[Ihr Firmenname - bitte Stammdaten ausfüllen]"}</div>
+              {sellerAddr.map((l, i) => <div key={i} className="op-firma-line">{l}</div>)}
+              {sel?.country_code && sel.country_code !== "DE" && <div className="op-firma-line">{sel.country_code}</div>}
+              {(sel?.vat_id || sel?.tax_number) && (
+                <div className="op-firma-line op-muted">{sel?.vat_id ? "USt-IdNr: " + sel.vat_id : "Steuernummer: " + sel?.tax_number}</div>
+              )}
+            </div>
             <div className="op-meta">
               <div><strong>Angebot</strong></div>
               {(state.doc_number || docNumberFallback) && <div>Nr. {state.doc_number || docNumberFallback}</div>}
@@ -107,7 +122,7 @@ export function OfferPdf({
             Dies ist ein Angebots-Entwurf. Alle Preise verstehen sich {t.kleinunternehmer ? "ohne Umsatzsteuer (§19 UStG)" : t.reverse_charge ? "netto; die Umsatzsteuer schuldet der Leistungsempfänger (§13b UStG)" : "netto zzgl. gesetzlicher Umsatzsteuer"}.
             {state.valid_until ? ` Das Angebot ist gültig bis ${fmtDateDe(state.valid_until)}.` : ""}
           </p>
-          <div className="op-print-footer">{companyName || "Angebot"} · erstellt mit UseEasy · {fmtDateDe(today)}</div>
+          <div className="op-print-footer">{sellerName || "Angebot"} · erstellt mit UseEasy · {fmtDateDe(today)}</div>
         </div>
       </div>
     </div>
@@ -128,6 +143,8 @@ const CSS = `
 #offer-pdf-portal .op-page { background: #fff; color: #0f172a; border-radius: 10px; box-shadow: 0 12px 44px rgba(0,0,0,0.4); padding: 44px 48px; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 #offer-pdf-portal .op-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
 #offer-pdf-portal .op-firma { font-size: 17px; font-weight: 700; }
+#offer-pdf-portal .op-firma-name { font-size: 17px; font-weight: 700; }
+#offer-pdf-portal .op-firma-line { font-size: 12px; font-weight: 400; color: #334155; line-height: 1.45; }
 #offer-pdf-portal .op-meta { text-align: right; font-size: 12px; color: #334155; line-height: 1.5; }
 #offer-pdf-portal .op-empf { font-size: 13px; margin-bottom: 20px; line-height: 1.5; }
 #offer-pdf-portal .op-muted { color: #64748b; }
