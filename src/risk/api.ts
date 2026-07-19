@@ -5,7 +5,7 @@
 // VITE_RISK_API_MODE=live. Die Signaturen bleiben identisch, kein Screen wird
 // dafuer angefasst.
 import type {
-  RiskChangesResponse, RiskCompactRow, RiskGovernance, RiskMatchResult, RiskScore,
+  RiskChange, RiskChangesResponse, RiskCompactRow, RiskGovernance, RiskMatchResult, RiskScore,
 } from "./types";
 import scoreFull from "./fixtures/score-single.json";
 import scoreThin from "./fixtures/score-thin.json";
@@ -106,6 +106,14 @@ function deriveScoreFromCompact(row: RiskCompactRow): RiskScore {
 
   const gap = Math.max(0, 70 - base);
   const lever = reason_codes.find((r) => r.contribution < 0) ?? reason_codes[0];
+  // Wie viele Punkte muesste diese eine Kennzahl zulegen, damit der Gesamtscore
+  // die Luecke schliesst? Ueber ihr Gewicht. Und: die Skala endet bei 100.
+  // Ein Satz wie "muss um 88 Punkte steigen, von 51 auf 139" ist falsch, nicht
+  // nur unschoen - er macht die Gegenprobe als Beleg wertlos.
+  const leverWeight = metrics.find((m) => m.metric_key === lever?.metric_key)?.weight ?? 0.12;
+  const needed = gap > 0 ? Math.ceil(gap / Math.max(leverWeight, 0.05)) : 0;
+  const current = lever?.value ?? null;
+  const reachable = gap > 0 && lever != null && current != null && current + needed <= 100;
   return assertClassProvenanceOnly({
     ...tpl,
     account_id: row.account_id,
@@ -129,16 +137,20 @@ function deriveScoreFromCompact(row: RiskCompactRow): RiskScore {
     counterfactual: gap === 0
       ? { target_band: "gesund", target_score: 70, gap: 0, levers: [],
           text: "Dieser Name liegt bereits im Band gesund." }
-      : {
+      : reachable
+      ? {
           target_band: "gesund", target_score: 70, gap,
-          levers: lever ? [{
-            metric_key: lever.metric_key, name: lever.name,
-            current: lever.value, required: (lever.value ?? 0) + gap * 4,
-            delta: gap * 4, text: `${lever.name} muss um ${gap * 4} Punkte steigen`,
-          }] : [],
-          text: lever
-            ? `Bei einer Verbesserung von ${lever.name} um ${gap * 4} Punkte bei sonst gleichen Werten erreicht dieser Name Band gesund (70).`
-            : "Kein einzelner Treiber reicht aus. Datenlage fuer eine belastbare Gegenprobe zu duenn.",
+          levers: [{
+            metric_key: lever!.metric_key, name: lever!.name,
+            current, required: current! + needed, delta: needed,
+            text: `${lever!.name} muss um ${needed} Punkte steigen`,
+          }],
+          text: `Bei einer Verbesserung von ${lever!.name} um ${needed} Punkte bei sonst gleichen Werten erreicht dieser Name Band gesund (70).`,
+        }
+      : {
+          target_band: "gesund", target_score: 70, gap, levers: [],
+          text: "Keine einzelne Kennzahl kann diese Luecke innerhalb ihrer Skala schliessen. " +
+                "Das Band gesund ist nur ueber mehrere Kennzahlen gleichzeitig erreichbar.",
         },
     metrics,
     history_note: row.history_note,
@@ -158,7 +170,17 @@ export async function fetchScore(accountId: string): Promise<RiskScore> {
   if (accountId === (scoreThin as any).account_id) return assertClassProvenanceOnly(scoreThin as unknown as RiskScore);
   const row = (batchCompact as any).results.find((r: RiskCompactRow) => r.account_id === accountId);
   if (!row) throw new Error(`Kein Name mit der Kennung ${accountId} im Bestand.`);
-  return deriveScoreFromCompact(row);
+  // Die beiden Fixtures widersprechen sich: batch-compact fuehrt den Monatsstand,
+  // changes-since eine spaetere Bewegung (bei 114 von 120 Namen abweichend).
+  // Der juengere Stand gewinnt, sonst zeigt die Liste 76 und das Detail 86.
+  // Gemeldet an Chat A als Fund B-6.
+  const latest = ((changesFixture as any).changes as RiskChange[])
+    .filter((c) => c.account_id === accountId)
+    .sort((a, b) => (a.changed_at < b.changed_at ? 1 : -1))[0];
+  const reconciled: RiskCompactRow = latest
+    ? { ...row, health_score: latest.score_after, band: latest.band_after, confidence: latest.confidence ?? row.confidence }
+    : row;
+  return deriveScoreFromCompact(reconciled);
 }
 
 export async function fetchEntities(opts: { limit?: number; offset?: number } = {}): Promise<{ rows: RiskCompactRow[]; total: number }> {

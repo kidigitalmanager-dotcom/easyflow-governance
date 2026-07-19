@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { bandColor, fmtPct, fmtScore } from "../format";
+import { bandColor, fmtPct, fmtScore, methodLabel } from "../format";
 import { FreshnessDot } from "./FreshnessDot";
 import type { RiskCategory, RiskMetric } from "../types";
 
@@ -107,7 +107,7 @@ export function KpiGrid({
                               </span>
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs text-xs leading-relaxed">
-                              <span className="block font-medium mb-1">{m.provenance?.method_label}</span>
+                              <span className="block font-medium mb-1">{methodLabel(m.provenance?.method_label)}</span>
                               Signalfamilie, nicht Einzelbeleg. Quellbelege werden in
                               diesem Produkt grundsaetzlich nicht ausgeliefert.
                               {m.provenance?.window_weeks ? <> Fenster: {m.provenance.window_weeks} Wochen.</> : null}

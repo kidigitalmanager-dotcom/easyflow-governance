@@ -158,3 +158,44 @@ export function verticalLabel(v: string | null | undefined): string {
   };
   return m[v] ?? v;
 }
+
+// ── Methoden-Bezeichnungen: nichts wird ungeprueft angezeigt ─────────────────
+//
+// Die Fixtures liefern `provenance.method_label` als fertigen Anzeigetext.
+// Darin steckte "Kemaris-Basislinie" - eine interne Abkuerzung fuer unsere
+// eigene 8-Wochen-Eigenbaseline, die aber der Name eines Wettbewerbers ist.
+// So etwas darf nie in einer Kundenoberflaeche stehen. Deshalb geht jede
+// Methodenbezeichnung durch diese Uebersetzung, statt roh gerendert zu werden.
+
+/** Namen, die in keiner Oberflaeche und keinem Export auftauchen duerfen. */
+export const FORBIDDEN_VENDOR_TOKENS = ["kemaris"];
+
+const METHOD_LABEL_MAP: Record<string, string> = {
+  "kemaris-basislinie (eigene kommunikations-historie)":
+    "Eigenbaseline aus der Kommunikations-Historie (8 Wochen)",
+  "shopify (bestellungen, read-only)": "Shop-Anbindung (Bestellungen, nur lesend)",
+  "bank-konto (psd2, read-only)": "Bankkonto ueber PSD2 (nur lesend)",
+  "buchhaltung (read-only)": "Buchhaltung (nur lesend)",
+};
+
+/**
+ * Uebersetzt eine Methodenbezeichnung in den freigegebenen Anzeigetext.
+ * Unbekannte Bezeichnungen werden durchgelassen - aber nur, wenn kein
+ * gesperrter Name darin vorkommt. Sonst greift ein neutraler Ersatztext und
+ * es gibt eine Meldung in der Konsole, damit der Fall auffaellt.
+ */
+export function methodLabel(raw: string | null | undefined): string {
+  if (!raw) return "Methode nicht hinterlegt";
+  const mapped = METHOD_LABEL_MAP[raw.trim().toLowerCase()];
+  if (mapped) return mapped;
+  const lower = raw.toLowerCase();
+  const hit = FORBIDDEN_VENDOR_TOKENS.find((t) => lower.includes(t));
+  if (hit) {
+    console.error(
+      `[risk] Gesperrter Name "${hit}" in einer Methodenbezeichnung: "${raw}". ` +
+      "Ersetzt durch einen neutralen Text. Quelle muss korrigiert werden."
+    );
+    return "Eigene Berechnung auf Basis der angeschlossenen Quellen";
+  }
+  return raw;
+}

@@ -124,8 +124,8 @@ export default function RiskNameDetail() {
 
       {/* ── Block 6 · Entscheidungsvermerk ────────────────────────────────── */}
       <Block n={6} title="Entscheidungsvermerk"
-        sub="Ihre Entscheidung zu diesem Namen. Bleibt in Ihrem Haus.">
-        <DecisionNoteBlock accountId={score.account_id} />
+        sub="Ihre Entscheidung zu diesem Namen. Bleibt in Ihrem Haus und belegt die Befassung durch einen Menschen.">
+        <DecisionNoteBlock score={score} />
       </Block>
 
       {/* Produktgrenze sichtbar machen - das ist ein Verkaufsargument, keine Fussnote. */}

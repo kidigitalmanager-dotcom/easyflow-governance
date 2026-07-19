@@ -65,7 +65,7 @@
       "value": 58, "band": "beobachten", "confidence": 0.81, "coverage": 0.90, "weight": 0.12,
       "availability": "live", "percentile_vertical": 34,
       "freshness": { "last_observed_at": "2026-07-18T22:10:00Z", "status": "fresh", "age_hours": 28 },
-      "provenance": { "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+      "provenance": { "method_label": "Eigenbaseline aus der Kommunikations-Historie (8 Wochen)",
                       "sources_used": ["Kommunikation (Postfach, read-only)"], "window_weeks": 8 } },
 
     { "metric_key": "fin_dso", "short_code": "DSO", "name": "Days Sales Outstanding", "category_key": "finance",
@@ -101,7 +101,7 @@
       "value": 82, "band": "gesund", "confidence": 0.85, "coverage": 0.90, "weight": 0.09,
       "availability": "live", "percentile_vertical": 68,
       "freshness": { "last_observed_at": "2026-07-18T22:10:00Z", "status": "fresh", "age_hours": 28 },
-      "provenance": { "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+      "provenance": { "method_label": "Eigenbaseline aus der Kommunikations-Historie (8 Wochen)",
                       "sources_used": ["Kommunikation (Postfach, read-only)"], "window_weeks": 8 } },
 
     { "metric_key": "rmi", "short_code": "RMI", "name": "Relationship Momentum Index", "category_key": "customer",
@@ -109,7 +109,7 @@
       "value": 77, "band": "gesund", "confidence": 0.74, "coverage": 0.85, "weight": 0.07,
       "availability": "live", "percentile_vertical": 61,
       "freshness": { "last_observed_at": "2026-07-18T22:10:00Z", "status": "fresh", "age_hours": 28 },
-      "provenance": { "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+      "provenance": { "method_label": "Eigenbaseline aus der Kommunikations-Historie (8 Wochen)",
                       "sources_used": ["Kommunikation (Postfach, read-only)"], "window_weeks": 8 } },
 
     { "metric_key": "dmi", "short_code": "DMI", "name": "Demand Momentum Index", "category_key": "sales",
@@ -117,7 +117,7 @@
       "value": 75, "band": "gesund", "confidence": 0.83, "coverage": 0.90, "weight": 0.08,
       "availability": "live", "percentile_vertical": 58,
       "freshness": { "last_observed_at": "2026-07-18T22:10:00Z", "status": "fresh", "age_hours": 28 },
-      "provenance": { "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+      "provenance": { "method_label": "Eigenbaseline aus der Kommunikations-Historie (8 Wochen)",
                       "sources_used": ["Kommunikation (Postfach, read-only)"], "window_weeks": 8 } },
 
     { "metric_key": "rhi", "short_code": "RHI", "name": "Response Health Index", "category_key": "ops",
@@ -125,7 +125,7 @@
       "value": 70, "band": "gesund", "confidence": 0.68, "coverage": 0.80, "weight": 0.07,
       "availability": "live", "percentile_vertical": 47,
       "freshness": { "last_observed_at": "2026-07-18T22:10:00Z", "status": "fresh", "age_hours": 28 },
-      "provenance": { "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+      "provenance": { "method_label": "Eigenbaseline aus der Kommunikations-Historie (8 Wochen)",
                       "sources_used": ["Kommunikation (Postfach, read-only)"], "window_weeks": 8 } },
 
     { "metric_key": "cli", "short_code": "CLI", "name": "Communication Load Index", "category_key": "ops",
@@ -133,7 +133,7 @@
       "value": 73, "band": "gesund", "confidence": 0.86, "coverage": 0.90, "weight": 0.06,
       "availability": "live", "percentile_vertical": 52,
       "freshness": { "last_observed_at": "2026-07-18T22:10:00Z", "status": "fresh", "age_hours": 28 },
-      "provenance": { "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+      "provenance": { "method_label": "Eigenbaseline aus der Kommunikations-Historie (8 Wochen)",
                       "sources_used": ["Kommunikation (Postfach, read-only)"], "window_weeks": 8 } },
 
     { "metric_key": "cri", "short_code": "CRI", "name": "Commitment Reliability Index", "category_key": "ops",
@@ -141,7 +141,7 @@
       "value": 72, "band": "gesund", "confidence": 0.51, "coverage": 0.55, "weight": 0.07,
       "availability": "live", "percentile_vertical": 49,
       "freshness": { "last_observed_at": "2026-07-18T22:10:00Z", "status": "fresh", "age_hours": 28 },
-      "provenance": { "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+      "provenance": { "method_label": "Eigenbaseline aus der Kommunikations-Historie (8 Wochen)",
                       "sources_used": ["Kommunikation (Postfach, read-only)"], "window_weeks": 8 } },
 
     { "metric_key": "ccri", "short_code": "CCRI", "name": "Contract & Churn-Risk Index", "category_key": "risk",
@@ -149,7 +149,7 @@
       "value": 72, "band": "gesund", "confidence": 0.82, "coverage": 0.90, "weight": 0.08,
       "availability": "live", "percentile_vertical": 51,
       "freshness": { "last_observed_at": "2026-07-18T22:10:00Z", "status": "fresh", "age_hours": 28 },
-      "provenance": { "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+      "provenance": { "method_label": "Eigenbaseline aus der Kommunikations-Historie (8 Wochen)",
                       "sources_used": ["Kommunikation (Postfach, read-only)"], "window_weeks": 8 } },
 
     { "metric_key": "bri", "short_code": "BRI", "name": "Bau/HV-Risk Index", "category_key": "risk",
@@ -157,7 +157,7 @@
       "value": 80, "band": "gesund", "confidence": 0.84, "coverage": 0.90, "weight": 0.09,
       "availability": "live", "percentile_vertical": 66,
       "freshness": { "last_observed_at": "2026-07-18T22:10:00Z", "status": "fresh", "age_hours": 28 },
-      "provenance": { "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+      "provenance": { "method_label": "Eigenbaseline aus der Kommunikations-Historie (8 Wochen)",
                       "sources_used": ["Kommunikation (Postfach, read-only)"], "window_weeks": 8 } },
 
     { "metric_key": "kdi", "short_code": "KDI", "name": "Key-Person-Dependency Index", "category_key": "risk",
@@ -165,7 +165,7 @@
       "value": 84, "band": "gesund", "confidence": 0.63, "coverage": 0.70, "weight": 0.06,
       "availability": "live", "percentile_vertical": 71,
       "freshness": { "last_observed_at": "2026-07-18T22:10:00Z", "status": "fresh", "age_hours": 28 },
-      "provenance": { "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+      "provenance": { "method_label": "Eigenbaseline aus der Kommunikations-Historie (8 Wochen)",
                       "sources_used": ["Kommunikation (Postfach, read-only)"], "window_weeks": 8 } },
 
     { "metric_key": "cdi", "short_code": "CDI", "name": "Compliance & Deadline Index", "category_key": "risk",
@@ -173,7 +173,7 @@
       "value": 81, "band": "gesund", "confidence": 0.80, "coverage": 0.88, "weight": 0.08,
       "availability": "live", "percentile_vertical": 64,
       "freshness": { "last_observed_at": "2026-07-18T22:10:00Z", "status": "fresh", "age_hours": 28 },
-      "provenance": { "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+      "provenance": { "method_label": "Eigenbaseline aus der Kommunikations-Historie (8 Wochen)",
                       "sources_used": ["Kommunikation (Postfach, read-only)"], "window_weeks": 8 } },
 
     { "metric_key": "gqi", "short_code": "GQI", "name": "Ground-Truth-Quality Index", "category_key": "quality",
@@ -181,7 +181,7 @@
       "value": 89, "band": "gesund", "confidence": 0.91, "coverage": 0.90, "weight": 0.0,
       "availability": "live", "percentile_vertical": 78,
       "freshness": { "last_observed_at": "2026-07-18T22:10:00Z", "status": "fresh", "age_hours": 28 },
-      "provenance": { "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+      "provenance": { "method_label": "Eigenbaseline aus der Kommunikations-Historie (8 Wochen)",
                       "sources_used": ["Kommunikation (Postfach, read-only)"], "window_weeks": 8 } }
   ],
 

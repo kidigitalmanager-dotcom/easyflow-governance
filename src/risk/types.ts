@@ -1,4 +1,4 @@
-// Risk-Portal — Typen exakt nach INSURER-API-CONTRACT-2026-07-19.md.
+// Risk-Portal - Typen exakt nach INSURER-API-CONTRACT-2026-07-19.md.
 // Quelle der Wahrheit sind die Fixtures in 02-Spezifikation/fixtures/; sie tragen
 // zusaetzlich quality_tier, connected_sources und is_natural_person, die im
 // Contract-Markdown noch fehlen (siehe STATUS.md, Fund B-1).
@@ -221,9 +221,20 @@ export type SegmentDefaults = {
 export type SegmentDefaultsMap = Record<CustomerSegment, SegmentDefaults>;
 
 /**
- * Entscheidungsvermerk (Block 6). Bleibt beim Kunden, geht in dessen Audit-Trail,
- * ist NICHT Teil des Modells. Der Contract hat dafuer bisher keinen Endpunkt -
- * bis dahin lokal (siehe STATUS.md, Fund B-2).
+ * Entscheidungsvermerk (Block 6).
+ *
+ * Nicht nur Arbeitsorganisation: der Vermerk belegt die Befassung durch einen
+ * Menschen und ist damit das Gegenstueck, das Art. 22 Abs. 3 DSGVO zur
+ * automatisierten Bewertung verlangt (Hinweis aus Stream A, 19.07.).
+ *
+ * Zwei Konsequenzen fuer die Umsetzung:
+ * 1. **append-only** - ein Vermerk wird nie ueberschrieben, nur ergaenzt.
+ *    Eine ueberschreibbare Notiz belegt gar nichts.
+ * 2. Er haelt fest, **auf welchen Score-Stand** sich die Entscheidung bezog.
+ *    Ohne Modellversion, Periode und Score zum Zeitpunkt der Entscheidung ist
+ *    die Befassung spaeter nicht rekonstruierbar.
+ *
+ * Der Contract hat dafuer bisher keinen Endpunkt (STATUS.md, Fund B-2).
  */
 export type DecisionStatus = "limit_erhoeht" | "limit_gehalten" | "limit_gesenkt" | "abgelehnt" | "eskaliert";
 export type DecisionNote = {
@@ -232,4 +243,9 @@ export type DecisionNote = {
   note: string;
   author: string;
   created_at: string;
+  /** Bezugspunkt der Entscheidung - macht die Befassung nachvollziehbar. */
+  model_version: string;
+  period: string;
+  score_at_decision: number | null;
+  computed_at: string;
 };

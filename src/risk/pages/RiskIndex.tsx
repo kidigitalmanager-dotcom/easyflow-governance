@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Construction } from "lucide-react";
 import { ScoreBadge } from "../components";
-import { CHANGE_KIND_LABEL, fmtDateDe, fmtDelta, fmtExposure, SEVERITY_META } from "../format";
+import { CHANGE_KIND_LABEL, fmtDateDe, fmtDelta, fmtExposure, fmtScore, SEVERITY_META } from "../format";
 import { useRiskChanges } from "../queries";
 import { DEMO_ACCOUNTS } from "../api";
 import { getRiskSession } from "../session";
@@ -86,10 +86,21 @@ export default function RiskIndex() {
                       <span className="block text-[11px] text-muted-foreground">Exposure</span>
                       <span className="block text-xs text-foreground/80 tabular-nums">{fmtExposure(c.exposure)}</span>
                     </span>
-                    <span className="text-right shrink-0 w-16">
-                      <span className="block text-sm font-semibold tabular-nums"
-                        style={{ color: c.delta < 0 ? "#C0392B" : "#10b981" }}>{fmtDelta(c.delta)}</span>
-                      <span className="block text-[10px] text-muted-foreground">{fmtDateDe(c.changed_at)}</span>
+                    <span className="text-right shrink-0 w-28">
+                      {/* Score alt nach neu - ohne das liest sich der Badge wie
+                          der aktuelle Stand, obwohl er den Stand zum Zeitpunkt
+                          der Bewegung zeigt. */}
+                      <span className="block text-xs tabular-nums whitespace-nowrap">
+                        <span className="text-muted-foreground/70">{fmtScore(c.score_before)}</span>
+                        <span className="text-muted-foreground/40 mx-1">auf</span>
+                        <span className="font-semibold" style={{ color: c.delta < 0 ? "#C0392B" : "#10b981" }}>
+                          {fmtScore(c.score_after)}
+                        </span>
+                        <span className="ml-1.5 font-medium" style={{ color: c.delta < 0 ? "#C0392B" : "#10b981" }}>
+                          ({fmtDelta(c.delta)})
+                        </span>
+                      </span>
+                      <span className="block text-[10px] text-muted-foreground">Stand {fmtDateDe(c.changed_at)}</span>
                     </span>
                     <ScoreBadge score={c.score_after} band={c.band_after} size="sm" showLabel={false} />
                   </Link>

@@ -10,7 +10,21 @@ import type { RiskCounterfactual } from "../types";
 export function CounterfactualCard({ cf }: { cf: RiskCounterfactual | null | undefined }) {
   if (!cf) return null;
   const color = bandColor(cf.target_band);
-  const reachable = cf.levers.length > 0;
+
+  // Zweite Schranke, unabhaengig von der Datenquelle: ein Hebel, der ueber die
+  // Skala 0 bis 100 hinauslaeuft, ist keine Gegenprobe, sondern ein Rechenfehler.
+  // Er wird nicht angezeigt - auch dann nicht, wenn die API ihn liefert.
+  const levers = (cf.levers ?? []).filter(
+    (l) => l.required == null || (l.required >= 0 && l.required <= 100)
+  );
+  const dropped = (cf.levers ?? []).length - levers.length;
+  if (dropped > 0) {
+    console.error(
+      `[risk] Gegenprobe verwirft ${dropped} Hebel ausserhalb der Skala 0 bis 100. ` +
+      "Die Berechnung in der Quelle ist zu pruefen."
+    );
+  }
+  const reachable = levers.length > 0;
 
   return (
     <div className="rounded-xl border border-border bg-muted/20 p-4">
@@ -20,11 +34,16 @@ export function CounterfactualCard({ cf }: { cf: RiskCounterfactual | null | und
           <ArrowUpRight className="w-4 h-4" />
         </span>
         <div className="min-w-0">
-          <p className="text-sm text-foreground leading-relaxed">{cf.text}</p>
+          <p className="text-sm text-foreground leading-relaxed">
+            {reachable || dropped === 0
+              ? cf.text
+              : "Keine einzelne Kennzahl kann diese Luecke innerhalb ihrer Skala schliessen. " +
+                "Das Band ist nur ueber mehrere Kennzahlen gleichzeitig erreichbar."}
+          </p>
 
           {reachable ? (
             <ul className="mt-3 space-y-1.5">
-              {cf.levers.map((l) => (
+              {levers.map((l) => (
                 <li key={l.metric_key} className="flex items-baseline justify-between gap-3 text-xs">
                   <span className="text-muted-foreground">{l.name}</span>
                   <span className="tabular-nums whitespace-nowrap">
