@@ -1,0 +1,99 @@
+{
+  "_fixture": "discrimination.available=false ist Absicht — duenne Ausfallhistorie offen ausweisen.",
+  "model": {
+    "version": "cap-v15.2",
+    "valid_from": "2026-07-01",
+    "changelog_url": "/v1/risk/governance/changelog",
+    "spec_pdf_url": "/v1/risk/governance/model-spec.pdf"
+  },
+  "coverage": {
+    "accounts_total": 1240,
+    "with_consent": 1180,
+    "by_tier": {
+      "basis": 690,
+      "erweitert": 330,
+      "voll": 160
+    },
+    "by_metric": [
+      {
+        "metric_key": "csi",
+        "coverage": 0.9,
+        "accounts_with_data": 1062
+      },
+      {
+        "metric_key": "chi",
+        "coverage": 0.9,
+        "accounts_with_data": 1062
+      },
+      {
+        "metric_key": "cri",
+        "coverage": 0.55,
+        "accounts_with_data": 649
+      },
+      {
+        "metric_key": "fin_dso",
+        "coverage": 0.13,
+        "accounts_with_data": 160
+      },
+      {
+        "metric_key": "rev_growth",
+        "coverage": 0.41,
+        "accounts_with_data": 490
+      }
+    ],
+    "by_vertical": [
+      {
+        "vertical": "bau",
+        "n": 148,
+        "avg_coverage": 0.88
+      },
+      {
+        "vertical": "ecom",
+        "n": 402,
+        "avg_coverage": 0.81
+      },
+      {
+        "vertical": "real_estate",
+        "n": 211,
+        "avg_coverage": 0.86
+      }
+    ]
+  },
+  "freshness": {
+    "fresh": 1041,
+    "stale": 121,
+    "dead": 18,
+    "median_age_hours": 26
+  },
+  "drift": {
+    "psi": 0.07,
+    "status": "ok",
+    "history": [
+      {
+        "period": "2026-05-01",
+        "psi": 0.04
+      },
+      {
+        "period": "2026-06-01",
+        "psi": 0.05
+      },
+      {
+        "period": "2026-07-01",
+        "psi": 0.07
+      }
+    ]
+  },
+  "discrimination": {
+    "available": false,
+    "reason": "Zu wenige realisierte Ausfaelle im Beobachtungszeitraum",
+    "n_defaults": 3,
+    "n_accounts": 1240,
+    "gini": null,
+    "auc": null,
+    "ci95": null
+  },
+  "legal_form_split": {
+    "personenbezogen": 214,
+    "juristische_person": 966
+  }
+}

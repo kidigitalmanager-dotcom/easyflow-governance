@@ -1,0 +1,60 @@
+{
+  "_fixture": "Realistische Trefferquote. Nur zustimmende UseEasy-Kunden sind matchbar.",
+  "summary": {
+    "submitted": 80000,
+    "matched": 1240,
+    "match_rate": 0.0155,
+    "with_consent": 1180,
+    "confident": 1102,
+    "ambiguous": 138,
+    "by_tier": {
+      "basis": 690,
+      "erweitert": 330,
+      "voll": 160
+    }
+  },
+  "matches": [
+    {
+      "ref": "DEB-10233",
+      "account_id": "acc_00001",
+      "match_confidence": 0.97,
+      "matched_on": [
+        "vat_id"
+      ]
+    },
+    {
+      "ref": "DEB-10412",
+      "account_id": "acc_00002",
+      "match_confidence": 0.95,
+      "matched_on": [
+        "register_no"
+      ]
+    },
+    {
+      "ref": "DEB-11890",
+      "account_id": "acc_00007",
+      "match_confidence": 0.88,
+      "matched_on": [
+        "name",
+        "city"
+      ]
+    }
+  ],
+  "unmatched_sample": [
+    {
+      "ref": "DEB-77120",
+      "name": "Beispiel AG",
+      "reason": "no_account"
+    },
+    {
+      "ref": "DEB-77340",
+      "name": "Nordsee Handel GmbH",
+      "reason": "no_consent"
+    },
+    {
+      "ref": "DEB-77901",
+      "name": "Meier & Sohn",
+      "reason": "ambiguous"
+    }
+  ]
+}

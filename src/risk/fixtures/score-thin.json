@@ -1,0 +1,483 @@
+{
+  "_fixture": "Qualitaetsstufe Basis. Nur Kommunikationsdaten, kurze Historie. Testet die Ehrlichkeits-Elemente.",
+  "account_id": "acc_1c04",
+  "name": "Ahrensbach Handwerk e.K.",
+  "legal_form": "e.K.",
+  "vertical": "bau",
+  "period": "2026-07-01",
+  "model_version": "cap-v15.2",
+  "computed_at": "2026-07-19T02:34:11Z",
+  "quality_tier": "basis",
+  "connected_sources": [
+    "comms"
+  ],
+  "health_score": 61,
+  "band": "beobachten",
+  "confidence": 0.44,
+  "coverage": 0.38,
+  "trend_12m": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    58,
+    60,
+    59,
+    61
+  ],
+  "categories": [
+    {
+      "key": "customer",
+      "name": "Kunde & Bindung",
+      "score": 80,
+      "confidence": 0.85,
+      "coverage": 0.9,
+      "kpis_with_data": 3
+    },
+    {
+      "key": "sales",
+      "name": "Vertrieb & Nachfrage",
+      "score": 75,
+      "confidence": 0.81,
+      "coverage": 0.85,
+      "kpis_with_data": 2
+    },
+    {
+      "key": "ops",
+      "name": "Betrieb & Effizienz",
+      "score": 72,
+      "confidence": 0.83,
+      "coverage": 0.9,
+      "kpis_with_data": 3
+    },
+    {
+      "key": "risk",
+      "name": "Vertrag, Recht & Compliance",
+      "score": 79,
+      "confidence": 0.84,
+      "coverage": 0.9,
+      "kpis_with_data": 4
+    },
+    {
+      "key": "quality",
+      "name": "Datenqualitaet & Konfidenz",
+      "score": 89,
+      "confidence": 0.91,
+      "coverage": 0.9,
+      "kpis_with_data": 1
+    },
+    {
+      "key": "finance",
+      "name": "Liquiditaet & Finanzen",
+      "score": null,
+      "confidence": null,
+      "coverage": 0.0,
+      "kpis_with_data": 0
+    }
+  ],
+  "reason_codes": [
+    {
+      "metric_key": "csi",
+      "short_code": "CSI",
+      "name": "Cash-Signal Index",
+      "value": 58,
+      "contribution": -6.2,
+      "direction": "down",
+      "label": "Zahlungssignale verschlechtert",
+      "trend_6m": [
+        70,
+        68,
+        65,
+        62,
+        60,
+        58
+      ]
+    },
+    {
+      "metric_key": "fin_dso",
+      "short_code": "DSO",
+      "name": "Days Sales Outstanding",
+      "value": 54,
+      "contribution": -4.1,
+      "direction": "down",
+      "label": "Forderungslaufzeit gestiegen",
+      "trend_6m": [
+        68,
+        66,
+        62,
+        59,
+        56,
+        54
+      ]
+    },
+    {
+      "metric_key": "cdi",
+      "short_code": "CDI",
+      "name": "Compliance & Deadline Index",
+      "value": 81,
+      "contribution": 3.4,
+      "direction": "up",
+      "label": "Fristen zuverlaessig eingehalten",
+      "trend_6m": [
+        74,
+        76,
+        78,
+        79,
+        80,
+        81
+      ]
+    },
+    {
+      "metric_key": "rev_growth",
+      "short_code": "REVG",
+      "name": "Umsatzwachstum",
+      "value": 63,
+      "contribution": -2.8,
+      "direction": "down",
+      "label": "Umsatzdynamik nachlassend",
+      "trend_6m": [
+        72,
+        71,
+        68,
+        66,
+        64,
+        63
+      ]
+    }
+  ],
+  "counterfactual": {
+    "target_band": "gesund",
+    "target_score": 70,
+    "gap": 9,
+    "levers": [],
+    "text": "Kein einzelner Treiber reicht aus. Datenlage fuer eine belastbare Gegenprobe zu duenn."
+  },
+  "metrics": [
+    {
+      "metric_key": "csi",
+      "short_code": "CSI",
+      "name": "Cash-Signal Index",
+      "category_key": "finance",
+      "measures": "Rechnungs-/Zahlungs-Intents, Mahn-/Dunning-Tags",
+      "value": 58,
+      "band": "beobachten",
+      "confidence": 0.45,
+      "coverage": 0.38,
+      "weight": 0.12,
+      "availability": "live",
+      "percentile_vertical": 34,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 8
+      }
+    },
+    {
+      "metric_key": "chi",
+      "short_code": "CHI",
+      "name": "Customer Health Index",
+      "category_key": "customer",
+      "measures": "Beschwerde-/Eskalations-Anteil, Wiederhol-Beschwerden",
+      "value": 82,
+      "band": "gesund",
+      "confidence": 0.47,
+      "coverage": 0.38,
+      "weight": 0.09,
+      "availability": "live",
+      "percentile_vertical": 68,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 8
+      }
+    },
+    {
+      "metric_key": "rmi",
+      "short_code": "RMI",
+      "name": "Relationship Momentum Index",
+      "category_key": "customer",
+      "measures": "Interaktionsfrequenz je Top-Kunde",
+      "value": 77,
+      "band": "gesund",
+      "confidence": 0.41,
+      "coverage": 0.36,
+      "weight": 0.07,
+      "availability": "live",
+      "percentile_vertical": 61,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 8
+      }
+    },
+    {
+      "metric_key": "dmi",
+      "short_code": "DMI",
+      "name": "Demand Momentum Index",
+      "category_key": "sales",
+      "measures": "Anfrage-/Auftrags-Intents pro Woche",
+      "value": 75,
+      "band": "gesund",
+      "confidence": 0.46,
+      "coverage": 0.38,
+      "weight": 0.08,
+      "availability": "live",
+      "percentile_vertical": 58,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 8
+      }
+    },
+    {
+      "metric_key": "rhi",
+      "short_code": "RHI",
+      "name": "Response Health Index",
+      "category_key": "ops",
+      "measures": "First-Response-Zeit, Fristtreue, Liegenbleiber",
+      "value": 70,
+      "band": "gesund",
+      "confidence": 0.37,
+      "coverage": 0.34,
+      "weight": 0.07,
+      "availability": "live",
+      "percentile_vertical": 47,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 8
+      }
+    },
+    {
+      "metric_key": "cli",
+      "short_code": "CLI",
+      "name": "Communication Load Index",
+      "category_key": "ops",
+      "measures": "Volumen pro Tag, Backlog-Aufbau",
+      "value": 73,
+      "band": "gesund",
+      "confidence": 0.47,
+      "coverage": 0.38,
+      "weight": 0.06,
+      "availability": "live",
+      "percentile_vertical": 52,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 8
+      }
+    },
+    {
+      "metric_key": "cri",
+      "short_code": "CRI",
+      "name": "Commitment Reliability Index",
+      "category_key": "ops",
+      "measures": "Zugesagte Termine gegen tatsaechlich gehalten",
+      "value": 72,
+      "band": "gesund",
+      "confidence": 0.28,
+      "coverage": 0.23,
+      "weight": 0.07,
+      "availability": "live",
+      "percentile_vertical": 49,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 8
+      }
+    },
+    {
+      "metric_key": "ccri",
+      "short_code": "CCRI",
+      "name": "Contract & Churn-Risk Index",
+      "category_key": "risk",
+      "measures": "Kuendigungs-Intents, Verlaengerungs-Ratio",
+      "value": 72,
+      "band": "gesund",
+      "confidence": 0.45,
+      "coverage": 0.38,
+      "weight": 0.08,
+      "availability": "live",
+      "percentile_vertical": 51,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 8
+      }
+    },
+    {
+      "metric_key": "bri",
+      "short_code": "BRI",
+      "name": "Bau/HV-Risk Index",
+      "category_key": "risk",
+      "measures": "Maengel-, Nachtrags-, Verzugs-Intents",
+      "value": 80,
+      "band": "gesund",
+      "confidence": 0.46,
+      "coverage": 0.38,
+      "weight": 0.09,
+      "availability": "live",
+      "percentile_vertical": 66,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 8
+      }
+    },
+    {
+      "metric_key": "kdi",
+      "short_code": "KDI",
+      "name": "Key-Person-Dependency Index",
+      "category_key": "risk",
+      "measures": "Konzentration der Kommunikation auf einzelne Person",
+      "value": 84,
+      "band": "gesund",
+      "confidence": 0.35,
+      "coverage": 0.29,
+      "weight": 0.06,
+      "availability": "live",
+      "percentile_vertical": 71,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 8
+      }
+    },
+    {
+      "metric_key": "cdi",
+      "short_code": "CDI",
+      "name": "Compliance & Deadline Index",
+      "category_key": "risk",
+      "measures": "Erkannte rechtliche und behoerdliche Fristen",
+      "value": 81,
+      "band": "gesund",
+      "confidence": 0.44,
+      "coverage": 0.37,
+      "weight": 0.08,
+      "availability": "live",
+      "percentile_vertical": 64,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 8
+      }
+    },
+    {
+      "metric_key": "gqi",
+      "short_code": "GQI",
+      "name": "Ground-Truth-Quality Index",
+      "category_key": "quality",
+      "measures": "Automation-Coverage, Korrektur-Quote, Datenalter",
+      "value": 89,
+      "band": "gesund",
+      "confidence": 0.5,
+      "coverage": 0.38,
+      "weight": 0.0,
+      "availability": "live",
+      "percentile_vertical": 78,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Kemaris-Basislinie (eigene Kommunikations-Historie)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 8
+      }
+    }
+  ],
+  "benchmark": {
+    "vertical": "bau",
+    "median_health": 72,
+    "p25_health": 61,
+    "p75_health": 83,
+    "n_accounts": 148,
+    "delta_vs_median": -5
+  },
+  "history_note": "Historie im Aufbau (4 von 8 Wochen) — Werte noch eingeschraenkt belastbar",
+  "is_natural_person": true
+}

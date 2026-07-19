@@ -1,0 +1,65 @@
+{
+  "_fixture": "Steuert NUR Startansicht, Standard-Spalten und Sortierung. NIE den Datenumfang — der haengt allein an tenant_type.",
+  "credit_insurer": {
+    "label": "Kreditversicherer",
+    "start_view": "changes",
+    "columns": [
+      "name",
+      "health_score",
+      "band",
+      "delta_30d",
+      "exposure",
+      "top_reason",
+      "confidence",
+      "coverage",
+      "freshness"
+    ],
+    "sort": "priority_rank",
+    "highlight_categories": [
+      "risk",
+      "finance"
+    ]
+  },
+  "factoring": {
+    "label": "Factoring",
+    "start_view": "changes",
+    "columns": [
+      "name",
+      "health_score",
+      "band",
+      "fin_ar_aging",
+      "fin_dso",
+      "risk_dunning",
+      "risk_dispute",
+      "exposure",
+      "confidence",
+      "coverage"
+    ],
+    "sort": "priority_rank",
+    "highlight_categories": [
+      "finance",
+      "risk"
+    ]
+  },
+  "alternative_lender": {
+    "label": "Alternativer Kreditgeber",
+    "start_view": "portfolio",
+    "columns": [
+      "name",
+      "health_score",
+      "band",
+      "fin_liquidity",
+      "fin_runway",
+      "rev_growth",
+      "fin_burn",
+      "quality_tier",
+      "confidence",
+      "coverage"
+    ],
+    "sort": "health_score_asc",
+    "highlight_categories": [
+      "finance",
+      "sales"
+    ]
+  }
+}

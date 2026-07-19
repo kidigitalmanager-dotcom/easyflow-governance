@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { InvestorLayout } from "@/components/layout/InvestorLayout";
+import { RiskLayout } from "@/components/layout/RiskLayout";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
@@ -26,6 +27,9 @@ import Chancen from "./pages/Chancen";
 import Datenquellen from "./pages/Datenquellen";
 import Onboarding from "./pages/Onboarding";
 import Investoren from "./pages/Investoren";
+import RiskIndex from "./risk/pages/RiskIndex";
+import RiskNameDetail from "./risk/pages/RiskNameDetail";
+import RiskPlaceholder from "./risk/pages/RiskPlaceholder";
 import NotFound from "./pages/NotFound";
 import AdminPromotion from "./pages/AdminPromotion";
 import Admin from "./pages/Admin";
@@ -36,16 +40,23 @@ import AdminOnboardingFunnel from "./pages/AdminOnboardingFunnel";
 const queryClient = new QueryClient();
 
 // "/" lands per role chosen at login (2 Kacheln: Unternehmen / Investor).
+function currentRole(): string | null {
+  return typeof window !== "undefined" ? localStorage.getItem("ue_role") : null;
+}
+
 function RoleHome() {
-  const role = typeof window !== "undefined" ? localStorage.getItem("ue_role") : null;
+  const role = currentRole();
   if (role === "investor") return <Navigate to="/investoren" replace />;
+  if (role === "risk") return <Navigate to="/risk" replace />;
   return <Uebersicht />;
 }
 
 // Investors are confined to their own frontend — no operator console/config.
 function RoleGate({ children }: { children: React.ReactNode }) {
-  const role = typeof window !== "undefined" ? localStorage.getItem("ue_role") : null;
+  const role = currentRole();
   if (role === "investor") return <Navigate to="/investoren" replace />;
+  // Underwriting-Mandanten sehen die Operating-Konsole nie.
+  if (role === "risk") return <Navigate to="/risk" replace />;
   return <>{children}</>;
 }
 
@@ -53,8 +64,18 @@ function RoleGate({ children }: { children: React.ReactNode }) {
 // Investor und Unternehmen sind getrennte Frontends; die Rolle wird beim Login
 // gewaehlt (2 Kacheln), Wechsel nur ueber Abmelden + neue Rollenwahl.
 function InvestorGate({ children }: { children: React.ReactNode }) {
-  const role = typeof window !== "undefined" ? localStorage.getItem("ue_role") : null;
+  const role = currentRole();
+  if (role === "risk") return <Navigate to="/risk" replace />;
   if (role !== "investor") return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+// Drittes Frontend: Kreditversicherer, Factoring, alternative Kreditgeber.
+// Kein Zugang zur Operating-Konsole und keiner zum Investoren-Frontend.
+function RiskGate({ children }: { children: React.ReactNode }) {
+  const role = currentRole();
+  if (role === "investor") return <Navigate to="/investoren" replace />;
+  if (role !== "risk") return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -79,6 +100,60 @@ const App = () => (
                     <Investoren />
                   </InvestorLayout>
                   </InvestorGate>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/risk/*"
+              element={
+                <ProtectedRoute>
+                  <RiskGate>
+                    <RiskLayout>
+                      <Routes>
+                        <Route path="/" element={<RiskIndex />} />
+                        <Route path="/name/:accountId" element={<RiskNameDetail />} />
+                        <Route path="/bestand" element={
+                          <RiskPlaceholder title="Bestand" day="Ausbaustufe Tag 3 bis 4" bullets={[
+                            "Virtualisierte Tabelle, serverseitig sortiert und gefiltert, bis 500.000 Zeilen",
+                            "Spalten konfigurierbar - Score, Konfidenz, Abdeckung und Aktualitaet bleiben immer sichtbar",
+                            "Zusammengesetzte Filter, speicherbar und im Team teilbar",
+                            "Suche ueber Name, Handelsregisternummer, USt-IdNr. und interne Debitorennummer",
+                            "Bestandsabgleich per Datei mit offen ausgewiesener Trefferquote",
+                            "Heatmap mit frei waehlbaren Achsen",
+                          ]} />} />
+                        <Route path="/alerts" element={
+                          <RiskPlaceholder title="Alerts" day="Ausbaustufe Tag 7 bis 8" bullets={[
+                            "Regel-Editor: Bedingung mal Geltungsbereich mal Kanal",
+                            "Rueckwirkungs-Vorschau vor dem Scharfschalten: wie viele Treffer die Regel in den letzten 90 Tagen erzeugt haette",
+                            "Zustaendigkeit je Regel, Treffer landen im Arbeitsvorrat",
+                            "Regel-Historie versioniert",
+                          ]} />} />
+                        <Route path="/governance" element={
+                          <RiskPlaceholder title="Governance" day="Ausbaustufe Tag 6" bullets={[
+                            "Modellversion, Changelog und Verfahrensbeschreibung zum Download",
+                            "Abdeckung nach Kennzahl und Branche, Verteilung der Datenaktualitaet",
+                            "Populationsstabilitaet mit Verlauf",
+                            "Trennschaerfe - fehlende Ausfallhistorie wird erklaert, nicht ausgeblendet",
+                            "Rechtsform-Split und Audit-Trail-Export",
+                          ]} />} />
+                        <Route path="/anfragen" element={
+                          <RiskPlaceholder title="Betroffenen-Anfragen" day="Ausbaustufe nach Tag 8" bullets={[
+                            "Anfrage am Namen mit einem Klick weiterleiten",
+                            "Herleitung deterministisch als PDF, reproduzierbar fuer jeden historischen Stand",
+                            "Widerspruch strukturiert erfassen, Fristen zaehlen",
+                            "Protokollierung revisionsfest",
+                          ]} />} />
+                        <Route path="/integration" element={
+                          <RiskPlaceholder title="Integration" day="Ausbaustufe nach Tag 8" bullets={[
+                            "API-Schluessel mit Rotation",
+                            "Feed-Status und Latenz",
+                            "Kontingent gegen Rate Card mit Warnschwelle",
+                            "Webhooks und Zustellprotokoll, Export-Historie",
+                          ]} />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </RiskLayout>
+                  </RiskGate>
                 </ProtectedRoute>
               }
             />
