@@ -199,3 +199,35 @@ export function methodLabel(raw: string | null | undefined): string {
   }
   return raw;
 }
+
+// ── Die vier Verhaltenssignale ───────────────────────────────────────────────
+// Sie unterscheiden das Risk-Portal von einem Bonitaetsscore: sie messen
+// Verhalten gegenueber Glaeubigern, nicht Bilanzwerte. Spezifikation:
+// 02-Spezifikation/SIGNAL-SPEC-VERHALTENSSIGNALE-2026-07-20.md
+
+export const BEHAVIOUR_META: Record<string, { short: string; label: string; why: string }> = {
+  beh_promise_break: {
+    short: "ZBQ", label: "Zahlungszusage-Bruchquote",
+    why: "Wie oft dieser Betrieb eine Zahlung zugesagt und die Zusage nicht gehalten hat. " +
+         "Reines Verhalten, steht in keinem Jahresabschluss.",
+  },
+  beh_creditor_silence: {
+    short: "GAV", label: "Glaeubiger-Antwortverfall",
+    why: "Antwortet der Betrieb seinen Glaeubigern noch so schnell wie seinen Kunden. " +
+         "Gemessen wird die Spreizung zwischen beiden, nicht die Latenz selbst.",
+  },
+  beh_early_dispute: {
+    short: "DFQ", label: "Disput-Fruehquote",
+    why: "Anteil der Rechnungen, zu denen eine Beanstandung eintrifft, bevor sie faellig sind. " +
+         "Die Kernfrage des Factorings: besteht die Forderung ueberhaupt.",
+  },
+  beh_escalation_speed: {
+    short: "ESK", label: "Eskalationsgeschwindigkeit",
+    why: "Wie schnell Gegenstellen von der Anfrage ueber die Mahnung zum Anwalt gehen. " +
+         "Das Tempo unterscheidet einen Streitfall von einem Zusammenbruch.",
+  },
+};
+
+export function isBehaviourMetric(key: string): boolean {
+  return key in BEHAVIOUR_META;
+}

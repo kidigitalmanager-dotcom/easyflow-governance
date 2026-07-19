@@ -31,7 +31,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 150000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 78,
+        "beh_creditor_silence": 82,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00001",
@@ -64,7 +70,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 61,
+        "beh_creditor_silence": 71,
+        "beh_early_dispute": 62,
+        "beh_escalation_speed": 63
+      }
     },
     {
       "account_id": "acc_00002",
@@ -98,7 +110,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 93,
+        "beh_creditor_silence": 90,
+        "beh_early_dispute": 93,
+        "beh_escalation_speed": 98
+      }
     },
     {
       "account_id": "acc_00003",
@@ -130,7 +148,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 88,
+        "beh_creditor_silence": 90,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 98
+      }
     },
     {
       "account_id": "acc_00004",
@@ -163,7 +187,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 51,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": 74,
+        "beh_escalation_speed": 58
+      }
     },
     {
       "account_id": "acc_00005",
@@ -197,7 +227,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 94,
+        "beh_early_dispute": 90,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00006",
@@ -229,7 +265,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 62,
+        "beh_creditor_silence": 71,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00007",
@@ -262,7 +304,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 86,
+        "beh_creditor_silence": 89,
+        "beh_early_dispute": 96,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00008",
@@ -296,7 +344,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 61,
+        "beh_creditor_silence": 57,
+        "beh_early_dispute": 60,
+        "beh_escalation_speed": 44
+      }
     },
     {
       "account_id": "acc_00009",
@@ -328,7 +382,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 62,
+        "beh_creditor_silence": 72,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 84
+      }
     },
     {
       "account_id": "acc_00010",
@@ -361,7 +421,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 63,
+        "beh_early_dispute": 85,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00011",
@@ -395,7 +461,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 62,
+        "beh_creditor_silence": 66,
+        "beh_early_dispute": 55,
+        "beh_escalation_speed": 51
+      }
     },
     {
       "account_id": "acc_00012",
@@ -427,7 +499,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 76,
+        "beh_creditor_silence": 73,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 67
+      }
     },
     {
       "account_id": "acc_00013",
@@ -460,7 +538,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 75,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": 73,
+        "beh_escalation_speed": 65
+      }
     },
     {
       "account_id": "acc_00014",
@@ -494,7 +578,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 76,
+        "beh_creditor_silence": 76,
+        "beh_early_dispute": 79,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00015",
@@ -526,7 +616,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 85,
+        "beh_creditor_silence": 81,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 85
+      }
     },
     {
       "account_id": "acc_00016",
@@ -559,7 +655,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 60,
+        "beh_creditor_silence": 57,
+        "beh_early_dispute": 55,
+        "beh_escalation_speed": 61
+      }
     },
     {
       "account_id": "acc_00017",
@@ -593,7 +695,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 53,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": 50,
+        "beh_escalation_speed": 47
+      }
     },
     {
       "account_id": "acc_00018",
@@ -625,7 +733,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 83,
+        "beh_creditor_silence": 82,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 66
+      }
     },
     {
       "account_id": "acc_00019",
@@ -658,7 +772,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 37,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": 57,
+        "beh_escalation_speed": 38
+      }
     },
     {
       "account_id": "acc_00020",
@@ -692,7 +812,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 72,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": 82,
+        "beh_escalation_speed": 75
+      }
     },
     {
       "account_id": "acc_00021",
@@ -724,7 +850,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 90000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 52,
+        "beh_creditor_silence": 55,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 39
+      }
     },
     {
       "account_id": "acc_00022",
@@ -757,7 +889,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 76,
+        "beh_creditor_silence": 75,
+        "beh_early_dispute": 80,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00023",
@@ -791,7 +929,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 53,
+        "beh_creditor_silence": 71,
+        "beh_early_dispute": 57,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00024",
@@ -823,7 +967,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 59,
+        "beh_creditor_silence": 56,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 70
+      }
     },
     {
       "account_id": "acc_00025",
@@ -856,7 +1006,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 98,
+        "beh_creditor_silence": 82,
+        "beh_early_dispute": 83,
+        "beh_escalation_speed": 97
+      }
     },
     {
       "account_id": "acc_00026",
@@ -890,7 +1046,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 64,
+        "beh_creditor_silence": 51,
+        "beh_early_dispute": 60,
+        "beh_escalation_speed": 72
+      }
     },
     {
       "account_id": "acc_00027",
@@ -922,7 +1084,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 76,
+        "beh_creditor_silence": 66,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 75
+      }
     },
     {
       "account_id": "acc_00028",
@@ -955,7 +1123,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 64,
+        "beh_creditor_silence": 51,
+        "beh_early_dispute": 65,
+        "beh_escalation_speed": 43
+      }
     },
     {
       "account_id": "acc_00029",
@@ -989,7 +1163,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 97,
+        "beh_early_dispute": 97,
+        "beh_escalation_speed": 89
+      }
     },
     {
       "account_id": "acc_00030",
@@ -1021,7 +1201,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 72,
+        "beh_creditor_silence": 80,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 71
+      }
     },
     {
       "account_id": "acc_00031",
@@ -1054,7 +1240,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 63,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": 69,
+        "beh_escalation_speed": 71
+      }
     },
     {
       "account_id": "acc_00032",
@@ -1088,7 +1280,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 74,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": 67,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00033",
@@ -1120,7 +1318,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 51,
+        "beh_creditor_silence": 52,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00034",
@@ -1153,7 +1357,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 87,
+        "beh_creditor_silence": 74,
+        "beh_early_dispute": 74,
+        "beh_escalation_speed": 67
+      }
     },
     {
       "account_id": "acc_00035",
@@ -1187,7 +1397,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 62,
+        "beh_creditor_silence": 52,
+        "beh_early_dispute": 48,
+        "beh_escalation_speed": 38
+      }
     },
     {
       "account_id": "acc_00036",
@@ -1219,7 +1435,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 79,
+        "beh_creditor_silence": 87,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00037",
@@ -1252,7 +1474,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 63,
+        "beh_creditor_silence": 71,
+        "beh_early_dispute": 67,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00038",
@@ -1286,7 +1514,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 46,
+        "beh_creditor_silence": 44,
+        "beh_early_dispute": 40,
+        "beh_escalation_speed": 30
+      }
     },
     {
       "account_id": "acc_00039",
@@ -1318,7 +1552,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 95,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 87
+      }
     },
     {
       "account_id": "acc_00040",
@@ -1351,7 +1591,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 74,
+        "beh_creditor_silence": 66,
+        "beh_early_dispute": 62,
+        "beh_escalation_speed": 79
+      }
     },
     {
       "account_id": "acc_00041",
@@ -1385,7 +1631,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 89,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": 95,
+        "beh_escalation_speed": 76
+      }
     },
     {
       "account_id": "acc_00042",
@@ -1417,7 +1669,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 1200000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 60,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 72
+      }
     },
     {
       "account_id": "acc_00043",
@@ -1450,7 +1708,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 84,
+        "beh_creditor_silence": 99,
+        "beh_early_dispute": 100,
+        "beh_escalation_speed": 83
+      }
     },
     {
       "account_id": "acc_00044",
@@ -1484,7 +1748,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 64,
+        "beh_creditor_silence": 58,
+        "beh_early_dispute": 64,
+        "beh_escalation_speed": 47
+      }
     },
     {
       "account_id": "acc_00045",
@@ -1516,7 +1786,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 78,
+        "beh_creditor_silence": 61,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 76
+      }
     },
     {
       "account_id": "acc_00046",
@@ -1549,7 +1825,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 61,
+        "beh_creditor_silence": 57,
+        "beh_early_dispute": 58,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00047",
@@ -1583,7 +1865,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 64,
+        "beh_creditor_silence": 80,
+        "beh_early_dispute": 78,
+        "beh_escalation_speed": 63
+      }
     },
     {
       "account_id": "acc_00048",
@@ -1615,7 +1903,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 69,
+        "beh_creditor_silence": 58,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 62
+      }
     },
     {
       "account_id": "acc_00049",
@@ -1648,7 +1942,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 54,
+        "beh_creditor_silence": 54,
+        "beh_early_dispute": 44,
+        "beh_escalation_speed": 56
+      }
     },
     {
       "account_id": "acc_00050",
@@ -1682,7 +1982,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 88,
+        "beh_creditor_silence": 79,
+        "beh_early_dispute": 86,
+        "beh_escalation_speed": 79
+      }
     },
     {
       "account_id": "acc_00051",
@@ -1714,7 +2020,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 89,
+        "beh_creditor_silence": 90,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 94
+      }
     },
     {
       "account_id": "acc_00052",
@@ -1747,7 +2059,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 80,
+        "beh_early_dispute": 74,
+        "beh_escalation_speed": 83
+      }
     },
     {
       "account_id": "acc_00053",
@@ -1781,7 +2099,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 52,
+        "beh_creditor_silence": 39,
+        "beh_early_dispute": 44,
+        "beh_escalation_speed": 43
+      }
     },
     {
       "account_id": "acc_00054",
@@ -1813,7 +2137,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 68,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 79
+      }
     },
     {
       "account_id": "acc_00055",
@@ -1846,7 +2176,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 88,
+        "beh_creditor_silence": 87,
+        "beh_early_dispute": 80,
+        "beh_escalation_speed": 81
+      }
     },
     {
       "account_id": "acc_00056",
@@ -1880,7 +2216,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 59,
+        "beh_creditor_silence": 56,
+        "beh_early_dispute": 51,
+        "beh_escalation_speed": 66
+      }
     },
     {
       "account_id": "acc_00057",
@@ -1912,7 +2254,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 74,
+        "beh_creditor_silence": 63,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00058",
@@ -1945,7 +2293,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 90,
+        "beh_creditor_silence": 87,
+        "beh_early_dispute": 88,
+        "beh_escalation_speed": 75
+      }
     },
     {
       "account_id": "acc_00059",
@@ -1979,7 +2333,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 47,
+        "beh_creditor_silence": 58,
+        "beh_early_dispute": 47,
+        "beh_escalation_speed": 69
+      }
     },
     {
       "account_id": "acc_00060",
@@ -2011,7 +2371,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 70,
+        "beh_creditor_silence": 63,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00061",
@@ -2044,7 +2410,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 65,
+        "beh_creditor_silence": 60,
+        "beh_early_dispute": 60,
+        "beh_escalation_speed": 71
+      }
     },
     {
       "account_id": "acc_00062",
@@ -2078,7 +2450,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 88,
+        "beh_creditor_silence": 76,
+        "beh_early_dispute": 82,
+        "beh_escalation_speed": 81
+      }
     },
     {
       "account_id": "acc_00063",
@@ -2110,7 +2488,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 1200000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 80,
+        "beh_creditor_silence": 63,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 61
+      }
     },
     {
       "account_id": "acc_00064",
@@ -2143,7 +2527,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 88,
+        "beh_early_dispute": 88,
+        "beh_escalation_speed": 70
+      }
     },
     {
       "account_id": "acc_00065",
@@ -2177,7 +2567,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 50,
+        "beh_creditor_silence": 45,
+        "beh_early_dispute": 45,
+        "beh_escalation_speed": 30
+      }
     },
     {
       "account_id": "acc_00066",
@@ -2209,7 +2605,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 53,
+        "beh_creditor_silence": 51,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00067",
@@ -2242,7 +2644,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 70,
+        "beh_creditor_silence": 87,
+        "beh_early_dispute": 81,
+        "beh_escalation_speed": 65
+      }
     },
     {
       "account_id": "acc_00068",
@@ -2276,7 +2684,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 76,
+        "beh_early_dispute": 72,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00069",
@@ -2308,7 +2722,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 62,
+        "beh_creditor_silence": 71,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 80
+      }
     },
     {
       "account_id": "acc_00070",
@@ -2341,7 +2761,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 90,
+        "beh_creditor_silence": 80,
+        "beh_early_dispute": 99,
+        "beh_escalation_speed": 94
+      }
     },
     {
       "account_id": "acc_00071",
@@ -2375,7 +2801,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 86,
+        "beh_creditor_silence": 91,
+        "beh_early_dispute": 85,
+        "beh_escalation_speed": 94
+      }
     },
     {
       "account_id": "acc_00072",
@@ -2407,7 +2839,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 53,
+        "beh_creditor_silence": 53,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 28
+      }
     },
     {
       "account_id": "acc_00073",
@@ -2440,7 +2878,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 59,
+        "beh_creditor_silence": 52,
+        "beh_early_dispute": 51,
+        "beh_escalation_speed": 56
+      }
     },
     {
       "account_id": "acc_00074",
@@ -2474,7 +2918,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 76,
+        "beh_early_dispute": 59,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00075",
@@ -2506,7 +2956,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 56,
+        "beh_creditor_silence": 38,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 53
+      }
     },
     {
       "account_id": "acc_00076",
@@ -2539,7 +2995,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 88,
+        "beh_creditor_silence": 73,
+        "beh_early_dispute": 77,
+        "beh_escalation_speed": 66
+      }
     },
     {
       "account_id": "acc_00077",
@@ -2573,7 +3035,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 77,
+        "beh_early_dispute": 93,
+        "beh_escalation_speed": 83
+      }
     },
     {
       "account_id": "acc_00078",
@@ -2605,7 +3073,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 86,
+        "beh_creditor_silence": 88,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00079",
@@ -2638,7 +3112,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 85,
+        "beh_creditor_silence": 70,
+        "beh_early_dispute": 82,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00080",
@@ -2672,7 +3152,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 62,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": 57,
+        "beh_escalation_speed": 63
+      }
     },
     {
       "account_id": "acc_00081",
@@ -2704,7 +3190,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 68,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 75
+      }
     },
     {
       "account_id": "acc_00082",
@@ -2737,7 +3229,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 46,
+        "beh_creditor_silence": 35,
+        "beh_early_dispute": 44,
+        "beh_escalation_speed": 46
+      }
     },
     {
       "account_id": "acc_00083",
@@ -2771,7 +3269,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 82,
+        "beh_creditor_silence": 94,
+        "beh_early_dispute": 95,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00084",
@@ -2803,7 +3307,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 15000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 84,
+        "beh_creditor_silence": 79,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00085",
@@ -2836,7 +3346,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 33,
+        "beh_creditor_silence": 43,
+        "beh_early_dispute": 45,
+        "beh_escalation_speed": 45
+      }
     },
     {
       "account_id": "acc_00086",
@@ -2870,7 +3386,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 96,
+        "beh_creditor_silence": 77,
+        "beh_early_dispute": 77,
+        "beh_escalation_speed": 98
+      }
     },
     {
       "account_id": "acc_00087",
@@ -2902,7 +3424,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 29,
+        "beh_creditor_silence": 31,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 30
+      }
     },
     {
       "account_id": "acc_00088",
@@ -2935,7 +3463,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 80,
+        "beh_creditor_silence": 58,
+        "beh_early_dispute": 55,
+        "beh_escalation_speed": 61
+      }
     },
     {
       "account_id": "acc_00089",
@@ -2969,7 +3503,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 86,
+        "beh_creditor_silence": 93,
+        "beh_early_dispute": 98,
+        "beh_escalation_speed": 90
+      }
     },
     {
       "account_id": "acc_00090",
@@ -3001,7 +3541,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 51,
+        "beh_creditor_silence": 49,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 50
+      }
     },
     {
       "account_id": "acc_00091",
@@ -3034,7 +3580,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 76,
+        "beh_creditor_silence": 55,
+        "beh_early_dispute": 62,
+        "beh_escalation_speed": 61
+      }
     },
     {
       "account_id": "acc_00092",
@@ -3068,7 +3620,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 78,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": 56,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00093",
@@ -3100,7 +3658,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 73,
+        "beh_creditor_silence": 57,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 75
+      }
     },
     {
       "account_id": "acc_00094",
@@ -3133,7 +3697,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 65,
+        "beh_creditor_silence": 75,
+        "beh_early_dispute": 64,
+        "beh_escalation_speed": 50
+      }
     },
     {
       "account_id": "acc_00095",
@@ -3167,7 +3737,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 74,
+        "beh_early_dispute": 72,
+        "beh_escalation_speed": 87
+      }
     },
     {
       "account_id": "acc_00096",
@@ -3199,7 +3775,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 46,
+        "beh_creditor_silence": 55,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 59
+      }
     },
     {
       "account_id": "acc_00097",
@@ -3232,7 +3814,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 78,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": 72,
+        "beh_escalation_speed": 66
+      }
     },
     {
       "account_id": "acc_00098",
@@ -3266,7 +3854,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 61,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": 61,
+        "beh_escalation_speed": 62
+      }
     },
     {
       "account_id": "acc_00099",
@@ -3298,7 +3892,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 70,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 62
+      }
     },
     {
       "account_id": "acc_00100",
@@ -3331,7 +3931,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 61,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": 60,
+        "beh_escalation_speed": 54
+      }
     },
     {
       "account_id": "acc_00101",
@@ -3365,7 +3971,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 57,
+        "beh_creditor_silence": 48,
+        "beh_early_dispute": 55,
+        "beh_escalation_speed": 54
+      }
     },
     {
       "account_id": "acc_00102",
@@ -3397,7 +4009,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 78,
+        "beh_creditor_silence": 76,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 61
+      }
     },
     {
       "account_id": "acc_00103",
@@ -3430,7 +4048,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 58,
+        "beh_creditor_silence": 73,
+        "beh_early_dispute": 79,
+        "beh_escalation_speed": 69
+      }
     },
     {
       "account_id": "acc_00104",
@@ -3464,7 +4088,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 76,
+        "beh_creditor_silence": 58,
+        "beh_early_dispute": 80,
+        "beh_escalation_speed": 59
+      }
     },
     {
       "account_id": "acc_00105",
@@ -3496,7 +4126,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 1200000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 68,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 57
+      }
     },
     {
       "account_id": "acc_00106",
@@ -3529,7 +4165,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 89,
+        "beh_escalation_speed": 88
+      }
     },
     {
       "account_id": "acc_00107",
@@ -3563,7 +4205,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 89,
+        "beh_creditor_silence": 73,
+        "beh_early_dispute": 70,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00108",
@@ -3595,7 +4243,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 43,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00109",
@@ -3628,7 +4282,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": 80,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00110",
@@ -3662,7 +4322,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 88,
+        "beh_escalation_speed": 94
+      }
     },
     {
       "account_id": "acc_00111",
@@ -3694,7 +4360,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 85,
+        "beh_creditor_silence": 81,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 87
+      }
     },
     {
       "account_id": "acc_00112",
@@ -3727,7 +4399,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 53,
+        "beh_early_dispute": 58,
+        "beh_escalation_speed": 46
+      }
     },
     {
       "account_id": "acc_00113",
@@ -3761,7 +4439,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": 56,
+        "beh_escalation_speed": 53
+      }
     },
     {
       "account_id": "acc_00114",
@@ -3793,7 +4477,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 80,
+        "beh_creditor_silence": 81,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 71
+      }
     },
     {
       "account_id": "acc_00115",
@@ -3826,7 +4516,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 78,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": 64,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00116",
@@ -3860,7 +4556,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 68,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": 65,
+        "beh_escalation_speed": 70
+      }
     },
     {
       "account_id": "acc_00117",
@@ -3892,7 +4594,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 51,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00118",
@@ -3925,7 +4633,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 54,
+        "beh_creditor_silence": 68,
+        "beh_early_dispute": 72,
+        "beh_escalation_speed": 61
+      }
     },
     {
       "account_id": "acc_00119",
@@ -3959,7 +4673,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 57,
+        "beh_creditor_silence": 56,
+        "beh_early_dispute": 77,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00120",
@@ -3991,7 +4711,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 42,
+        "beh_creditor_silence": 45,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 44
+      }
     },
     {
       "account_id": "acc_00121",
@@ -4024,7 +4750,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 66,
+        "beh_early_dispute": 71,
+        "beh_escalation_speed": 69
+      }
     },
     {
       "account_id": "acc_00122",
@@ -4058,7 +4790,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 56,
+        "beh_creditor_silence": 52,
+        "beh_early_dispute": 50,
+        "beh_escalation_speed": 50
+      }
     },
     {
       "account_id": "acc_00123",
@@ -4090,7 +4828,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 94,
+        "beh_creditor_silence": 94,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 79
+      }
     },
     {
       "account_id": "acc_00124",
@@ -4123,7 +4867,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 80,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": 72,
+        "beh_escalation_speed": 76
+      }
     },
     {
       "account_id": "acc_00125",
@@ -4157,7 +4907,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 55,
+        "beh_creditor_silence": 61,
+        "beh_early_dispute": 58,
+        "beh_escalation_speed": 44
+      }
     },
     {
       "account_id": "acc_00126",
@@ -4189,7 +4945,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 240000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 70,
+        "beh_creditor_silence": 82,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 76
+      }
     },
     {
       "account_id": "acc_00127",
@@ -4222,7 +4984,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 73,
+        "beh_creditor_silence": 82,
+        "beh_early_dispute": 68,
+        "beh_escalation_speed": 82
+      }
     },
     {
       "account_id": "acc_00128",
@@ -4256,7 +5024,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 63,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": 67,
+        "beh_escalation_speed": 49
+      }
     },
     {
       "account_id": "acc_00129",
@@ -4288,7 +5062,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 54,
+        "beh_creditor_silence": 56,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 71
+      }
     },
     {
       "account_id": "acc_00130",
@@ -4321,7 +5101,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": 81,
+        "beh_escalation_speed": 79
+      }
     },
     {
       "account_id": "acc_00131",
@@ -4355,7 +5141,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 90,
+        "beh_creditor_silence": 93,
+        "beh_early_dispute": 94,
+        "beh_escalation_speed": 94
+      }
     },
     {
       "account_id": "acc_00132",
@@ -4387,7 +5179,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 91,
+        "beh_creditor_silence": 92,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00133",
@@ -4420,7 +5218,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 53,
+        "beh_creditor_silence": 48,
+        "beh_early_dispute": 46,
+        "beh_escalation_speed": 57
+      }
     },
     {
       "account_id": "acc_00134",
@@ -4454,7 +5258,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 89,
+        "beh_early_dispute": 100,
+        "beh_escalation_speed": 97
+      }
     },
     {
       "account_id": "acc_00135",
@@ -4486,7 +5296,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 92,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00136",
@@ -4519,7 +5335,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 83,
+        "beh_creditor_silence": 78,
+        "beh_early_dispute": 73,
+        "beh_escalation_speed": 82
+      }
     },
     {
       "account_id": "acc_00137",
@@ -4553,7 +5375,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 97,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 92,
+        "beh_escalation_speed": 87
+      }
     },
     {
       "account_id": "acc_00138",
@@ -4585,7 +5413,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 65,
+        "beh_creditor_silence": 81,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00139",
@@ -4618,7 +5452,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 53,
+        "beh_creditor_silence": 63,
+        "beh_early_dispute": 62,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00140",
@@ -4652,7 +5492,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 53,
+        "beh_creditor_silence": 42,
+        "beh_early_dispute": 41,
+        "beh_escalation_speed": 47
+      }
     },
     {
       "account_id": "acc_00141",
@@ -4684,7 +5530,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 77,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00142",
@@ -4717,7 +5569,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 30,
+        "beh_creditor_silence": 29,
+        "beh_early_dispute": 32,
+        "beh_escalation_speed": 35
+      }
     },
     {
       "account_id": "acc_00143",
@@ -4751,7 +5609,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 82,
+        "beh_creditor_silence": 87,
+        "beh_early_dispute": 84,
+        "beh_escalation_speed": 93
+      }
     },
     {
       "account_id": "acc_00144",
@@ -4783,7 +5647,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 90,
+        "beh_creditor_silence": 96,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00145",
@@ -4816,7 +5686,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 33,
+        "beh_creditor_silence": 39,
+        "beh_early_dispute": 40,
+        "beh_escalation_speed": 48
+      }
     },
     {
       "account_id": "acc_00146",
@@ -4850,7 +5726,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 54,
+        "beh_creditor_silence": 52,
+        "beh_early_dispute": 70,
+        "beh_escalation_speed": 58
+      }
     },
     {
       "account_id": "acc_00147",
@@ -4882,7 +5764,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": null,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 70,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 62
+      }
     },
     {
       "account_id": "acc_00148",
@@ -4915,7 +5803,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 93,
+        "beh_creditor_silence": 77,
+        "beh_early_dispute": 79,
+        "beh_escalation_speed": 85
+      }
     },
     {
       "account_id": "acc_00149",
@@ -4949,7 +5843,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": 81,
+        "beh_escalation_speed": 84
+      }
     },
     {
       "account_id": "acc_00150",
@@ -4981,7 +5881,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 77,
+        "beh_creditor_silence": 91,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 73
+      }
     },
     {
       "account_id": "acc_00151",
@@ -5014,7 +5920,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 85,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00152",
@@ -5048,7 +5960,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 65,
+        "beh_creditor_silence": 49,
+        "beh_early_dispute": 47,
+        "beh_escalation_speed": 50
+      }
     },
     {
       "account_id": "acc_00153",
@@ -5080,7 +5998,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 62
+      }
     },
     {
       "account_id": "acc_00154",
@@ -5113,7 +6037,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 75,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": 73,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00155",
@@ -5147,7 +6077,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 72,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": 62,
+        "beh_escalation_speed": 71
+      }
     },
     {
       "account_id": "acc_00156",
@@ -5179,7 +6115,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 82,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 84
+      }
     },
     {
       "account_id": "acc_00157",
@@ -5212,7 +6154,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 75,
+        "beh_creditor_silence": 78,
+        "beh_early_dispute": 86,
+        "beh_escalation_speed": 93
+      }
     },
     {
       "account_id": "acc_00158",
@@ -5246,7 +6194,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 73,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": 86,
+        "beh_escalation_speed": 85
+      }
     },
     {
       "account_id": "acc_00159",
@@ -5278,7 +6232,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 76,
+        "beh_creditor_silence": 81,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00160",
@@ -5311,7 +6271,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 74,
+        "beh_creditor_silence": 91,
+        "beh_early_dispute": 83,
+        "beh_escalation_speed": 98
+      }
     },
     {
       "account_id": "acc_00161",
@@ -5345,7 +6311,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 59,
+        "beh_creditor_silence": 52,
+        "beh_early_dispute": 49,
+        "beh_escalation_speed": 48
+      }
     },
     {
       "account_id": "acc_00162",
@@ -5377,7 +6349,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 60,
+        "beh_creditor_silence": 48,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 46
+      }
     },
     {
       "account_id": "acc_00163",
@@ -5410,7 +6388,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 93,
+        "beh_early_dispute": 82,
+        "beh_escalation_speed": 95
+      }
     },
     {
       "account_id": "acc_00164",
@@ -5444,7 +6428,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 62,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": 73,
+        "beh_escalation_speed": 73
+      }
     },
     {
       "account_id": "acc_00165",
@@ -5476,7 +6466,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 64,
+        "beh_creditor_silence": 78,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 67
+      }
     },
     {
       "account_id": "acc_00166",
@@ -5509,7 +6505,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 79,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": 81,
+        "beh_escalation_speed": 67
+      }
     },
     {
       "account_id": "acc_00167",
@@ -5543,7 +6545,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 85,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": 64,
+        "beh_escalation_speed": 65
+      }
     },
     {
       "account_id": "acc_00168",
@@ -5575,7 +6583,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 500000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 72,
+        "beh_creditor_silence": 92,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00169",
@@ -5608,7 +6622,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 69,
+        "beh_creditor_silence": 58,
+        "beh_early_dispute": 70,
+        "beh_escalation_speed": 53
+      }
     },
     {
       "account_id": "acc_00170",
@@ -5642,7 +6662,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 40,
+        "beh_creditor_silence": 56,
+        "beh_early_dispute": 47,
+        "beh_escalation_speed": 43
+      }
     },
     {
       "account_id": "acc_00171",
@@ -5674,7 +6700,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 78,
+        "beh_creditor_silence": 63,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 70
+      }
     },
     {
       "account_id": "acc_00172",
@@ -5707,7 +6739,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 57,
+        "beh_creditor_silence": 63,
+        "beh_early_dispute": 60,
+        "beh_escalation_speed": 50
+      }
     },
     {
       "account_id": "acc_00173",
@@ -5741,7 +6779,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 60,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": 70,
+        "beh_escalation_speed": 72
+      }
     },
     {
       "account_id": "acc_00174",
@@ -5773,7 +6817,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 54,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00175",
@@ -5806,7 +6856,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 53,
+        "beh_creditor_silence": 41,
+        "beh_early_dispute": 37,
+        "beh_escalation_speed": 52
+      }
     },
     {
       "account_id": "acc_00176",
@@ -5840,7 +6896,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 96,
+        "beh_early_dispute": 100,
+        "beh_escalation_speed": 96
+      }
     },
     {
       "account_id": "acc_00177",
@@ -5872,7 +6934,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 65,
+        "beh_creditor_silence": 77,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 76
+      }
     },
     {
       "account_id": "acc_00178",
@@ -5905,7 +6973,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 81,
+        "beh_early_dispute": 87,
+        "beh_escalation_speed": 89
+      }
     },
     {
       "account_id": "acc_00179",
@@ -5939,7 +7013,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 79,
+        "beh_creditor_silence": 73,
+        "beh_early_dispute": 78,
+        "beh_escalation_speed": 86
+      }
     },
     {
       "account_id": "acc_00180",
@@ -5971,7 +7051,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 69
+      }
     },
     {
       "account_id": "acc_00181",
@@ -6004,7 +7090,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 74,
+        "beh_creditor_silence": 90,
+        "beh_early_dispute": 85,
+        "beh_escalation_speed": 94
+      }
     },
     {
       "account_id": "acc_00182",
@@ -6038,7 +7130,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 94,
+        "beh_creditor_silence": 87,
+        "beh_early_dispute": 100,
+        "beh_escalation_speed": 89
+      }
     },
     {
       "account_id": "acc_00183",
@@ -6070,7 +7168,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 31,
+        "beh_creditor_silence": 31,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 39
+      }
     },
     {
       "account_id": "acc_00184",
@@ -6103,7 +7207,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 50,
+        "beh_early_dispute": 47,
+        "beh_escalation_speed": 65
+      }
     },
     {
       "account_id": "acc_00185",
@@ -6137,7 +7247,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 62,
+        "beh_creditor_silence": 70,
+        "beh_early_dispute": 69,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00186",
@@ -6169,7 +7285,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 46,
+        "beh_creditor_silence": 39,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 31
+      }
     },
     {
       "account_id": "acc_00187",
@@ -6202,7 +7324,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 58,
+        "beh_creditor_silence": 58,
+        "beh_early_dispute": 56,
+        "beh_escalation_speed": 56
+      }
     },
     {
       "account_id": "acc_00188",
@@ -6236,7 +7364,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 75,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": 86,
+        "beh_escalation_speed": 73
+      }
     },
     {
       "account_id": "acc_00189",
@@ -6268,7 +7402,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": null,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 73,
+        "beh_creditor_silence": 75,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 65
+      }
     },
     {
       "account_id": "acc_00190",
@@ -6301,7 +7441,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 76,
+        "beh_creditor_silence": 76,
+        "beh_early_dispute": 86,
+        "beh_escalation_speed": 75
+      }
     },
     {
       "account_id": "acc_00191",
@@ -6335,7 +7481,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 25,
+        "beh_creditor_silence": 27,
+        "beh_early_dispute": 38,
+        "beh_escalation_speed": 28
+      }
     },
     {
       "account_id": "acc_00192",
@@ -6367,7 +7519,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 52,
+        "beh_creditor_silence": 60,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 43
+      }
     },
     {
       "account_id": "acc_00193",
@@ -6400,7 +7558,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 59,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": 77,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00194",
@@ -6434,7 +7598,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 69,
+        "beh_creditor_silence": 70,
+        "beh_early_dispute": 68,
+        "beh_escalation_speed": 66
+      }
     },
     {
       "account_id": "acc_00195",
@@ -6466,7 +7636,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 69,
+        "beh_creditor_silence": 70,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 89
+      }
     },
     {
       "account_id": "acc_00196",
@@ -6499,7 +7675,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 49,
+        "beh_creditor_silence": 54,
+        "beh_early_dispute": 48,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00197",
@@ -6533,7 +7715,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 42,
+        "beh_creditor_silence": 49,
+        "beh_early_dispute": 56,
+        "beh_escalation_speed": 53
+      }
     },
     {
       "account_id": "acc_00198",
@@ -6565,7 +7753,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00199",
@@ -6598,7 +7792,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 95,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 94,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00200",
@@ -6632,7 +7832,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 85,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": 84,
+        "beh_escalation_speed": 80
+      }
     },
     {
       "account_id": "acc_00201",
@@ -6664,7 +7870,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 63,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 61
+      }
     },
     {
       "account_id": "acc_00202",
@@ -6697,7 +7909,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 94,
+        "beh_early_dispute": 95,
+        "beh_escalation_speed": 95
+      }
     },
     {
       "account_id": "acc_00203",
@@ -6731,7 +7949,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 68,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": 64,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00204",
@@ -6763,7 +7987,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 62,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 66
+      }
     },
     {
       "account_id": "acc_00205",
@@ -6796,7 +8026,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 92,
+        "beh_creditor_silence": 81,
+        "beh_early_dispute": 71,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00206",
@@ -6830,7 +8066,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 78,
+        "beh_early_dispute": 85,
+        "beh_escalation_speed": 81
+      }
     },
     {
       "account_id": "acc_00207",
@@ -6862,7 +8104,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 70,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00208",
@@ -6895,7 +8143,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 50,
+        "beh_creditor_silence": 46,
+        "beh_early_dispute": 49,
+        "beh_escalation_speed": 46
+      }
     },
     {
       "account_id": "acc_00209",
@@ -6929,7 +8183,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 80,
+        "beh_creditor_silence": 88,
+        "beh_early_dispute": 87,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00210",
@@ -6961,7 +8221,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": null,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 82,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00211",
@@ -6994,7 +8260,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 60,
+        "beh_early_dispute": 63,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00212",
@@ -7028,7 +8300,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 94,
+        "beh_creditor_silence": 79,
+        "beh_early_dispute": 79,
+        "beh_escalation_speed": 79
+      }
     },
     {
       "account_id": "acc_00213",
@@ -7060,7 +8338,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 54,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 49
+      }
     },
     {
       "account_id": "acc_00214",
@@ -7093,7 +8377,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 95,
+        "beh_creditor_silence": 92,
+        "beh_early_dispute": 78,
+        "beh_escalation_speed": 89
+      }
     },
     {
       "account_id": "acc_00215",
@@ -7127,7 +8417,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 92,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": 87,
+        "beh_escalation_speed": 95
+      }
     },
     {
       "account_id": "acc_00216",
@@ -7159,7 +8455,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 82,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00217",
@@ -7192,7 +8494,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 64,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": 56,
+        "beh_escalation_speed": 63
+      }
     },
     {
       "account_id": "acc_00218",
@@ -7226,7 +8534,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 87,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": 77,
+        "beh_escalation_speed": 88
+      }
     },
     {
       "account_id": "acc_00219",
@@ -7258,7 +8572,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 57,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 42
+      }
     },
     {
       "account_id": "acc_00220",
@@ -7291,7 +8611,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 63,
+        "beh_creditor_silence": 72,
+        "beh_early_dispute": 74,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00221",
@@ -7325,7 +8651,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 80,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": 79,
+        "beh_escalation_speed": 73
+      }
     },
     {
       "account_id": "acc_00222",
@@ -7357,7 +8689,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 77,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00223",
@@ -7390,7 +8728,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 79,
+        "beh_creditor_silence": 80,
+        "beh_early_dispute": 62,
+        "beh_escalation_speed": 58
+      }
     },
     {
       "account_id": "acc_00224",
@@ -7424,7 +8768,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": 68,
+        "beh_escalation_speed": 75
+      }
     },
     {
       "account_id": "acc_00225",
@@ -7456,7 +8806,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 92,
+        "beh_creditor_silence": 74,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00226",
@@ -7489,7 +8845,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 58,
+        "beh_early_dispute": 60,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00227",
@@ -7523,7 +8885,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 53,
+        "beh_creditor_silence": 63,
+        "beh_early_dispute": 54,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00228",
@@ -7555,7 +8923,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 59,
+        "beh_creditor_silence": 52,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 64
+      }
     },
     {
       "account_id": "acc_00229",
@@ -7588,7 +8962,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 48,
+        "beh_creditor_silence": 70,
+        "beh_early_dispute": 52,
+        "beh_escalation_speed": 64
+      }
     },
     {
       "account_id": "acc_00230",
@@ -7622,7 +9002,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 95,
+        "beh_escalation_speed": 88
+      }
     },
     {
       "account_id": "acc_00231",
@@ -7654,7 +9040,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": null,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 42,
+        "beh_creditor_silence": 23,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 21
+      }
     },
     {
       "account_id": "acc_00232",
@@ -7687,7 +9079,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 39,
+        "beh_creditor_silence": 39,
+        "beh_early_dispute": 45,
+        "beh_escalation_speed": 49
+      }
     },
     {
       "account_id": "acc_00233",
@@ -7721,7 +9119,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": 63,
+        "beh_escalation_speed": 53
+      }
     },
     {
       "account_id": "acc_00234",
@@ -7753,7 +9157,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 48,
+        "beh_creditor_silence": 31,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 50
+      }
     },
     {
       "account_id": "acc_00235",
@@ -7786,7 +9196,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 72,
+        "beh_creditor_silence": 86,
+        "beh_early_dispute": 73,
+        "beh_escalation_speed": 80
+      }
     },
     {
       "account_id": "acc_00236",
@@ -7820,7 +9236,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 41,
+        "beh_creditor_silence": 52,
+        "beh_early_dispute": 55,
+        "beh_escalation_speed": 48
+      }
     },
     {
       "account_id": "acc_00237",
@@ -7852,7 +9274,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 33,
+        "beh_creditor_silence": 42,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 39
+      }
     },
     {
       "account_id": "acc_00238",
@@ -7885,7 +9313,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 99,
+        "beh_creditor_silence": 87,
+        "beh_early_dispute": 93,
+        "beh_escalation_speed": 96
+      }
     },
     {
       "account_id": "acc_00239",
@@ -7919,7 +9353,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 51,
+        "beh_creditor_silence": 53,
+        "beh_early_dispute": 52,
+        "beh_escalation_speed": 58
+      }
     },
     {
       "account_id": "acc_00240",
@@ -7951,7 +9391,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 72
+      }
     },
     {
       "account_id": "acc_00241",
@@ -7984,7 +9430,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 74,
+        "beh_early_dispute": 75,
+        "beh_escalation_speed": 65
+      }
     },
     {
       "account_id": "acc_00242",
@@ -8018,7 +9470,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 85,
+        "beh_creditor_silence": 85,
+        "beh_early_dispute": 64,
+        "beh_escalation_speed": 84
+      }
     },
     {
       "account_id": "acc_00243",
@@ -8050,7 +9508,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 91,
+        "beh_creditor_silence": 92,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 79
+      }
     },
     {
       "account_id": "acc_00244",
@@ -8083,7 +9547,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 80,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": 80,
+        "beh_escalation_speed": 82
+      }
     },
     {
       "account_id": "acc_00245",
@@ -8117,7 +9587,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 70,
+        "beh_creditor_silence": 74,
+        "beh_early_dispute": 80,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00246",
@@ -8149,7 +9625,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 52,
+        "beh_creditor_silence": 56,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 64
+      }
     },
     {
       "account_id": "acc_00247",
@@ -8182,7 +9664,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 63,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": 80,
+        "beh_escalation_speed": 67
+      }
     },
     {
       "account_id": "acc_00248",
@@ -8216,7 +9704,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 49,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": 67,
+        "beh_escalation_speed": 55
+      }
     },
     {
       "account_id": "acc_00249",
@@ -8248,7 +9742,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 54,
+        "beh_creditor_silence": 49,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 48
+      }
     },
     {
       "account_id": "acc_00250",
@@ -8281,7 +9781,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 63,
+        "beh_creditor_silence": 81,
+        "beh_early_dispute": 74,
+        "beh_escalation_speed": 73
+      }
     },
     {
       "account_id": "acc_00251",
@@ -8315,7 +9821,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 59,
+        "beh_creditor_silence": 46,
+        "beh_early_dispute": 55,
+        "beh_escalation_speed": 49
+      }
     },
     {
       "account_id": "acc_00252",
@@ -8347,7 +9859,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 500000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 74,
+        "beh_creditor_silence": 90,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 87
+      }
     },
     {
       "account_id": "acc_00253",
@@ -8380,7 +9898,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 50,
+        "beh_early_dispute": 48,
+        "beh_escalation_speed": 64
+      }
     },
     {
       "account_id": "acc_00254",
@@ -8414,7 +9938,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 56,
+        "beh_creditor_silence": 75,
+        "beh_early_dispute": 78,
+        "beh_escalation_speed": 72
+      }
     },
     {
       "account_id": "acc_00255",
@@ -8446,7 +9976,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 59,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 76
+      }
     },
     {
       "account_id": "acc_00256",
@@ -8479,7 +10015,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 91,
+        "beh_early_dispute": 88,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00257",
@@ -8513,7 +10055,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 37,
+        "beh_creditor_silence": 41,
+        "beh_early_dispute": 30,
+        "beh_escalation_speed": 33
+      }
     },
     {
       "account_id": "acc_00258",
@@ -8545,7 +10093,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 63,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 50
+      }
     },
     {
       "account_id": "acc_00259",
@@ -8578,7 +10132,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 98,
+        "beh_escalation_speed": 84
+      }
     },
     {
       "account_id": "acc_00260",
@@ -8612,7 +10172,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 61,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": 79,
+        "beh_escalation_speed": 75
+      }
     },
     {
       "account_id": "acc_00261",
@@ -8644,7 +10210,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 77,
+        "beh_creditor_silence": 90,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 80
+      }
     },
     {
       "account_id": "acc_00262",
@@ -8677,7 +10249,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 64,
+        "beh_creditor_silence": 61,
+        "beh_early_dispute": 55,
+        "beh_escalation_speed": 72
+      }
     },
     {
       "account_id": "acc_00263",
@@ -8711,7 +10289,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 52,
+        "beh_creditor_silence": 40,
+        "beh_early_dispute": 53,
+        "beh_escalation_speed": 58
+      }
     },
     {
       "account_id": "acc_00264",
@@ -8743,7 +10327,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 77,
+        "beh_creditor_silence": 73,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 87
+      }
     },
     {
       "account_id": "acc_00265",
@@ -8776,7 +10366,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 64,
+        "beh_creditor_silence": 74,
+        "beh_early_dispute": 67,
+        "beh_escalation_speed": 57
+      }
     },
     {
       "account_id": "acc_00266",
@@ -8810,7 +10406,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 87,
+        "beh_escalation_speed": 88
+      }
     },
     {
       "account_id": "acc_00267",
@@ -8842,7 +10444,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 97
+      }
     },
     {
       "account_id": "acc_00268",
@@ -8875,7 +10483,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 84,
+        "beh_creditor_silence": 91,
+        "beh_early_dispute": 83,
+        "beh_escalation_speed": 71
+      }
     },
     {
       "account_id": "acc_00269",
@@ -8909,7 +10523,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 24,
+        "beh_creditor_silence": 36,
+        "beh_early_dispute": 25,
+        "beh_escalation_speed": 37
+      }
     },
     {
       "account_id": "acc_00270",
@@ -8941,7 +10561,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 89,
+        "beh_creditor_silence": 83,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 81
+      }
     },
     {
       "account_id": "acc_00271",
@@ -8974,7 +10600,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 78,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": 59,
+        "beh_escalation_speed": 75
+      }
     },
     {
       "account_id": "acc_00272",
@@ -9008,7 +10640,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 52,
+        "beh_creditor_silence": 57,
+        "beh_early_dispute": 49,
+        "beh_escalation_speed": 55
+      }
     },
     {
       "account_id": "acc_00273",
@@ -9040,7 +10678,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 90000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 62,
+        "beh_creditor_silence": 61,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00274",
@@ -9073,7 +10717,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 23,
+        "beh_creditor_silence": 26,
+        "beh_early_dispute": 35,
+        "beh_escalation_speed": 37
+      }
     },
     {
       "account_id": "acc_00275",
@@ -9107,7 +10757,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 91,
+        "beh_creditor_silence": 93,
+        "beh_early_dispute": 88,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00276",
@@ -9139,7 +10795,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 53,
+        "beh_creditor_silence": 58,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 52
+      }
     },
     {
       "account_id": "acc_00277",
@@ -9172,7 +10834,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 84,
+        "beh_creditor_silence": 66,
+        "beh_early_dispute": 67,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00278",
@@ -9206,7 +10874,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 72,
+        "beh_creditor_silence": 61,
+        "beh_early_dispute": 61,
+        "beh_escalation_speed": 57
+      }
     },
     {
       "account_id": "acc_00279",
@@ -9238,7 +10912,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 58,
+        "beh_creditor_silence": 45,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 43
+      }
     },
     {
       "account_id": "acc_00280",
@@ -9271,7 +10951,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 29,
+        "beh_creditor_silence": 30,
+        "beh_early_dispute": 21,
+        "beh_escalation_speed": 22
+      }
     },
     {
       "account_id": "acc_00281",
@@ -9305,7 +10991,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 54,
+        "beh_creditor_silence": 52,
+        "beh_early_dispute": 58,
+        "beh_escalation_speed": 47
+      }
     },
     {
       "account_id": "acc_00282",
@@ -9337,7 +11029,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 87,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 85
+      }
     },
     {
       "account_id": "acc_00283",
@@ -9370,7 +11068,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 59,
+        "beh_creditor_silence": 60,
+        "beh_early_dispute": 60,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00284",
@@ -9404,7 +11108,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": 48,
+        "beh_escalation_speed": 64
+      }
     },
     {
       "account_id": "acc_00285",
@@ -9436,7 +11146,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 69,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00286",
@@ -9469,7 +11185,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 100,
+        "beh_escalation_speed": 99
+      }
     },
     {
       "account_id": "acc_00287",
@@ -9503,7 +11225,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 60,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": 69,
+        "beh_escalation_speed": 53
+      }
     },
     {
       "account_id": "acc_00288",
@@ -9535,7 +11263,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 62,
+        "beh_creditor_silence": 74,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00289",
@@ -9568,7 +11302,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 72,
+        "beh_creditor_silence": 77,
+        "beh_early_dispute": 84,
+        "beh_escalation_speed": 65
+      }
     },
     {
       "account_id": "acc_00290",
@@ -9602,7 +11342,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 94,
+        "beh_creditor_silence": 76,
+        "beh_early_dispute": 77,
+        "beh_escalation_speed": 75
+      }
     },
     {
       "account_id": "acc_00291",
@@ -9634,7 +11380,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 70,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00292",
@@ -9667,7 +11419,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 81,
+        "beh_creditor_silence": 77,
+        "beh_early_dispute": 90,
+        "beh_escalation_speed": 83
+      }
     },
     {
       "account_id": "acc_00293",
@@ -9701,7 +11459,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 97,
+        "beh_escalation_speed": 89
+      }
     },
     {
       "account_id": "acc_00294",
@@ -9733,7 +11497,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 150000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 48,
+        "beh_creditor_silence": 48,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 35
+      }
     },
     {
       "account_id": "acc_00295",
@@ -9766,7 +11536,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 64,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": 59,
+        "beh_escalation_speed": 70
+      }
     },
     {
       "account_id": "acc_00296",
@@ -9800,7 +11576,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 65,
+        "beh_creditor_silence": 63,
+        "beh_early_dispute": 50,
+        "beh_escalation_speed": 66
+      }
     },
     {
       "account_id": "acc_00297",
@@ -9832,7 +11614,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 60,
+        "beh_creditor_silence": 57,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00298",
@@ -9865,7 +11653,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 58,
+        "beh_creditor_silence": 61,
+        "beh_early_dispute": 54,
+        "beh_escalation_speed": 57
+      }
     },
     {
       "account_id": "acc_00299",
@@ -9899,7 +11693,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 96,
+        "beh_early_dispute": 87,
+        "beh_escalation_speed": 85
+      }
     },
     {
       "account_id": "acc_00300",
@@ -9931,7 +11731,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 76,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 65
+      }
     },
     {
       "account_id": "acc_00301",
@@ -9964,7 +11770,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 42,
+        "beh_creditor_silence": 42,
+        "beh_early_dispute": 59,
+        "beh_escalation_speed": 67
+      }
     },
     {
       "account_id": "acc_00302",
@@ -9998,7 +11810,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 53,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": 56,
+        "beh_escalation_speed": 70
+      }
     },
     {
       "account_id": "acc_00303",
@@ -10030,7 +11848,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 65,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 69
+      }
     },
     {
       "account_id": "acc_00304",
@@ -10063,7 +11887,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 99,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 99,
+        "beh_escalation_speed": 92
+      }
     },
     {
       "account_id": "acc_00305",
@@ -10097,7 +11927,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 43,
+        "beh_creditor_silence": 40,
+        "beh_early_dispute": 48,
+        "beh_escalation_speed": 42
+      }
     },
     {
       "account_id": "acc_00306",
@@ -10129,7 +11965,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 60,
+        "beh_creditor_silence": 37,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 42
+      }
     },
     {
       "account_id": "acc_00307",
@@ -10162,7 +12004,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 42,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": 57,
+        "beh_escalation_speed": 44
+      }
     },
     {
       "account_id": "acc_00308",
@@ -10196,7 +12044,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 76,
+        "beh_early_dispute": 80,
+        "beh_escalation_speed": 67
+      }
     },
     {
       "account_id": "acc_00309",
@@ -10228,7 +12082,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 80,
+        "beh_creditor_silence": 77,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 66
+      }
     },
     {
       "account_id": "acc_00310",
@@ -10261,7 +12121,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 55,
+        "beh_creditor_silence": 54,
+        "beh_early_dispute": 73,
+        "beh_escalation_speed": 63
+      }
     },
     {
       "account_id": "acc_00311",
@@ -10295,7 +12161,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 58,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": 38,
+        "beh_escalation_speed": 50
+      }
     },
     {
       "account_id": "acc_00312",
@@ -10327,7 +12199,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 61,
+        "beh_creditor_silence": 58,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 55
+      }
     },
     {
       "account_id": "acc_00313",
@@ -10360,7 +12238,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 57,
+        "beh_creditor_silence": 51,
+        "beh_early_dispute": 69,
+        "beh_escalation_speed": 53
+      }
     },
     {
       "account_id": "acc_00314",
@@ -10394,7 +12278,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 84,
+        "beh_creditor_silence": 73,
+        "beh_early_dispute": 74,
+        "beh_escalation_speed": 93
+      }
     },
     {
       "account_id": "acc_00315",
@@ -10426,7 +12316,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 1200000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 73,
+        "beh_creditor_silence": 66,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 88
+      }
     },
     {
       "account_id": "acc_00316",
@@ -10459,7 +12355,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 80,
+        "beh_creditor_silence": 79,
+        "beh_early_dispute": 70,
+        "beh_escalation_speed": 89
+      }
     },
     {
       "account_id": "acc_00317",
@@ -10493,7 +12395,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 79,
+        "beh_creditor_silence": 78,
+        "beh_early_dispute": 73,
+        "beh_escalation_speed": 89
+      }
     },
     {
       "account_id": "acc_00318",
@@ -10525,7 +12433,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 51,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 54
+      }
     },
     {
       "account_id": "acc_00319",
@@ -10558,7 +12472,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 74,
+        "beh_creditor_silence": 94,
+        "beh_early_dispute": 84,
+        "beh_escalation_speed": 94
+      }
     },
     {
       "account_id": "acc_00320",
@@ -10592,7 +12512,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 49,
+        "beh_creditor_silence": 45,
+        "beh_early_dispute": 49,
+        "beh_escalation_speed": 50
+      }
     },
     {
       "account_id": "acc_00321",
@@ -10624,7 +12550,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 36,
+        "beh_creditor_silence": 37,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 41
+      }
     },
     {
       "account_id": "acc_00322",
@@ -10657,7 +12589,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 59,
+        "beh_creditor_silence": 66,
+        "beh_early_dispute": 68,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00323",
@@ -10691,7 +12629,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 81,
+        "beh_early_dispute": 95,
+        "beh_escalation_speed": 79
+      }
     },
     {
       "account_id": "acc_00324",
@@ -10723,7 +12667,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 74,
+        "beh_creditor_silence": 83,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00325",
@@ -10756,7 +12706,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 56,
+        "beh_creditor_silence": 35,
+        "beh_early_dispute": 58,
+        "beh_escalation_speed": 43
+      }
     },
     {
       "account_id": "acc_00326",
@@ -10790,7 +12746,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 85,
+        "beh_early_dispute": 100,
+        "beh_escalation_speed": 90
+      }
     },
     {
       "account_id": "acc_00327",
@@ -10822,7 +12784,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 59,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 69
+      }
     },
     {
       "account_id": "acc_00328",
@@ -10855,7 +12823,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 68,
+        "beh_creditor_silence": 71,
+        "beh_early_dispute": 66,
+        "beh_escalation_speed": 58
+      }
     },
     {
       "account_id": "acc_00329",
@@ -10889,7 +12863,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 93,
+        "beh_creditor_silence": 96,
+        "beh_early_dispute": 83,
+        "beh_escalation_speed": 90
+      }
     },
     {
       "account_id": "acc_00330",
@@ -10921,7 +12901,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 70,
+        "beh_creditor_silence": 58,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00331",
@@ -10954,7 +12940,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 52,
+        "beh_creditor_silence": 71,
+        "beh_early_dispute": 71,
+        "beh_escalation_speed": 63
+      }
     },
     {
       "account_id": "acc_00332",
@@ -10988,7 +12980,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 90,
+        "beh_creditor_silence": 79,
+        "beh_early_dispute": 92,
+        "beh_escalation_speed": 91
+      }
     },
     {
       "account_id": "acc_00333",
@@ -11020,7 +13018,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 93,
+        "beh_creditor_silence": 89,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00334",
@@ -11053,7 +13057,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 56,
+        "beh_creditor_silence": 76,
+        "beh_early_dispute": 79,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00335",
@@ -11087,7 +13097,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 75,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": 78,
+        "beh_escalation_speed": 61
+      }
     },
     {
       "account_id": "acc_00336",
@@ -11119,7 +13135,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 40000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 72,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 53
+      }
     },
     {
       "account_id": "acc_00337",
@@ -11152,7 +13174,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 83,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": 83,
+        "beh_escalation_speed": 99
+      }
     },
     {
       "account_id": "acc_00338",
@@ -11186,7 +13214,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 92,
+        "beh_early_dispute": 98,
+        "beh_escalation_speed": 87
+      }
     },
     {
       "account_id": "acc_00339",
@@ -11218,7 +13252,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 41,
+        "beh_creditor_silence": 63,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 44
+      }
     },
     {
       "account_id": "acc_00340",
@@ -11251,7 +13291,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 84,
+        "beh_creditor_silence": 74,
+        "beh_early_dispute": 76,
+        "beh_escalation_speed": 73
+      }
     },
     {
       "account_id": "acc_00341",
@@ -11285,7 +13331,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": 81,
+        "beh_escalation_speed": 84
+      }
     },
     {
       "account_id": "acc_00342",
@@ -11317,7 +13369,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 46,
+        "beh_creditor_silence": 30,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 29
+      }
     },
     {
       "account_id": "acc_00343",
@@ -11350,7 +13408,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 43,
+        "beh_creditor_silence": 51,
+        "beh_early_dispute": 54,
+        "beh_escalation_speed": 55
+      }
     },
     {
       "account_id": "acc_00344",
@@ -11384,7 +13448,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 35,
+        "beh_creditor_silence": 26,
+        "beh_early_dispute": 35,
+        "beh_escalation_speed": 24
+      }
     },
     {
       "account_id": "acc_00345",
@@ -11416,7 +13486,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 58,
+        "beh_creditor_silence": 61,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 62
+      }
     },
     {
       "account_id": "acc_00346",
@@ -11449,7 +13525,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 99,
+        "beh_creditor_silence": 93,
+        "beh_early_dispute": 96,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00347",
@@ -11483,7 +13565,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 77,
+        "beh_creditor_silence": 81,
+        "beh_early_dispute": 78,
+        "beh_escalation_speed": 92
+      }
     },
     {
       "account_id": "acc_00348",
@@ -11515,7 +13603,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 51,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00349",
@@ -11548,7 +13642,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 60,
+        "beh_creditor_silence": 52,
+        "beh_early_dispute": 66,
+        "beh_escalation_speed": 67
+      }
     },
     {
       "account_id": "acc_00350",
@@ -11582,7 +13682,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 55,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": 58,
+        "beh_escalation_speed": 56
+      }
     },
     {
       "account_id": "acc_00351",
@@ -11614,7 +13720,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 91,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 90
+      }
     },
     {
       "account_id": "acc_00352",
@@ -11647,7 +13759,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 70,
+        "beh_creditor_silence": 91,
+        "beh_early_dispute": 78,
+        "beh_escalation_speed": 82
+      }
     },
     {
       "account_id": "acc_00353",
@@ -11681,7 +13799,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 95,
+        "beh_creditor_silence": 82,
+        "beh_early_dispute": 98,
+        "beh_escalation_speed": 97
+      }
     },
     {
       "account_id": "acc_00354",
@@ -11713,7 +13837,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 55,
+        "beh_creditor_silence": 68,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 50
+      }
     },
     {
       "account_id": "acc_00355",
@@ -11746,7 +13876,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 42,
+        "beh_creditor_silence": 60,
+        "beh_early_dispute": 41,
+        "beh_escalation_speed": 40
+      }
     },
     {
       "account_id": "acc_00356",
@@ -11780,7 +13916,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 51,
+        "beh_creditor_silence": 60,
+        "beh_early_dispute": 51,
+        "beh_escalation_speed": 59
+      }
     },
     {
       "account_id": "acc_00357",
@@ -11812,7 +13954,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 1200000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 75,
+        "beh_creditor_silence": 55,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 64
+      }
     },
     {
       "account_id": "acc_00358",
@@ -11845,7 +13993,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 82,
+        "beh_creditor_silence": 78,
+        "beh_early_dispute": 76,
+        "beh_escalation_speed": 67
+      }
     },
     {
       "account_id": "acc_00359",
@@ -11879,7 +14033,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 34,
+        "beh_creditor_silence": 25,
+        "beh_early_dispute": 28,
+        "beh_escalation_speed": 36
+      }
     },
     {
       "account_id": "acc_00360",
@@ -11911,7 +14071,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 62,
+        "beh_creditor_silence": 58,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 63
+      }
     },
     {
       "account_id": "acc_00361",
@@ -11944,7 +14110,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 59,
+        "beh_creditor_silence": 77,
+        "beh_early_dispute": 78,
+        "beh_escalation_speed": 75
+      }
     },
     {
       "account_id": "acc_00362",
@@ -11978,7 +14150,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 85,
+        "beh_creditor_silence": 79,
+        "beh_early_dispute": 64,
+        "beh_escalation_speed": 84
+      }
     },
     {
       "account_id": "acc_00363",
@@ -12010,7 +14188,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 68,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 72
+      }
     },
     {
       "account_id": "acc_00364",
@@ -12043,7 +14227,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 60,
+        "beh_creditor_silence": 71,
+        "beh_early_dispute": 63,
+        "beh_escalation_speed": 82
+      }
     },
     {
       "account_id": "acc_00365",
@@ -12077,7 +14267,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 39,
+        "beh_creditor_silence": 51,
+        "beh_early_dispute": 63,
+        "beh_escalation_speed": 54
+      }
     },
     {
       "account_id": "acc_00366",
@@ -12109,7 +14305,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 38,
+        "beh_creditor_silence": 38,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 41
+      }
     },
     {
       "account_id": "acc_00367",
@@ -12142,7 +14344,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 81,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": 67,
+        "beh_escalation_speed": 57
+      }
     },
     {
       "account_id": "acc_00368",
@@ -12176,7 +14384,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 61,
+        "beh_creditor_silence": 81,
+        "beh_early_dispute": 71,
+        "beh_escalation_speed": 82
+      }
     },
     {
       "account_id": "acc_00369",
@@ -12208,7 +14422,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 80,
+        "beh_creditor_silence": 85,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00370",
@@ -12241,7 +14461,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 68,
+        "beh_early_dispute": 74,
+        "beh_escalation_speed": 54
+      }
     },
     {
       "account_id": "acc_00371",
@@ -12275,7 +14501,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 87,
+        "beh_creditor_silence": 91,
+        "beh_early_dispute": 93,
+        "beh_escalation_speed": 78
+      }
     },
     {
       "account_id": "acc_00372",
@@ -12307,7 +14539,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 63,
+        "beh_creditor_silence": 79,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 63
+      }
     },
     {
       "account_id": "acc_00373",
@@ -12340,7 +14578,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 63,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": 59,
+        "beh_escalation_speed": 51
+      }
     },
     {
       "account_id": "acc_00374",
@@ -12374,7 +14618,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 50,
+        "beh_creditor_silence": 57,
+        "beh_early_dispute": 57,
+        "beh_escalation_speed": 72
+      }
     },
     {
       "account_id": "acc_00375",
@@ -12406,7 +14656,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 38,
+        "beh_creditor_silence": 37,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 55
+      }
     },
     {
       "account_id": "acc_00376",
@@ -12439,7 +14695,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 65,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": 64,
+        "beh_escalation_speed": 61
+      }
     },
     {
       "account_id": "acc_00377",
@@ -12473,7 +14735,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 65,
+        "beh_creditor_silence": 55,
+        "beh_early_dispute": 77,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00378",
@@ -12505,7 +14773,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 1200000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 89,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 76
+      }
     },
     {
       "account_id": "acc_00379",
@@ -12538,7 +14812,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 74,
+        "beh_creditor_silence": 80,
+        "beh_early_dispute": 65,
+        "beh_escalation_speed": 70
+      }
     },
     {
       "account_id": "acc_00380",
@@ -12572,7 +14852,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 57,
+        "beh_creditor_silence": 75,
+        "beh_early_dispute": 76,
+        "beh_escalation_speed": 58
+      }
     },
     {
       "account_id": "acc_00381",
@@ -12604,7 +14890,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 90,
+        "beh_creditor_silence": 86,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 88
+      }
     },
     {
       "account_id": "acc_00382",
@@ -12637,7 +14929,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 58,
+        "beh_creditor_silence": 73,
+        "beh_early_dispute": 50,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00383",
@@ -12671,7 +14969,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 100,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00384",
@@ -12703,7 +15007,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 73,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 90
+      }
     },
     {
       "account_id": "acc_00385",
@@ -12736,7 +15046,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 86,
+        "beh_early_dispute": 74,
+        "beh_escalation_speed": 88
+      }
     },
     {
       "account_id": "acc_00386",
@@ -12770,7 +15086,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 58,
+        "beh_creditor_silence": 53,
+        "beh_early_dispute": 54,
+        "beh_escalation_speed": 57
+      }
     },
     {
       "account_id": "acc_00387",
@@ -12802,7 +15124,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 77,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 81
+      }
     },
     {
       "account_id": "acc_00388",
@@ -12835,7 +15163,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 69,
+        "beh_creditor_silence": 76,
+        "beh_early_dispute": 57,
+        "beh_escalation_speed": 67
+      }
     },
     {
       "account_id": "acc_00389",
@@ -12869,7 +15203,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 79,
+        "beh_creditor_silence": 68,
+        "beh_early_dispute": 69,
+        "beh_escalation_speed": 64
+      }
     },
     {
       "account_id": "acc_00390",
@@ -12901,7 +15241,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 61,
+        "beh_creditor_silence": 68,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 67
+      }
     },
     {
       "account_id": "acc_00391",
@@ -12934,7 +15280,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 60,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": 46,
+        "beh_escalation_speed": 50
+      }
     },
     {
       "account_id": "acc_00392",
@@ -12968,7 +15320,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 65,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": 61,
+        "beh_escalation_speed": 71
+      }
     },
     {
       "account_id": "acc_00393",
@@ -13000,7 +15358,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 60,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 49
+      }
     },
     {
       "account_id": "acc_00394",
@@ -13033,7 +15397,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 56,
+        "beh_creditor_silence": 52,
+        "beh_early_dispute": 57,
+        "beh_escalation_speed": 46
+      }
     },
     {
       "account_id": "acc_00395",
@@ -13067,7 +15437,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 82,
+        "beh_creditor_silence": 71,
+        "beh_early_dispute": 57,
+        "beh_escalation_speed": 57
+      }
     },
     {
       "account_id": "acc_00396",
@@ -13099,7 +15475,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 72,
+        "beh_creditor_silence": 56,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 72
+      }
     },
     {
       "account_id": "acc_00397",
@@ -13132,7 +15514,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 64,
+        "beh_creditor_silence": 43,
+        "beh_early_dispute": 46,
+        "beh_escalation_speed": 61
+      }
     },
     {
       "account_id": "acc_00398",
@@ -13166,7 +15554,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 53,
+        "beh_creditor_silence": 40,
+        "beh_early_dispute": 44,
+        "beh_escalation_speed": 64
+      }
     },
     {
       "account_id": "acc_00399",
@@ -13198,7 +15592,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": null,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 89,
+        "beh_creditor_silence": 88,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 98
+      }
     },
     {
       "account_id": "acc_00400",
@@ -13231,7 +15631,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 86,
+        "beh_escalation_speed": 91
+      }
     },
     {
       "account_id": "acc_00401",
@@ -13265,7 +15671,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 87,
+        "beh_creditor_silence": 96,
+        "beh_early_dispute": 100,
+        "beh_escalation_speed": 87
+      }
     },
     {
       "account_id": "acc_00402",
@@ -13297,7 +15709,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 72,
+        "beh_creditor_silence": 88,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 72
+      }
     },
     {
       "account_id": "acc_00403",
@@ -13330,7 +15748,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 95,
+        "beh_creditor_silence": 94,
+        "beh_early_dispute": 87,
+        "beh_escalation_speed": 88
+      }
     },
     {
       "account_id": "acc_00404",
@@ -13364,7 +15788,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 82,
+        "beh_creditor_silence": 77,
+        "beh_early_dispute": 93,
+        "beh_escalation_speed": 87
+      }
     },
     {
       "account_id": "acc_00405",
@@ -13396,7 +15826,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 75,
+        "beh_creditor_silence": 68,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 83
+      }
     },
     {
       "account_id": "acc_00406",
@@ -13429,7 +15865,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 90,
+        "beh_creditor_silence": 72,
+        "beh_early_dispute": 76,
+        "beh_escalation_speed": 72
+      }
     },
     {
       "account_id": "acc_00407",
@@ -13463,7 +15905,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 75,
+        "beh_early_dispute": 54,
+        "beh_escalation_speed": 53
+      }
     },
     {
       "account_id": "acc_00408",
@@ -13495,7 +15943,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 77,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 73
+      }
     },
     {
       "account_id": "acc_00409",
@@ -13528,7 +15982,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 84,
+        "beh_creditor_silence": 91,
+        "beh_early_dispute": 80,
+        "beh_escalation_speed": 79
+      }
     },
     {
       "account_id": "acc_00410",
@@ -13562,7 +16022,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 77,
+        "beh_creditor_silence": 60,
+        "beh_early_dispute": 67,
+        "beh_escalation_speed": 67
+      }
     },
     {
       "account_id": "acc_00411",
@@ -13594,7 +16060,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 34,
+        "beh_creditor_silence": 55,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 56
+      }
     },
     {
       "account_id": "acc_00412",
@@ -13627,7 +16099,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 60,
+        "beh_early_dispute": 77,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00413",
@@ -13661,7 +16139,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 40,
+        "beh_creditor_silence": 58,
+        "beh_early_dispute": 49,
+        "beh_escalation_speed": 41
+      }
     },
     {
       "account_id": "acc_00414",
@@ -13693,7 +16177,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 44,
+        "beh_creditor_silence": 53,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 47
+      }
     },
     {
       "account_id": "acc_00415",
@@ -13726,7 +16216,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 85,
+        "beh_early_dispute": 88,
+        "beh_escalation_speed": 76
+      }
     },
     {
       "account_id": "acc_00416",
@@ -13760,7 +16256,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 49,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": 55,
+        "beh_escalation_speed": 57
+      }
     },
     {
       "account_id": "acc_00417",
@@ -13792,7 +16294,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 46,
+        "beh_creditor_silence": 38,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00418",
@@ -13825,7 +16333,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 68,
+        "beh_creditor_silence": 77,
+        "beh_early_dispute": 86,
+        "beh_escalation_speed": 75
+      }
     },
     {
       "account_id": "acc_00419",
@@ -13859,7 +16373,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 70,
+        "beh_creditor_silence": 83,
+        "beh_early_dispute": 66,
+        "beh_escalation_speed": 82
+      }
     },
     {
       "account_id": "acc_00420",
@@ -13891,7 +16411,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 90000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 64,
+        "beh_creditor_silence": 57,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 58
+      }
     },
     {
       "account_id": "acc_00421",
@@ -13924,7 +16450,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 76,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": 70,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00422",
@@ -13958,7 +16490,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 37,
+        "beh_creditor_silence": 25,
+        "beh_early_dispute": 36,
+        "beh_escalation_speed": 16
+      }
     },
     {
       "account_id": "acc_00423",
@@ -13990,7 +16528,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 84,
+        "beh_creditor_silence": 82,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 92
+      }
     },
     {
       "account_id": "acc_00424",
@@ -14023,7 +16567,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 87,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": 100,
+        "beh_escalation_speed": 89
+      }
     },
     {
       "account_id": "acc_00425",
@@ -14057,7 +16607,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 64,
+        "beh_creditor_silence": 72,
+        "beh_early_dispute": 74,
+        "beh_escalation_speed": 84
+      }
     },
     {
       "account_id": "acc_00426",
@@ -14089,7 +16645,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 74,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 62
+      }
     },
     {
       "account_id": "acc_00427",
@@ -14122,7 +16684,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 76,
+        "beh_early_dispute": 80,
+        "beh_escalation_speed": 65
+      }
     },
     {
       "account_id": "acc_00428",
@@ -14156,7 +16724,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 51,
+        "beh_creditor_silence": 44,
+        "beh_early_dispute": 37,
+        "beh_escalation_speed": 49
+      }
     },
     {
       "account_id": "acc_00429",
@@ -14188,7 +16762,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 92,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 84
+      }
     },
     {
       "account_id": "acc_00430",
@@ -14221,7 +16801,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 45,
+        "beh_creditor_silence": 66,
+        "beh_early_dispute": 56,
+        "beh_escalation_speed": 63
+      }
     },
     {
       "account_id": "acc_00431",
@@ -14255,7 +16841,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 76,
+        "beh_creditor_silence": 72,
+        "beh_early_dispute": 76,
+        "beh_escalation_speed": 59
+      }
     },
     {
       "account_id": "acc_00432",
@@ -14287,7 +16879,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 52,
+        "beh_creditor_silence": 68,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 55
+      }
     },
     {
       "account_id": "acc_00433",
@@ -14320,7 +16918,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 96,
+        "beh_early_dispute": 89,
+        "beh_escalation_speed": 79
+      }
     },
     {
       "account_id": "acc_00434",
@@ -14354,7 +16958,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 81,
+        "beh_creditor_silence": 90,
+        "beh_early_dispute": 75,
+        "beh_escalation_speed": 88
+      }
     },
     {
       "account_id": "acc_00435",
@@ -14386,7 +16996,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 98,
+        "beh_creditor_silence": 91,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 81
+      }
     },
     {
       "account_id": "acc_00436",
@@ -14419,7 +17035,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 81,
+        "beh_creditor_silence": 81,
+        "beh_early_dispute": 83,
+        "beh_escalation_speed": 77
+      }
     },
     {
       "account_id": "acc_00437",
@@ -14453,7 +17075,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 51,
+        "beh_creditor_silence": 35,
+        "beh_early_dispute": 33,
+        "beh_escalation_speed": 36
+      }
     },
     {
       "account_id": "acc_00438",
@@ -14485,7 +17113,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 68,
+        "beh_creditor_silence": 66,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 66
+      }
     },
     {
       "account_id": "acc_00439",
@@ -14518,7 +17152,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 84,
+        "beh_creditor_silence": 88,
+        "beh_early_dispute": 88,
+        "beh_escalation_speed": 89
+      }
     },
     {
       "account_id": "acc_00440",
@@ -14552,7 +17192,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 81,
+        "beh_creditor_silence": 78,
+        "beh_early_dispute": 72,
+        "beh_escalation_speed": 73
+      }
     },
     {
       "account_id": "acc_00441",
@@ -14584,7 +17230,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": 15000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 72,
+        "beh_creditor_silence": 80,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 83
+      }
     },
     {
       "account_id": "acc_00442",
@@ -14617,7 +17269,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 61,
+        "beh_creditor_silence": 69,
+        "beh_early_dispute": 65,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00443",
@@ -14651,7 +17309,13 @@
         "label": "Antwortzeiten kuerzer"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 52,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": 60,
+        "beh_escalation_speed": 75
+      }
     },
     {
       "account_id": "acc_00444",
@@ -14683,7 +17347,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 55,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 66
+      }
     },
     {
       "account_id": "acc_00445",
@@ -14716,7 +17386,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 61,
+        "beh_creditor_silence": 49,
+        "beh_early_dispute": 69,
+        "beh_escalation_speed": 46
+      }
     },
     {
       "account_id": "acc_00446",
@@ -14750,7 +17426,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 80,
+        "beh_creditor_silence": 81,
+        "beh_early_dispute": 71,
+        "beh_escalation_speed": 84
+      }
     },
     {
       "account_id": "acc_00447",
@@ -14782,7 +17464,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 72,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 80
+      }
     },
     {
       "account_id": "acc_00448",
@@ -14815,7 +17503,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 45,
+        "beh_creditor_silence": 61,
+        "beh_early_dispute": 45,
+        "beh_escalation_speed": 62
+      }
     },
     {
       "account_id": "acc_00449",
@@ -14849,7 +17543,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 57,
+        "beh_creditor_silence": 45,
+        "beh_early_dispute": 66,
+        "beh_escalation_speed": 51
+      }
     },
     {
       "account_id": "acc_00450",
@@ -14881,7 +17581,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 75,
+        "beh_creditor_silence": 87,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 79
+      }
     },
     {
       "account_id": "acc_00451",
@@ -14914,7 +17620,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 47,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": 64,
+        "beh_escalation_speed": 48
+      }
     },
     {
       "account_id": "acc_00452",
@@ -14948,7 +17660,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 51,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": 62,
+        "beh_escalation_speed": 55
+      }
     },
     {
       "account_id": "acc_00453",
@@ -14980,7 +17698,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 72,
+        "beh_creditor_silence": 63,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 83
+      }
     },
     {
       "account_id": "acc_00454",
@@ -15013,7 +17737,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 86,
+        "beh_creditor_silence": 80,
+        "beh_early_dispute": 72,
+        "beh_escalation_speed": 70
+      }
     },
     {
       "account_id": "acc_00455",
@@ -15047,7 +17777,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 66,
+        "beh_creditor_silence": 59,
+        "beh_early_dispute": 52,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00456",
@@ -15079,7 +17815,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 76,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 79
+      }
     },
     {
       "account_id": "acc_00457",
@@ -15112,7 +17854,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 91,
+        "beh_creditor_silence": 95,
+        "beh_early_dispute": 90,
+        "beh_escalation_speed": 98
+      }
     },
     {
       "account_id": "acc_00458",
@@ -15146,7 +17894,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 61,
+        "beh_creditor_silence": 71,
+        "beh_early_dispute": 80,
+        "beh_escalation_speed": 69
+      }
     },
     {
       "account_id": "acc_00459",
@@ -15178,7 +17932,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 51,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 53
+      }
     },
     {
       "account_id": "acc_00460",
@@ -15211,7 +17971,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 69,
+        "beh_creditor_silence": 72,
+        "beh_early_dispute": 74,
+        "beh_escalation_speed": 71
+      }
     },
     {
       "account_id": "acc_00461",
@@ -15245,7 +18011,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 85,
+        "beh_creditor_silence": 65,
+        "beh_early_dispute": 64,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00462",
@@ -15277,7 +18049,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": null,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 100,
+        "beh_creditor_silence": 100,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 100
+      }
     },
     {
       "account_id": "acc_00463",
@@ -15310,7 +18088,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 89,
+        "beh_creditor_silence": 78,
+        "beh_early_dispute": 92,
+        "beh_escalation_speed": 81
+      }
     },
     {
       "account_id": "acc_00464",
@@ -15344,7 +18128,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 57,
+        "beh_creditor_silence": 73,
+        "beh_early_dispute": 74,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00465",
@@ -15376,7 +18166,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 69,
+        "beh_creditor_silence": 88,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 83
+      }
     },
     {
       "account_id": "acc_00466",
@@ -15409,7 +18205,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 39,
+        "beh_creditor_silence": 44,
+        "beh_early_dispute": 47,
+        "beh_escalation_speed": 49
+      }
     },
     {
       "account_id": "acc_00467",
@@ -15443,7 +18245,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 52,
+        "beh_creditor_silence": 52,
+        "beh_early_dispute": 71,
+        "beh_escalation_speed": 64
+      }
     },
     {
       "account_id": "acc_00468",
@@ -15475,7 +18283,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 61,
+        "beh_creditor_silence": 78,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00469",
@@ -15508,7 +18322,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 57,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": 56,
+        "beh_escalation_speed": 69
+      }
     },
     {
       "account_id": "acc_00470",
@@ -15542,7 +18362,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 52,
+        "beh_creditor_silence": 61,
+        "beh_early_dispute": 57,
+        "beh_escalation_speed": 63
+      }
     },
     {
       "account_id": "acc_00471",
@@ -15574,7 +18400,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 60,
+        "beh_creditor_silence": 60,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 69
+      }
     },
     {
       "account_id": "acc_00472",
@@ -15607,7 +18439,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 50,
+        "beh_creditor_silence": 29,
+        "beh_early_dispute": 40,
+        "beh_escalation_speed": 49
+      }
     },
     {
       "account_id": "acc_00473",
@@ -15641,7 +18479,13 @@
         "label": "Forderungslaufzeit gesunken"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 74,
+        "beh_creditor_silence": 66,
+        "beh_early_dispute": 50,
+        "beh_escalation_speed": 63
+      }
     },
     {
       "account_id": "acc_00474",
@@ -15673,7 +18517,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 86,
+        "beh_creditor_silence": 82,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 68
+      }
     },
     {
       "account_id": "acc_00475",
@@ -15706,7 +18556,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 91,
+        "beh_creditor_silence": 84,
+        "beh_early_dispute": 82,
+        "beh_escalation_speed": 83
+      }
     },
     {
       "account_id": "acc_00476",
@@ -15740,7 +18596,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 50,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": 42,
+        "beh_escalation_speed": 53
+      }
     },
     {
       "account_id": "acc_00477",
@@ -15772,7 +18634,13 @@
         "label": "Umsatzdynamik anziehend"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 69,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 64
+      }
     },
     {
       "account_id": "acc_00478",
@@ -15805,7 +18673,13 @@
         "label": "Liquiditaetspuffer schrumpft"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 84,
+        "beh_creditor_silence": 93,
+        "beh_early_dispute": 79,
+        "beh_escalation_speed": 95
+      }
     },
     {
       "account_id": "acc_00479",
@@ -15839,7 +18713,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 75,
+        "beh_creditor_silence": 71,
+        "beh_early_dispute": 66,
+        "beh_escalation_speed": 66
+      }
     },
     {
       "account_id": "acc_00480",
@@ -15871,7 +18751,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 67,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 74
+      }
     },
     {
       "account_id": "acc_00481",
@@ -15904,7 +18790,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 240000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 80,
+        "beh_creditor_silence": 64,
+        "beh_early_dispute": 77,
+        "beh_escalation_speed": 72
+      }
     },
     {
       "account_id": "acc_00482",
@@ -15938,7 +18830,13 @@
         "label": "Beschwerdeanteil gestiegen"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 54,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": 70,
+        "beh_escalation_speed": 76
+      }
     },
     {
       "account_id": "acc_00483",
@@ -15970,7 +18868,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 1200000,
-      "history_note": "Historie im Aufbau (4 von 8 Wochen)"
+      "history_note": "Historie im Aufbau (4 von 8 Wochen)",
+      "behaviour": {
+        "beh_promise_break": 71,
+        "beh_creditor_silence": 55,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 48
+      }
     },
     {
       "account_id": "acc_00484",
@@ -16003,7 +18907,13 @@
         "label": "Weniger Kuendigungssignale"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 72,
+        "beh_creditor_silence": 90,
+        "beh_early_dispute": 91,
+        "beh_escalation_speed": 93
+      }
     },
     {
       "account_id": "acc_00485",
@@ -16037,7 +18947,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 52,
+        "beh_creditor_silence": 39,
+        "beh_early_dispute": 51,
+        "beh_escalation_speed": 34
+      }
     },
     {
       "account_id": "acc_00486",
@@ -16069,7 +18985,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 74,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 54
+      }
     },
     {
       "account_id": "acc_00487",
@@ -16102,7 +19024,13 @@
         "label": "Fristen zuverlaessig gehalten"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 51,
+        "beh_creditor_silence": 62,
+        "beh_early_dispute": 53,
+        "beh_escalation_speed": 65
+      }
     },
     {
       "account_id": "acc_00488",
@@ -16136,7 +19064,13 @@
         "label": "Zahlungssignale verbessert"
       },
       "exposure": 500000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 65,
+        "beh_creditor_silence": 46,
+        "beh_early_dispute": 48,
+        "beh_escalation_speed": 60
+      }
     },
     {
       "account_id": "acc_00489",
@@ -16168,7 +19102,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 93,
+        "beh_creditor_silence": 87,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 87
+      }
     },
     {
       "account_id": "acc_00490",
@@ -16201,7 +19141,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 28,
+        "beh_creditor_silence": 37,
+        "beh_early_dispute": 44,
+        "beh_escalation_speed": 53
+      }
     },
     {
       "account_id": "acc_00491",
@@ -16235,7 +19181,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": null,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 95,
+        "beh_creditor_silence": 98,
+        "beh_early_dispute": 100,
+        "beh_escalation_speed": 95
+      }
     },
     {
       "account_id": "acc_00492",
@@ -16267,7 +19219,13 @@
         "label": "Mehr Kuendigungssignale"
       },
       "exposure": 90000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 90,
+        "beh_creditor_silence": 85,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 88
+      }
     },
     {
       "account_id": "acc_00493",
@@ -16300,7 +19258,13 @@
         "label": "Umsatzdynamik nachlassend"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 55,
+        "beh_creditor_silence": 57,
+        "beh_early_dispute": 41,
+        "beh_escalation_speed": 63
+      }
     },
     {
       "account_id": "acc_00494",
@@ -16334,7 +19298,13 @@
         "label": "Liquiditaetspuffer waechst"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 60,
+        "beh_creditor_silence": 78,
+        "beh_early_dispute": 69,
+        "beh_escalation_speed": 73
+      }
     },
     {
       "account_id": "acc_00495",
@@ -16366,7 +19336,13 @@
         "label": "Fristen gerissen"
       },
       "exposure": 15000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 85,
+        "beh_creditor_silence": 86,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 99
+      }
     },
     {
       "account_id": "acc_00496",
@@ -16399,7 +19375,13 @@
         "label": "Zahlungssignale verschlechtert"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 28,
+        "beh_creditor_silence": 27,
+        "beh_early_dispute": 45,
+        "beh_escalation_speed": 26
+      }
     },
     {
       "account_id": "acc_00497",
@@ -16433,7 +19415,13 @@
         "label": "Forderungslaufzeit gestiegen"
       },
       "exposure": 1200000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 35,
+        "beh_creditor_silence": 52,
+        "beh_early_dispute": 43,
+        "beh_escalation_speed": 39
+      }
     },
     {
       "account_id": "acc_00498",
@@ -16465,7 +19453,13 @@
         "label": "Beschwerdeanteil gesunken"
       },
       "exposure": 150000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 67,
+        "beh_creditor_silence": 75,
+        "beh_early_dispute": null,
+        "beh_escalation_speed": 62
+      }
     },
     {
       "account_id": "acc_00499",
@@ -16498,7 +19492,13 @@
         "label": "Antwortzeiten laenger"
       },
       "exposure": 40000,
-      "history_note": null
+      "history_note": null,
+      "behaviour": {
+        "beh_promise_break": 45,
+        "beh_creditor_silence": 53,
+        "beh_early_dispute": 55,
+        "beh_escalation_speed": 49
+      }
     }
   ]
 }

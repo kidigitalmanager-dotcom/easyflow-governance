@@ -61,7 +61,19 @@ export type RiskMetric = {
   freshness: RiskFreshness;
   percentile_vertical: number | null;
   provenance: RiskClassProvenance;
+  /**
+   * Gesetzt, wenn die Kennzahl ihr Mindestmass nicht erreicht hat. Dann steht
+   * `value` auf null - und die Oberflaeche sagt WARUM, statt einen Strich zu
+   * zeigen. Ein leeres Feld wirkt wie ein Fehler, ein erklaertes wie Sorgfalt.
+   */
+  skipped_reason?: string | null;
 };
+
+/** Die vier Verhaltenssignale, Kurzform fuer die Bestandstabelle. */
+export const BEHAVIOUR_METRIC_KEYS = [
+  "beh_promise_break", "beh_creditor_silence", "beh_early_dispute", "beh_escalation_speed",
+] as const;
+export type BehaviourMetricKey = (typeof BEHAVIOUR_METRIC_KEYS)[number];
 
 export type RiskReasonCode = {
   metric_key: string;
@@ -146,6 +158,8 @@ export type RiskCompactRow = {
   } | null;
   exposure: number | null;
   history_note: string | null;
+  /** Verhaltenssignale als Spaltenwerte. null = Mindestmass nicht erreicht. */
+  behaviour?: Partial<Record<BehaviourMetricKey, number | null>>;
 };
 
 /** GET /changes */

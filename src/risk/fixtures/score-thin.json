@@ -52,7 +52,7 @@
       "score": 72,
       "confidence": 0.83,
       "coverage": 0.9,
-      "kpis_with_data": 3
+      "kpis_with_data": 4
     },
     {
       "key": "risk",
@@ -468,6 +468,114 @@
         ],
         "window_weeks": 8
       }
+    },
+    {
+      "metric_key": "beh_promise_break",
+      "short_code": "ZBQ",
+      "name": "Zahlungszusage-Bruchquote",
+      "category_key": "finance",
+      "measures": "Zugesagte Zahlungen, denen eine Mahnung derselben Gegenstelle folgte",
+      "value": null,
+      "band": "unbekannt",
+      "confidence": null,
+      "coverage": 0.0,
+      "weight": 0.1,
+      "availability": "live",
+      "percentile_vertical": null,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Verhaltensmuster aus der Kommunikations-Historie (180 Tage)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 26
+      },
+      "skipped_reason": "Zu wenige Zahlungszusagen im Zeitraum (2 von mindestens 3)"
+    },
+    {
+      "metric_key": "beh_creditor_silence",
+      "short_code": "GAV",
+      "name": "Glaeubiger-Antwortverfall",
+      "category_key": "ops",
+      "measures": "Antwortlatenz gegenueber Glaeubigern im Verhaeltnis zu Kunden",
+      "value": 58,
+      "band": "beobachten",
+      "confidence": 0.41,
+      "coverage": 0.35,
+      "weight": 0.08,
+      "availability": "live",
+      "percentile_vertical": 28,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Verhaltensmuster aus der Kommunikations-Historie (90 Tage)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 13
+      }
+    },
+    {
+      "metric_key": "beh_early_dispute",
+      "short_code": "DFQ",
+      "name": "Disput-Fruehquote",
+      "category_key": "risk",
+      "measures": "Rechnungen mit Beanstandung vor Faelligkeit",
+      "value": null,
+      "band": "unbekannt",
+      "confidence": null,
+      "coverage": 0.0,
+      "weight": 0.1,
+      "availability": "connectable",
+      "percentile_vertical": null,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Verhaltensmuster aus der Kommunikations-Historie (180 Tage)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)",
+          "E-Rechnungen (Faelligkeitsdatum)"
+        ],
+        "window_weeks": 26
+      },
+      "skipped_reason": "Braucht E-Rechnung oder Buchhaltung fuer das Faelligkeitsdatum"
+    },
+    {
+      "metric_key": "beh_escalation_speed",
+      "short_code": "ESK",
+      "name": "Eskalationsgeschwindigkeit",
+      "category_key": "risk",
+      "measures": "Tempo, mit dem Gegenstellen von Anfrage ueber Mahnung zu Anwalt gehen",
+      "value": null,
+      "band": "unbekannt",
+      "confidence": null,
+      "coverage": 0.0,
+      "weight": 0.08,
+      "availability": "live",
+      "percentile_vertical": null,
+      "freshness": {
+        "last_observed_at": "2026-07-18T22:10:00Z",
+        "status": "fresh",
+        "age_hours": 28
+      },
+      "provenance": {
+        "method_label": "Verhaltensmuster aus der Kommunikations-Historie (180 Tage)",
+        "sources_used": [
+          "Kommunikation (Postfach, read-only)"
+        ],
+        "window_weeks": 26
+      },
+      "skipped_reason": "Zu wenige Gegenstellen mit verwertbarer Eskalationsleiter (1 von mindestens 3)"
     }
   ],
   "benchmark": {

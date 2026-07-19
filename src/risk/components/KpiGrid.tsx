@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { bandColor, fmtPct, fmtScore, methodLabel } from "../format";
+import { bandColor, BEHAVIOUR_META, fmtPct, fmtScore, isBehaviourMetric, methodLabel } from "../format";
 import { FreshnessDot } from "./FreshnessDot";
 import type { RiskCategory, RiskMetric } from "../types";
 
@@ -76,7 +76,10 @@ export function KpiGrid({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
-                    {rows.map((m) => (
+                    {rows.map((m) => {
+                      const beh = isBehaviourMetric(m.metric_key);
+                      const uebersprungen = m.value == null && !!m.skipped_reason;
+                      return (
                       <tr key={m.metric_key}>
                         <td className="py-2 pr-2">
                           <Tooltip>
@@ -86,15 +89,31 @@ export function KpiGrid({
                               </span>
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs text-xs leading-relaxed">
-                              {m.measures || "Keine Beschreibung hinterlegt."}
+                              {beh
+                                ? <><span className="block font-medium mb-1">Verhaltenssignal</span>{BEHAVIOUR_META[m.metric_key].why}</>
+                                : (m.measures || "Keine Beschreibung hinterlegt.")}
                             </TooltipContent>
                           </Tooltip>
                           {m.short_code && (
                             <span className="ml-2 text-[10px] font-mono text-muted-foreground/60">{m.short_code}</span>
                           )}
+                          {beh && (
+                            <span className="ml-1.5 text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 align-middle"
+                              title="Verhaltenssignal - misst das Verhalten gegenueber Glaeubigern, nicht Bilanzwerte">
+                              Verhalten
+                            </span>
+                          )}
+                          {/* Ein uebersprungenes Signal sagt warum. Ein leeres Feld
+                              wirkt wie ein Fehler, ein erklaertes wie Sorgfalt. */}
+                          {uebersprungen && (
+                            <span className="block mt-0.5 text-[10px] text-muted-foreground/70 italic">
+                              {m.skipped_reason}
+                            </span>
+                          )}
                         </td>
-                        <td className="py-2 text-right tabular-nums font-medium" style={{ color: bandColor(m.band) }}>
-                          {fmtScore(m.value)}
+                        <td className="py-2 text-right tabular-nums font-medium"
+                          style={{ color: uebersprungen ? "#5A6473" : bandColor(m.band) }}>
+                          {uebersprungen ? "kein Wert" : fmtScore(m.value)}
                         </td>
                         <td className="py-2 text-right tabular-nums text-muted-foreground hidden sm:table-cell">
                           {m.percentile_vertical == null ? "–" : `p${m.percentile_vertical}`}
@@ -118,7 +137,7 @@ export function KpiGrid({
                           <FreshnessDot freshness={m.freshness} showLabel={false} />
                         </td>
                       </tr>
-                    ))}
+                    );})}
                     {rows.length === 0 && (
                       <tr><td colSpan={5} className="py-3 text-muted-foreground/60">
                         Keine Kennzahl dieser Kategorie hat fuer diesen Namen Daten.
