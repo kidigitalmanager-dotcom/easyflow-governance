@@ -90,6 +90,15 @@ export default function AuditTrail() {
     setConfirmCorrect(false);
   }, [selectedEntry]);
 
+  // Overlay-Panel: Escape schließt das Detail.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedEntry(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const q = textQuery.trim().toLowerCase();
   const filtered = entries.filter((entry) => {
     if (selectedPriority !== "Alle" && entry.priority !== selectedPriority) return false;
@@ -388,10 +397,24 @@ export default function AuditTrail() {
             })}
           </div>
 
-          {/* Detail drawer — flex-Spalte: Inhalt scrollt, die Label-Korrektur ist
-              als Footer IMMER sichtbar (P1.1: Button nie unter dem Fold). */}
+          {/* Detail drawer — FIXES Overlay-Panel über die volle Fensterhöhe:
+              Inhalt scrollt innen, die Label-Korrektur ist als Footer IMMER ohne
+              Scrollen sichtbar — unabhängig davon, wie viel Banner/Titel/Filter
+              über der Liste stehen und wie weit die Seite gescrollt ist (P1.1).
+              Vorher (sticky in-flow + max-h) begann die Leiste unter dem roten
+              Postfach-Banner und ragte unter den Viewport -> Button erst nach
+              Scrollen ans Seitenende sichtbar (Leon-Screenshot 21.07., 17:01).
+              Der leere Spacer hält die Listenbreite wie bisher (Layout stabil).
+              z-50 liegt bewusst ÜBER dem Jana-FAB (z-40), damit der FAB nicht
+              den Footer-Button überdeckt. */}
           {detail && (
-            <div className="w-96 flex-shrink-0 glass-card sticky top-8 self-start max-h-[calc(100vh-6rem)] flex flex-col overflow-hidden">
+            <>
+              <div className="hidden lg:block w-96 flex-shrink-0" aria-hidden="true" />
+              <div
+                role="dialog"
+                aria-label="Verlauf-Detail"
+                className="fixed inset-y-0 right-0 z-50 w-96 max-w-[94vw] flex flex-col overflow-hidden bg-card border-l border-border shadow-[0_8px_32px_rgba(0,0,0,0.45)]"
+              >
               <div className="p-6 pb-3 space-y-4 overflow-y-auto min-h-0 flex-1">
                 <div className="flex items-center justify-between">
                   <h2 className="text-base font-semibold">{detailIsCorrection ? "Label-Korrektur" : "Details"}</h2>
@@ -704,7 +727,8 @@ export default function AuditTrail() {
                   )}
                 </div>
               )}
-            </div>
+              </div>
+            </>
           )}
         </div>
       )}
