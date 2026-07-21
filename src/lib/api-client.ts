@@ -1833,6 +1833,24 @@ export interface CorrectLabelResponse {
 export const correctLabel = (eventId: string, toCoreKey: string) =>
   apiPost<CorrectLabelResponse>("/label/correct", { event_id: eventId, to_core_key: toCoreKey });
 
+// v4.129.0: Echtes Rueckgaengig einer Label-Korrektur (Verlauf). Re-applied das
+// VORHERIGE Label ueber die bestehenden Mailbox-Pfade und markiert die Korrektur
+// als reverted (fliesst nicht mehr in Regel-Vorschlaege/Few-Shot ein).
+// Fehler-Kontrakt: 404 == Route existiert im deployten Backend noch nicht
+// (das Frontend faellt dann auf correctLabel mit dem alten Key zurueck).
+export interface UndoLabelCorrectResponse {
+  ok: boolean;
+  provider?: string | null;
+  restored_core_key?: string | null;
+  applied?: string | null;
+  removed?: string[];
+  learning_marked?: boolean;
+  reverted_count?: number;
+  migration_missing?: boolean;
+}
+export const undoLabelCorrect = (eventId: string) =>
+  apiPost<UndoLabelCorrectResponse>("/label/correct/undo", { event_id: eventId });
+
 // -- Promotion (Tenant-Anfrage) ---------------------------------------------
 export interface AutopilotPromoteRequestInput {
   core_key: AutopilotCoreKey;

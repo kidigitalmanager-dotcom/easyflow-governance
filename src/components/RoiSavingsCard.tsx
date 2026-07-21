@@ -274,7 +274,12 @@ export function RoiSavingsCard() {
               {result.projected && " Der Monatswert ist aus dem 7-Tage-Schnitt hochgerechnet, nicht gemessen."}
             </p>
             <p className="text-[11px]">
-              Konservative Schätzung. Weitere von Jana übernommene Aktionen sind hier noch nicht vollständig enthalten —
+              Methode: {assumptions.draftMinutes} Min je vorbereitetem Entwurf · {assumptions.triageMinutes} Min je
+              eingeordneter E-Mail · Stundensatz {assumptions.hourlyRate} € (justierbar) · Bandbreite ±25 %.
+              Bewusst konservativer als der Website-ROI-Rechner (Durchschnitt 5 Min je E-Mail).
+            </p>
+            <p className="text-[11px]">
+              Konservative Schätzung. Weitere von Jana übernommene Aktionen sind hier noch nicht vollständig enthalten,
               der reale Nutzen liegt eher darüber.
             </p>
           </div>

@@ -34,11 +34,15 @@ export interface RoiAssumptions {
   hourlyRate: number;
 }
 
+// Methoden-Angleichung 21.07.2026 (Leon): identische Annahmen wie Pitch-Demo und
+// demo-jana-Backend (8 Min je Entwurf, 2 Min Triage, 60 EUR/Std). Bewusst
+// konservativer als der Website-ROI-Rechner (HausverwaltungRechner.tsx,
+// Durchschnitt 5 Min je E-Mail ueber ALLE Mails).
 export const DEFAULT_ASSUMPTIONS: RoiAssumptions = {
   draftMinutes: 8,
-  triageMinutes: 1,
+  triageMinutes: 2,
   deadlineMinutes: 15,
-  hourlyRate: 40,
+  hourlyRate: 60,
 };
 
 // Grenzen fuer die justierbaren Felder (Schutz vor Unsinns-Eingaben).
@@ -66,7 +70,19 @@ export const THIN_MIN_EMAILS = 3;
 export const M5_AUTO_SHARE = 0.4;
 export const M5_RELEASE_MINUTES = 2;
 
-export const STORAGE_KEY = "ue.roi.assumptions.v2";
+export const STORAGE_KEY = "ue.roi.assumptions.v3";
+// v2-Bestand (bis 21.07.2026, Defaults 8/1/15/40): Die Kachel hat die geladenen
+// Werte beim ersten Rendern automatisch persistiert, d.h. ein v2-Eintrag ist
+// meist KEINE bewusste Nutzer-Einstellung. Migration: Felder, die noch exakt auf
+// dem v2-Default stehen, uebernehmen den neuen Default; bewusste Abweichungen
+// bleiben erhalten (Addendum 21.07.: bestehende Overrides respektieren).
+export const STORAGE_KEY_V2 = "ue.roi.assumptions.v2";
+export const V2_DEFAULTS: RoiAssumptions = {
+  draftMinutes: 8,
+  triageMinutes: 1,
+  deadlineMinutes: 15,
+  hourlyRate: 40,
+};
 
 export interface RoiResult {
   period: RoiPeriod;
@@ -119,11 +135,25 @@ export function sanitizeAssumptions(a: Partial<RoiAssumptions> | null | undefine
   };
 }
 
+/** v2 -> v3: nur bewusste Abweichungen vom v2-Default uebernehmen (s.o.). */
+export function migrateV2Assumptions(v2In: Partial<RoiAssumptions> | null | undefined): RoiAssumptions {
+  const v2 = sanitizeAssumptions(v2In);
+  return {
+    draftMinutes: v2.draftMinutes === V2_DEFAULTS.draftMinutes ? DEFAULT_ASSUMPTIONS.draftMinutes : v2.draftMinutes,
+    triageMinutes: v2.triageMinutes === V2_DEFAULTS.triageMinutes ? DEFAULT_ASSUMPTIONS.triageMinutes : v2.triageMinutes,
+    deadlineMinutes: v2.deadlineMinutes === V2_DEFAULTS.deadlineMinutes ? DEFAULT_ASSUMPTIONS.deadlineMinutes : v2.deadlineMinutes,
+    hourlyRate: v2.hourlyRate === V2_DEFAULTS.hourlyRate ? DEFAULT_ASSUMPTIONS.hourlyRate : v2.hourlyRate,
+  };
+}
+
 export function loadAssumptions(): RoiAssumptions {
   try {
-    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-    if (!raw) return { ...DEFAULT_ASSUMPTIONS };
-    return sanitizeAssumptions(JSON.parse(raw) as Partial<RoiAssumptions>);
+    if (typeof localStorage === "undefined") return { ...DEFAULT_ASSUMPTIONS };
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return sanitizeAssumptions(JSON.parse(raw) as Partial<RoiAssumptions>);
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2);
+    if (rawV2) return migrateV2Assumptions(JSON.parse(rawV2) as Partial<RoiAssumptions>);
+    return { ...DEFAULT_ASSUMPTIONS };
   } catch {
     return { ...DEFAULT_ASSUMPTIONS };
   }

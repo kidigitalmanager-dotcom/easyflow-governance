@@ -2,18 +2,18 @@ import { describe, it, expect } from "vitest";
 import {
   computeRoi, computeRoiFromCounts, computeM5Hook, sanitizeAssumptions, DEFAULT_ASSUMPTIONS,
   WEEK_TO_MONTH, BAND_LOW, BAND_HIGH, M5_AUTO_SHARE, M5_RELEASE_MINUTES,
-  formatHoursRange, formatMinutes,
+  formatHoursRange, formatMinutes, migrateV2Assumptions,
 } from "./roi";
 
-const A = DEFAULT_ASSUMPTIONS; // draft 8, triage 1, deadline 15, rate 40
+const A = DEFAULT_ASSUMPTIONS; // draft 8, triage 2, deadline 15, rate 60 (Methode 21.07.2026)
 
 describe("computeRoiFromCounts (measured path)", () => {
-  it("point = drafts*8 + emails*1 + deadlines*15 (resolved NOT counted)", () => {
+  it("point = drafts*8 + emails*2 + deadlines*15 (resolved NOT counted)", () => {
     const r = computeRoiFromCounts(
       { drafts_prepared: 10, resolved: 7, emails_triaged: 50, deadlines_caught: 2 },
       A, { period: "week", measured: true },
     );
-    expect(r.minutesPoint).toBe(10 * 8 + 50 * 1 + 2 * 15); // 160
+    expect(r.minutesPoint).toBe(10 * 8 + 50 * 2 + 2 * 15); // 210
     expect(r.deadlines).toBe(2);
     expect(r.resolved).toBe(7);
     expect(r.measured).toBe(true);
@@ -45,7 +45,7 @@ describe("computeRoiFromCounts (measured path)", () => {
     const d = computeRoiFromCounts({ drafts_prepared: 0, resolved: 0, emails_triaged: 2, deadlines_caught: 1 }, A, { period: "week" });
     expect(d.thin).toBe(false);
     expect(d.triageOnly).toBe(true);
-    expect(d.minutesPoint).toBe(2 * 1 + 1 * 15);
+    expect(d.minutesPoint).toBe(2 * 2 + 1 * 15);
   });
 
   it("scale applies to counts but not to thin/triage decision", () => {
@@ -65,7 +65,7 @@ describe("computeRoiFromCounts (measured path)", () => {
 describe("computeRoi (fallback path from /stats)", () => {
   it("week measured, deadlines 0", () => {
     const r = computeRoi({ drafts_created_week: 10, emails_week: 50, resolved_week: 7 }, A, "week");
-    expect(r.minutesPoint).toBe(130); // 10*8 + 50*1 (+0 deadlines)
+    expect(r.minutesPoint).toBe(180); // 10*8 + 50*2 (+0 deadlines)
     expect(r.deadlines).toBe(0);
     expect(r.projected).toBe(false);
     expect(r.measured).toBe(false);
@@ -104,6 +104,18 @@ describe("computeM5Hook", () => {
   it("scales with drafts", () => {
     const r = computeRoiFromCounts({ drafts_prepared: 10, resolved: 0, emails_triaged: 0, deadlines_caught: 0 }, A, { period: "week" });
     expect(computeM5Hook(r).minutes).toBeCloseTo(10 * M5_AUTO_SHARE * M5_RELEASE_MINUTES, 6);
+  });
+});
+
+describe("Methode 21.07.2026 (Addendum): Defaults identisch zu Pitch-Demo/demo-jana", () => {
+  it("8 Min Entwurf, 2 Min Triage, 15 Min Frist, 60 EUR/Std", () => {
+    expect(DEFAULT_ASSUMPTIONS).toEqual({ draftMinutes: 8, triageMinutes: 2, deadlineMinutes: 15, hourlyRate: 60 });
+  });
+  it("v2-Migration: unangetastete v2-Defaults -> neue Defaults, bewusste Overrides bleiben", () => {
+    expect(migrateV2Assumptions({ draftMinutes: 8, triageMinutes: 1, deadlineMinutes: 15, hourlyRate: 40 }))
+      .toEqual(DEFAULT_ASSUMPTIONS);
+    expect(migrateV2Assumptions({ draftMinutes: 12, triageMinutes: 1, deadlineMinutes: 20, hourlyRate: 40 }))
+      .toEqual({ draftMinutes: 12, triageMinutes: 2, deadlineMinutes: 20, hourlyRate: 60 });
   });
 });
 

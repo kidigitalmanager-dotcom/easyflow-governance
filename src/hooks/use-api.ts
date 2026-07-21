@@ -56,6 +56,7 @@ import {
   undoAuditAction,
   removeLabel,
   correctLabel,
+  undoLabelCorrect,
   requestAutopilotPromotion,
   fetchAutopilotFewShot,
   fetchAutopilotLog,
@@ -617,6 +618,20 @@ export function useCorrectLabel() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: { event_id: string; to_core_key: string }) => correctLabel(input.event_id, input.to_core_key),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["audit-log"] });
+      qc.invalidateQueries({ queryKey: ["recent-emails"] });
+    },
+  });
+}
+
+// v4.129.0: Echtes Rueckgaengig einer Label-Korrektur — re-applied das vorherige
+// Label ueber den bestehenden Mailbox-Pfad und markiert die Korrektur als
+// reverted (fliesst nicht mehr in Regel-Vorschlaege/Few-Shot ein).
+export function useUndoLabelCorrect() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { event_id: string }) => undoLabelCorrect(input.event_id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["audit-log"] });
       qc.invalidateQueries({ queryKey: ["recent-emails"] });
