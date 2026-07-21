@@ -58,6 +58,7 @@ const PURPOSE_LABELS: Record<string, string> = {
   appointments: "Termine",
   tenants: "Mieter",
   maintenance: "Wartung / Reparaturen",
+  price_list: "Preisliste", // v4.130.0 — Quelle fuer exakte Angebotspreise
 };
 
 const PROVIDER_LABELS: Record<string, { label: string; icon: typeof Globe }> = {

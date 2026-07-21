@@ -435,7 +435,7 @@ export interface SpreadsheetConnection {
   sheet_name: string;
   provider: "google_sheets" | "microsoft_graph" | "local";
   tab_name: string;
-  purpose: "general" | "appointments" | "tenants" | "maintenance";
+  purpose: "general" | "appointments" | "tenants" | "maintenance" | "price_list";
   purpose_keywords: string[];
   is_active: boolean;
   allow_row_insert: boolean;
@@ -2714,6 +2714,7 @@ export interface TenantOffer {
   created_at: string | null;
   updated_at: string | null;
   approved_at: string | null;
+  detected_from?: string | null; // v4.130.0 — 'auto_scan' = automatisch aus E-Mail erstellt
 }
 export interface RequestItem {
   thread_key: string | null;
@@ -2726,6 +2727,7 @@ export interface RequestItem {
   has_offer: boolean;
   offer_id: number | null;
   offer_status: string | null;
+  offer_auto?: boolean; // v4.130.0 — Angebot wurde automatisch aus der E-Mail erstellt
 }
 export interface GenerateOfferBody {
   source_message_id?: string; source_provider?: string; thread_key?: string; thread_text?: string;
@@ -2751,6 +2753,19 @@ export interface OfferUpdateResult { ok: boolean; document_id: number; positions
 export async function listRequests(limit = 40): Promise<{ ok: boolean; items: RequestItem[] }> {
   return apiFetch<{ ok: boolean; items: RequestItem[] }>(`/documents/requests?limit=${limit}`);
 }
+
+// ── v4.130.0: Auto-Angebot aus E-Mail — Einstellungen ──
+export interface AutoOfferSettings {
+  ok: boolean;
+  enabled: boolean;
+  documents_enabled: boolean;
+  feature_on: boolean;
+  migration_missing?: boolean;
+}
+export const fetchAutoOfferSettings = () =>
+  apiFetch<AutoOfferSettings>("/documents/auto-offer-settings");
+export const setAutoOfferEnabled = (enabled: boolean) =>
+  apiPost<{ ok: boolean; enabled: boolean; error?: string }>("/documents/auto-offer-settings", { enabled });
 export async function getOffer(id: number): Promise<{ ok: boolean; offer: TenantOffer }> {
   return apiFetch<{ ok: boolean; offer: TenantOffer }>(`/documents/offer?id=${id}`);
 }
@@ -2762,7 +2777,9 @@ export async function updateOffer(body: UpdateOfferBody): Promise<OfferUpdateRes
 }
 export async function submitOfferVerdict(
   documentId: number, action: "approve" | "reject", opts?: { send_cover_letter?: boolean },
-): Promise<{ ok: boolean; document_id: number; status: string; mailbox?: { provider: string | null; draft: boolean } | null; error?: string }> {
+): Promise<{ ok: boolean; document_id: number; status: string; mailbox?: { provider: string | null; draft: boolean } | null; error?: string;
+  auto_invoice?: { ok: boolean; invoice_id?: number; hint?: string } | null; // v4.130.0
+}> {
   return apiPost("/documents/offer/verdict", { document_id: documentId, action, ...(opts || {}) });
 }
 

@@ -25,6 +25,8 @@ import EmailAutopilotAuditView from "@/components/EmailAutopilotAuditView";
 import StichprobenAuditTab from "@/components/StichprobenAuditTab";
 import BillingTab from "@/components/BillingTab";
 import AiTransparencyTab from "@/components/AiTransparencyTab";
+import AutoOfferSettingsCard from "@/components/AutoOfferSettingsCard"; // v4.130.0
+import PriceListsCard from "@/components/PriceListsCard"; // v4.130.0
 
 function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [state, setState] = useState<T>(() => {
@@ -238,6 +240,8 @@ export default function Einstellungen() {
         <div className="min-w-0">
 
         <TabsContent value="general" className="space-y-8 mt-6">
+          {/* v4.130.0 — Auto-Angebot-Toggle (rendert nur wenn documents_enabled) */}
+          <AutoOfferSettingsCard />
           <div className="glass-card p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold">UseEasy pro Mailbox</h2>
@@ -454,7 +458,9 @@ export default function Einstellungen() {
           <JanaKnowledgeTab />
         </TabsContent>
 
-        <TabsContent value="knowledge" className="mt-6">
+        <TabsContent value="knowledge" className="mt-6 space-y-6">
+          {/* v4.130.0 — Preislisten dort, wo Leon sie erwartet (Unternehmenswissen) */}
+          <PriceListsCard />
           <KnowledgeBaseTab />
         </TabsContent>
 

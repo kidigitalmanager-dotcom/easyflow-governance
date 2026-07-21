@@ -1064,6 +1064,7 @@ export function useImportArXlsx() {
 
 import {
   listRequests, getOffer, generateOffer, updateOffer, submitOfferVerdict,
+  fetchAutoOfferSettings, setAutoOfferEnabled,
   type GenerateOfferBody, type UpdateOfferBody,
 } from "@/lib/api-client";
 
@@ -1102,6 +1103,27 @@ export function useOfferVerdict() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["documents-requests"] });
       qc.invalidateQueries({ queryKey: ["documents-offer"] });
+      qc.invalidateQueries({ queryKey: ["documents-invoices"] }); // v4.130.0 — Auto-Invoice nach Approve sofort sichtbar
+    },
+  });
+}
+
+// ── v4.130.0: Auto-Angebot aus E-Mail — Einstellungen ──
+export function useAutoOfferSettings() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["auto-offer-settings"],
+    queryFn: fetchAutoOfferSettings,
+    enabled: !!session,
+    staleTime: 30_000,
+  });
+}
+export function useSetAutoOfferEnabled() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (enabled: boolean) => setAutoOfferEnabled(enabled),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["auto-offer-settings"] });
     },
   });
 }

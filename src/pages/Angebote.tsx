@@ -59,6 +59,7 @@ export default function Angebote() {
   const [dirty, setDirty] = useState(false);
   const [showPdf, setShowPdf] = useState(false);
   const [pendingMsg, setPendingMsg] = useState<{ messageId: string; provider: string } | null>(null);
+  const [listFilter, setListFilter] = useState<"alle" | "freigabe" | "ohne">("alle"); // v4.130.0
   const [searchParams, setSearchParams] = useSearchParams();
 
   const requests = useRequests(40);
@@ -188,6 +189,12 @@ export default function Angebote() {
         toast.error(msg); return;
       }
       toast.success(sendCoverLetter ? "Freigegeben. Anschreiben liegt im Postfach-Entwurf." : "Freigegeben.");
+      // v4.130.0 — Auto-Invoice nach Approve: Entwurf liegt sofort unter Rechnungen
+      if (res.auto_invoice?.ok) {
+        toast.success("Rechnungs-Entwurf wurde automatisch erstellt — zu finden unter Rechnungen.");
+      } else if (res.auto_invoice && !res.auto_invoice.ok) {
+        toast.message("Rechnungs-Entwurf konnte nicht automatisch erstellt werden — bitte unter Rechnungen manuell generieren.");
+      }
       backToList();
     } catch {
       toast.error("Freigabe fehlgeschlagen.");
@@ -216,7 +223,12 @@ export default function Angebote() {
     return (
       <div className="p-4 sm:p-6 space-y-4 max-w-5xl">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <Button variant="ghost" size="sm" onClick={backToList}><ArrowLeft className="mr-1 h-4 w-4" /> Zurück</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={backToList}><ArrowLeft className="mr-1 h-4 w-4" /> Zurück</Button>
+            {offerQuery.data?.offer?.detected_from === "auto_scan" && (
+              <Badge variant="secondary" className="text-[10px] gap-1"><Sparkles className="h-3 w-3" /> Automatisch aus E-Mail erstellt</Badge>
+            )}
+          </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" size="sm" onClick={() => setShowPdf(true)}><Printer className="mr-1 h-4 w-4" /> Als PDF</Button>
             <Button variant="outline" size="sm" onClick={save} disabled={busy || !dirty}>
@@ -296,24 +308,57 @@ export default function Angebote() {
       )}
 
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base">Offene Anfragen</CardTitle></CardHeader>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="text-base">Offene Anfragen</CardTitle>
+            {/* v4.130.0 — Filter, „Wartet auf Freigabe" prominent */}
+            {(() => {
+              const items = requests.data?.items ?? [];
+              const nFreigabe = items.filter((r) => r.has_offer && r.offer_status === "draft").length;
+              const nOhne = items.filter((r) => !r.has_offer).length;
+              return (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Button variant={listFilter === "freigabe" ? "default" : "outline"} size="sm" className="h-7 text-xs"
+                    onClick={() => setListFilter(listFilter === "freigabe" ? "alle" : "freigabe")}>
+                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Wartet auf Freigabe{nFreigabe > 0 ? ` (${nFreigabe})` : ""}
+                  </Button>
+                  <Button variant={listFilter === "ohne" ? "default" : "outline"} size="sm" className="h-7 text-xs"
+                    onClick={() => setListFilter(listFilter === "ohne" ? "alle" : "ohne")}>
+                    Ohne Angebot{nOhne > 0 ? ` (${nOhne})` : ""}
+                  </Button>
+                </div>
+              );
+            })()}
+          </div>
+        </CardHeader>
         <CardContent className="space-y-2">
           {requests.isLoading && <><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></>}
           {!requests.isLoading && (requests.data?.items?.length ?? 0) === 0 && (
             <p className="text-sm text-muted-foreground py-4">Keine offenen Anfragen gefunden. Anfragen erscheinen hier, sobald E-Mails als „Anfrage &amp; Auftrag" eingeordnet wurden.</p>
           )}
-          {requests.data?.items?.map((req, i) => (
+          {requests.data?.items
+            ?.filter((req) => listFilter === "alle" ? true
+              : listFilter === "freigabe" ? (req.has_offer && req.offer_status === "draft")
+              : !req.has_offer)
+            .map((req, i) => (
             <div key={i} className="flex items-center justify-between gap-3 rounded-lg border p-3">
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium truncate">{req.subject}</span>
                   {req.has_offer && <Badge variant="secondary" className="text-[10px]">Angebot: {req.offer_status}</Badge>}
+                  {req.offer_auto && (
+                    <Badge className="text-[10px] gap-1 bg-primary/15 text-primary hover:bg-primary/15 border-0">
+                      <Sparkles className="h-3 w-3" /> Automatisch aus E-Mail
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{req.sender}{req.summary ? " · " + req.summary : ""}</p>
               </div>
               <div className="shrink-0">
                 {req.has_offer && req.offer_id != null ? (
-                  <Button variant="outline" size="sm" onClick={() => openExistingOffer(req.offer_id as number)}>Angebot öffnen</Button>
+                  <Button variant={req.offer_auto && req.offer_status === "draft" ? "default" : "outline"} size="sm" onClick={() => openExistingOffer(req.offer_id as number)}>
+                    {req.offer_auto && req.offer_status === "draft" ? "Prüfen & freigeben" : "Angebot öffnen"}
+                  </Button>
                 ) : (
                   <Button size="sm" onClick={() => generateFrom(req)} disabled={genOffer.isPending}>
                     <Sparkles className="mr-1 h-4 w-4" /> Angebot erstellen
@@ -322,6 +367,12 @@ export default function Angebote() {
               </div>
             </div>
           ))}
+          {!requests.isLoading && (requests.data?.items?.length ?? 0) > 0 && listFilter !== "alle" &&
+            (requests.data?.items ?? []).filter((req) => listFilter === "freigabe" ? (req.has_offer && req.offer_status === "draft") : !req.has_offer).length === 0 && (
+            <p className="text-sm text-muted-foreground py-4">
+              {listFilter === "freigabe" ? "Kein Angebot wartet gerade auf Freigabe." : "Alle Anfragen haben bereits ein Angebot."}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
