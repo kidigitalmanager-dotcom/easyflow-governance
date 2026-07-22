@@ -7,9 +7,10 @@
 // läuft über den Dialog in Rechnungen.tsx/Angebote.tsx (TimeApplyDialog).
 // -----------------------------------------------------------------------------
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   useMe, useTimeEntries, useCreateTimeEntry, useUpdateTimeEntry, useDeleteTimeEntry,
-  useUnbillTimeEntry, useTeamMembers,
+  useUnbillTimeEntry, useTeamMembers, useGenerateInvoice, useApplyTimeToDocument,
 } from "@/hooks/use-api";
 import type { TimeEntry } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Clock, Plus, Trash2, Loader2, Pencil, RotateCcw, Download, Lock, Users } from "lucide-react";
+import { Clock, Plus, Trash2, Loader2, Pencil, RotateCcw, Download, Lock, Users, ReceiptText } from "lucide-react";
 
 function todayIso(): string { return new Date().toISOString().slice(0, 10); }
 function isoDaysAgo(days: number): string { return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10); }
@@ -250,6 +251,48 @@ export default function Zeiterfassung() {
   const del = useDeleteTimeEntry();
   const unbill = useUnbillTimeEntry();
 
+  // v4.132.0 Owner-Umbau (Leon 22.07. abends): Owner-Sicht = Übersicht + Abrechnung.
+  // Alle OFFENEN abrechenbaren Zeiten je Kunde, mit Ein-Klick "Rechnung aus Zeiten".
+  const navigate = useNavigate();
+  const genInv = useGenerateInvoice();
+  const applyTime = useApplyTimeToDocument();
+  const openEntries = useTimeEntries({ status: "open" }, isOwner && !me.isLoading);
+  const [showCapture, setShowCapture] = useState(false);
+  const [billingBusy, setBillingBusy] = useState<string | null>(null);
+  const byCustomer = useMemo(() => {
+    const map = new Map<string, { minutes: number; count: number; valueCents: number; ids: number[]; noRate: number }>();
+    for (const e of openEntries.data?.items || []) {
+      if (!e.billable) continue;
+      const k = e.customer_name || "(ohne Kunde)";
+      const g = map.get(k) || { minutes: 0, count: 0, valueCents: 0, ids: [], noRate: 0 };
+      g.minutes += e.duration_min; g.count += 1; g.ids.push(e.id);
+      if (e.hourly_rate_cents != null) g.valueCents += Math.round(e.duration_min * e.hourly_rate_cents / 60);
+      else g.noRate += 1;
+      map.set(k, g);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1].minutes - a[1].minutes);
+  }, [openEntries.data]);
+
+  async function billCustomer(kunde: string, ids: number[]) {
+    setBillingBusy(kunde);
+    try {
+      const inv = await genInv.mutateAsync({
+        counterpart_name: kunde === "(ohne Kunde)" ? undefined : kunde,
+        subject: "Rechnung" + (kunde !== "(ohne Kunde)" ? " für " + kunde : ""),
+      });
+      if ((inv as { skipped?: boolean }).skipped) { toast.error("Rechnungen sind noch nicht aktiviert (Feature/Postfach)."); return; }
+      if (!inv.ok || !inv.document_id) { toast.error("Rechnung konnte nicht erstellt werden."); return; }
+      const res = await applyTime.mutateAsync({ document_id: inv.document_id, entry_ids: ids, gruppierung: "je_eintrag" });
+      if (!res.ok) { toast.error("Zeiten-Übernahme fehlgeschlagen: " + (res.error || "")); return; }
+      toast.success(`Rechnungsentwurf mit ${res.added_positions} Position(en) erstellt — Einträge sind jetzt „abgerechnet".`);
+      if ((res.entries_without_rate || 0) > 0) {
+        toast.message("Einträge ohne Stundensatz dabei", { description: "Preis im Rechnungs-Editor bitte eintragen (Positionen sind offen)." });
+      }
+      navigate("/rechnungen");
+    } catch { toast.error("Rechnung aus Zeiten fehlgeschlagen."); }
+    finally { setBillingBusy(null); }
+  }
+
   const memberOptions = (team.data?.members || []).filter((m) => m.active).map((m) => ({ email: m.email, name: m.display_name || m.email }));
   const nameByEmail = useMemo(() => {
     const map: Record<string, string> = {};
@@ -304,7 +347,7 @@ export default function Zeiterfassung() {
           <p className="text-sm text-muted-foreground">
             {isEmployee
               ? "Trag ein, wo du warst und wie lange — dein Chef übernimmt die Zeiten in die Abrechnung."
-              : "Alle Zeiten deines Teams. Übernehmen in Angebot/Rechnung: dort „Offene Zeiten übernehmen“."}
+              : "Wer war wann wo — und mit einem Klick als Rechnung abgerechnet."}
           </p>
         </div>
         {isOwner && (
@@ -326,11 +369,56 @@ export default function Zeiterfassung() {
         )}
       </div>
 
-      {/* Erfassen / Bearbeiten */}
-      <EntryForm key={editEntry ? "edit-" + editEntry.id : "new-" + formKey}
-        customers={entries.data?.customers || []}
-        isOwner={isOwner} memberOptions={memberOptions} editEntry={editEntry}
-        onDone={() => { setEditEntry(null); setFormKey((k) => k + 1); }} />
+      {/* v4.132.0 Owner-Umbau: Abrechnung zuerst — offene Zeiten je Kunde mit
+          Ein-Klick "Rechnung aus Zeiten" (erstellt Entwurf + übernimmt Einträge). */}
+      {isOwner && (
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2">
+            <ReceiptText className="h-4 w-4" /> Offene Zeiten je Kunde — bereit zur Abrechnung
+          </CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {openEntries.isLoading && <Skeleton className="h-12 w-full" />}
+            {!openEntries.isLoading && byCustomer.length === 0 && (
+              <p className="text-sm text-muted-foreground py-2">
+                Keine offenen, abrechenbaren Zeiten. Sobald dein Team Zeiten erfasst, kannst du sie hier pro Kunde abrechnen.
+              </p>
+            )}
+            {byCustomer.map(([kunde, g]) => (
+              <div key={kunde} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                <div className="min-w-0">
+                  <span className="font-medium text-sm truncate">{kunde}</span>
+                  <p className="text-xs text-muted-foreground">
+                    {g.count} Einsatz/Einsätze · {fmtMin(g.minutes)}{g.valueCents > 0 ? " · " + fmtCents(g.valueCents) + " netto" : ""}
+                    {g.noRate > 0 ? ` · ${g.noRate}× Satz offen` : ""}
+                  </p>
+                </div>
+                <Button size="sm" className="shrink-0" disabled={billingBusy != null}
+                  onClick={() => billCustomer(kunde, g.ids)}
+                  title="Erstellt einen Rechnungsentwurf und übernimmt alle offenen Zeiten dieses Kunden (Stunden × Satz)">
+                  {billingBusy === kunde ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ReceiptText className="mr-1 h-4 w-4" />}
+                  Rechnung aus Zeiten
+                </Button>
+              </div>
+            ))}
+            <p className="text-[11px] text-muted-foreground pt-1">
+              Alternativ in einem bestehenden Angebots-/Rechnungs-Entwurf: „Offene Zeiten übernehmen“ (mit Auswahl &amp; Gruppierung).
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Erfassen: Mitarbeiter immer prominent; Owner nur zum Nacherfassen (eingeklappt). */}
+      {isOwner && !showCapture && !editEntry && (
+        <Button variant="outline" size="sm" className="w-fit" onClick={() => setShowCapture(true)}>
+          <Plus className="mr-1 h-4 w-4" /> Zeit nacherfassen (für Mitarbeiter)
+        </Button>
+      )}
+      {(isEmployee || showCapture || editEntry) && (
+        <EntryForm key={editEntry ? "edit-" + editEntry.id : "new-" + formKey}
+          customers={entries.data?.customers || []}
+          isOwner={isOwner} memberOptions={memberOptions} editEntry={editEntry}
+          onDone={() => { setEditEntry(null); setFormKey((k) => k + 1); setShowCapture(false); }} />
+      )}
 
       {/* Filter */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -378,8 +466,8 @@ export default function Zeiterfassung() {
 
       {isOwner && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <Users className="h-3.5 w-3.5" /> Mitarbeiter anlegen &amp; Stundensätze pflegen: Einstellungen → Team.
-          Mitarbeiter melden sich mit ihrer hinterlegten E-Mail unter app.useeasy.ai an.
+          <Users className="h-3.5 w-3.5" /> Mitarbeiter anlegen &amp; Stundensätze pflegen: Einstellungen → Mitarbeiter.
+          Mitarbeiter melden sich mit ihrer hinterlegten E-Mail unter app.useeasy.ai an (Kachel „Mitarbeiter“).
         </p>
       )}
     </div>

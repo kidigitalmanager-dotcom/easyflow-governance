@@ -91,11 +91,15 @@ export function TeamTab() {
       <div className="glass-card p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Users className="w-4 h-4 text-primary" />
-          <h2 className="text-base font-semibold">Team &amp; Mitarbeiter-Logins</h2>
+          <h2 className="text-base font-semibold">Mitarbeiter-Logins (Zeiterfassung)</h2>
         </div>
         <p className="text-sm text-muted-foreground">
           Lege deine Mitarbeiter mit E-Mail und Stundensatz an. Jeder Mitarbeiter registriert sich mit <b>genau dieser E-Mail</b> unter{" "}
-          <span className="font-mono text-xs">app.useeasy.ai</span> und sieht dann ausschließlich die Zeiterfassung — keine Postfächer, keine Einstellungen.
+          <span className="font-mono text-xs">app.useeasy.ai</span> (Kachel „Mitarbeiter“, E-Mail + Passwort) und sieht dann ausschließlich
+          die Zeiterfassung — keine Postfächer, keine Einstellungen.
+        </p>
+        <p className="text-xs text-muted-foreground/70">
+          Hinweis: Deine <b>Vertriebler</b> (Telefonie/Co-Pilot) sind davon getrennt und werden unter Voice &amp; Co-Pilot bzw. admin.useeasy.ai verwaltet.
         </p>
 
         {backendMissing && (

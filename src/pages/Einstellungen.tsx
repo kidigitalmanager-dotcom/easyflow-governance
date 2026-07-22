@@ -203,7 +203,7 @@ export default function Einstellungen() {
           </TabsTrigger>
           <TabsTrigger value="team" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <Users className="w-3.5 h-3.5" />
-            Team
+            Mitarbeiter
           </TabsTrigger>
           <div className="px-3 pt-3 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground/60">Autopilot</div>
           <TabsTrigger value="email-autopilot" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
