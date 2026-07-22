@@ -10,9 +10,10 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   useMe, useTimeEntries, useCreateTimeEntry, useUpdateTimeEntry, useDeleteTimeEntry,
-  useUnbillTimeEntry, useTeamMembers, useGenerateInvoice, useApplyTimeToDocument,
+  useUnbillTimeEntry, useTeamMembers, useGenerateInvoice, useApplyTimeToDocument, useBillingProfile,
 } from "@/hooks/use-api";
 import type { TimeEntry } from "@/lib/api-client";
+import { MitarbeiterAbrechnungPdf } from "@/components/documents/MitarbeiterAbrechnungPdf";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Clock, Plus, Trash2, Loader2, Pencil, RotateCcw, Download, Lock, Users, ReceiptText } from "lucide-react";
+import { Clock, Plus, Trash2, Loader2, Pencil, RotateCcw, Download, Lock, Users, ReceiptText, FileText, Wallet } from "lucide-react";
 
 function todayIso(): string { return new Date().toISOString().slice(0, 10); }
 function isoDaysAgo(days: number): string { return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10); }
@@ -273,6 +274,44 @@ export default function Zeiterfassung() {
     return Array.from(map.entries()).sort((a, b) => b[1].minutes - a[1].minutes);
   }, [openEntries.data]);
 
+  // v4.133.0 — Mitarbeiter-Abrechnung (Lohnsatz): Mitarbeiter + Zeitraum → PDF/CSV.
+  const billing = useBillingProfile();
+  const [settlMember, setSettlMember] = useState("");
+  const [settlRange, setSettlRange] = useState<"month" | "week" | "all">("month");
+  const [showSettlPdf, setShowSettlPdf] = useState(false);
+  const settlFrom = settlRange === "week" ? isoDaysAgo(7) : settlRange === "month" ? isoDaysAgo(31) : undefined;
+  const settlEntriesQ = useTimeEntries({ member: settlMember || undefined, from: settlFrom }, isOwner && !!settlMember);
+  const settlEntries = useMemo(() => settlMember ? (settlEntriesQ.data?.items || []) : [], [settlEntriesQ.data, settlMember]);
+  const settlMemberObj = (team.data?.members || []).find((m) => m.email === settlMember) || null;
+  const settlFallbackCost = settlMemberObj?.cost_rate_cents ?? team.data?.settings?.default_cost_rate_cents ?? null;
+  const settlCostOf = (e: TimeEntry) => e.cost_rate_cents != null ? e.cost_rate_cents : (settlFallbackCost != null ? settlFallbackCost : null);
+  const settlMin = settlEntries.reduce((s, e) => s + e.duration_min, 0);
+  const settlCents = settlEntries.reduce((s, e) => { const c = settlCostOf(e); return s + (c != null ? Math.round(e.duration_min / 60 * c) : 0); }, 0);
+  const settlNoRate = settlEntries.filter((e) => settlCostOf(e) == null).length;
+  const settlName = settlMemberObj?.display_name || settlMember;
+  const settlRangeLabel = settlRange === "week" ? "letzte 7 Tage" : settlRange === "month" ? "letzte 31 Tage" : "gesamt";
+
+  function exportSettlementCsv() {
+    const head = ["Datum", "Kunde", "Tätigkeit", "Dauer (min)", "Stunden", "Lohnsatz (EUR/Std)", "Betrag (EUR)"];
+    const rows = [...settlEntries].sort((a, b) => String(a.started_at).localeCompare(String(b.started_at))).map((e) => {
+      const c = settlCostOf(e);
+      return [
+        fmtDay(e.started_at), e.customer_name || "", (e.description || "").replace(/[\r\n;]+/g, " "),
+        String(e.duration_min), (Math.round(e.duration_min / 60 * 100) / 100).toString().replace(".", ","),
+        c != null ? (c / 100).toFixed(2).replace(".", ",") : "",
+        c != null ? (Math.round(e.duration_min / 60 * c) / 100).toFixed(2).replace(".", ",") : "",
+      ];
+    });
+    const foot = ["Summe", "", "", String(settlMin), (Math.round(settlMin / 60 * 100) / 100).toString().replace(".", ","), "", (settlCents / 100).toFixed(2).replace(".", ",")];
+    const csv = [head, ...rows, foot].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\r\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `lohnabrechnung-${(settlName || "mitarbeiter").replace(/[^a-z0-9]+/gi, "_")}-${todayIso()}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   async function billCustomer(kunde: string, ids: number[]) {
     setBillingBusy(kunde);
     try {
@@ -405,6 +444,80 @@ export default function Zeiterfassung() {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* v4.133.0 — Mitarbeiter-Abrechnung (Lohnsatz): pro Mitarbeiter, als PDF/CSV */}
+      {isOwner && (
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2">
+            <Wallet className="h-4 w-4" /> Mitarbeiter-Abrechnung — was du dem Mitarbeiter zahlst
+          </CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-end gap-2 flex-wrap">
+              <div>
+                <Label className="text-xs">Mitarbeiter</Label>
+                <select className="h-9 rounded-md border border-input bg-background px-3 text-sm min-w-[200px]" value={settlMember}
+                  onChange={(e) => setSettlMember(e.target.value)}>
+                  <option value="">— bitte wählen —</option>
+                  {(team.data?.members || []).filter((m) => m.active).map((m) => (
+                    <option key={m.email} value={m.email}>{m.display_name || m.email}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex rounded-lg border overflow-hidden h-9">
+                {(["month", "week", "all"] as const).map((r) => (
+                  <button key={r} onClick={() => setSettlRange(r)}
+                    className={`px-3 text-xs ${settlRange === r ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground"}`}>
+                    {r === "month" ? "31 Tage" : r === "week" ? "7 Tage" : "Alle"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {!settlMember && (
+              <p className="text-sm text-muted-foreground py-2">Wähle einen Mitarbeiter, um seine Stunden als Lohn-Abrechnung (PDF/CSV) zu erstellen.</p>
+            )}
+            {settlMember && settlEntriesQ.isLoading && <Skeleton className="h-12 w-full" />}
+            {settlMember && !settlEntriesQ.isLoading && (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div className="rounded-lg border p-3"><p className="text-[11px] text-muted-foreground">Einsätze</p><p className="text-lg font-semibold">{settlEntries.length}</p></div>
+                  <div className="rounded-lg border p-3"><p className="text-[11px] text-muted-foreground">Stunden</p><p className="text-lg font-semibold">{fmtMin(settlMin)}</p></div>
+                  <div className="rounded-lg border p-3"><p className="text-[11px] text-muted-foreground">Lohnsumme</p><p className="text-lg font-semibold">{fmtCents(settlCents)}</p></div>
+                </div>
+                {settlNoRate > 0 && (
+                  <p className="text-xs text-amber-600 flex items-start gap-1.5">
+                    <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    {settlNoRate}× ohne Lohnsatz — nicht in der Summe. Lohnsatz unter Einstellungen → Mitarbeiter pflegen (gilt für neue Einträge).
+                  </p>
+                )}
+                <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={() => setShowSettlPdf(true)} disabled={settlEntries.length === 0}>
+                    <FileText className="mr-1 h-4 w-4" /> Als PDF
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={exportSettlementCsv} disabled={settlEntries.length === 0}>
+                    <Download className="mr-1 h-4 w-4" /> CSV
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Nutzt den <b>Lohnsatz</b> (getrennt vom Kunden-Abrechnungssatz). Interne Abrechnungsgrundlage — keine steuerliche Lohnabrechnung.
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {showSettlPdf && settlMember && (
+        <MitarbeiterAbrechnungPdf
+          memberName={settlName}
+          memberEmail={settlMember}
+          entries={settlEntries}
+          periodLabel={settlRangeLabel}
+          seller={billing.data?.profile}
+          fallbackCostCents={settlFallbackCost}
+          onClose={() => setShowSettlPdf(false)}
+        />
       )}
 
       {/* Erfassen: Mitarbeiter immer prominent; Owner nur zum Nacherfassen (eingeklappt). */}

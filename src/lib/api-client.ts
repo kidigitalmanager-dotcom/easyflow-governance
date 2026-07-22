@@ -2968,6 +2968,7 @@ export interface TimeEntry {
   duration_min: number;
   billable: boolean;
   hourly_rate_cents: number | null;
+  cost_rate_cents: number | null; // v4.133.0 — Lohn-/Kostensatz-Snapshot (was der Betrieb dem Mitarbeiter zahlt)
   status: "open" | "billed";
   invoice_document_id: number | null;
   source: string;
@@ -2984,7 +2985,7 @@ export interface TimeEntryInput {
   duration_min?: number;
   member_email?: string; // nur Owner (Nacherfassung); Backend erzwingt Token-Mail fuer Employees
 }
-export interface TeamMember { id: number; email: string; display_name: string | null; role: "owner" | "employee"; hourly_rate_cents: number | null; active: boolean; created_at?: string }
+export interface TeamMember { id: number; email: string; display_name: string | null; role: "owner" | "employee"; hourly_rate_cents: number | null; cost_rate_cents?: number | null; active: boolean; created_at?: string }
 export interface TimeSummaryItem { customer_name: string | null; member_email: string; display_name: string; entries: number; minutes: number; hours: number | null; open_billable_minutes: number; amount_cents: number; entries_without_rate: number }
 
 export function listTimeEntries(params: { from?: string; to?: string; customer?: string; member?: string; status?: "open" | "billed" } = {}): Promise<TimeEntriesResponse> {
@@ -3022,15 +3023,15 @@ export interface ApplyTimeResult { ok: boolean; document_id?: number; doc_type?:
 export function applyTimeToDocument(body: { document_id: number; entry_ids: number[]; gruppierung?: "je_eintrag" | "je_mitarbeiter" | "gesamt" }): Promise<ApplyTimeResult> {
   return apiPost("/time/apply-to-document", body as unknown as Record<string, unknown>);
 }
-export function listTeamMembers(): Promise<{ ok: boolean; members: TeamMember[]; settings: { default_hourly_rate_cents: number | null } }> {
+export function listTeamMembers(): Promise<{ ok: boolean; members: TeamMember[]; settings: { default_hourly_rate_cents: number | null; default_cost_rate_cents?: number | null } }> {
   return apiFetch("/team/members");
 }
-export function upsertTeamMember(body: { email: string; display_name?: string; hourly_rate_cents?: number | null; role?: "owner" | "employee"; active?: boolean }): Promise<{ ok: boolean; member?: TeamMember; error?: string }> {
+export function upsertTeamMember(body: { email: string; display_name?: string; hourly_rate_cents?: number | null; cost_rate_cents?: number | null; role?: "owner" | "employee"; active?: boolean }): Promise<{ ok: boolean; member?: TeamMember; error?: string }> {
   return apiPost("/team/members", body as Record<string, unknown>);
 }
 export function deleteTeamMember(body: { email?: string; id?: number; hard?: boolean }): Promise<{ ok: boolean; deactivated?: string; deleted?: string; error?: string; entries?: number }> {
   return apiPost("/team/members/delete", body as Record<string, unknown>);
 }
-export function updateTimeSettings(body: { default_hourly_rate_cents: number | null }): Promise<{ ok: boolean; settings?: { default_hourly_rate_cents: number | null }; error?: string }> {
+export function updateTimeSettings(body: { default_hourly_rate_cents?: number | null; default_cost_rate_cents?: number | null }): Promise<{ ok: boolean; settings?: { default_hourly_rate_cents: number | null; default_cost_rate_cents?: number | null }; error?: string }> {
   return apiPost("/time/settings", body as Record<string, unknown>);
 }
