@@ -396,7 +396,18 @@ export default function Login() {
 
         {/* Login Card */}
         <div className="glass-card p-6 space-y-4">
+          {/* v4.132.0: Unter der Mitarbeiter-Kachel KEINE OAuth-Buttons — die
+              fuehren in den Kunden-Funnel (Postfach-Connect -> neuer Tenant,
+              E2E-Fund 22.07. abends). Mitarbeiter = E-Mail + Passwort. */}
+          {workerTile && (
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Mitarbeiter melden sich mit <b>E-Mail + Passwort</b> an. Wichtig: genau die
+              E-Mail-Adresse nutzen, die dein Chef unter Einstellungen → Team hinterlegt hat.
+              Noch kein Konto? Unten „Konto erstellen“.
+            </p>
+          )}
           {/* OAuth Buttons */}
+          {!workerTile && (
           <div className="space-y-3">
             <Button
               onClick={handleGoogleLogin}
@@ -428,13 +439,16 @@ export default function Login() {
               {loadingBtn === "azure" ? "Wird verbunden..." : "Mit Microsoft anmelden"}
             </Button>
           </div>
+          )}
 
           {/* Divider */}
+          {!workerTile && (
           <div className="relative flex items-center py-1">
             <Separator className="flex-1" />
             <span className="px-3 text-xs text-muted-foreground uppercase">oder</span>
             <Separator className="flex-1" />
           </div>
+          )}
 
           {/* Email/Password */}
           <form onSubmit={handleEmailLogin} className="space-y-3">

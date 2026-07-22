@@ -59,12 +59,44 @@ function RoleGate({ children }: { children: React.ReactNode }) {
 // fail-closed: Mitarbeiter erreichen ohnehin nur die /time-Endpoints.
 function EmployeeSwitch({ children }: { children: React.ReactNode }) {
   const me = useMe();
-  const data = me.data as { role?: string; display_name?: string } | undefined;
+  const data = me.data as { role?: string; display_name?: string; tenant?: unknown; user?: { email?: string } } | undefined;
   if (data?.role === "employee") {
     return (
       <EmployeeLayout displayName={data.display_name}>
         <Zeiterfassung />
       </EmployeeLayout>
+    );
+  }
+  // v4.132.0 (E2E-Fund 22.07. abends): Wer ueber die Mitarbeiter-Kachel kam,
+  // aber (noch) keine Rolle hat — kein Team-Eintrag, kein echter Betrieb —,
+  // sieht NICHT die leere Unternehmer-Console, sondern einen klaren
+  // "Warte auf Freischaltung"-Screen. Echte Inhaber (Betrieb vorhanden)
+  // laufen normal in die Console; die Kachel vergibt weiterhin KEINE Rechte.
+  const cameViaWorkerTile = typeof window !== "undefined" && localStorage.getItem("ue_login_tile") === "worker";
+  if (cameViaWorkerTile && me.isSuccess && !data?.tenant) {
+    const email = data?.user?.email || "";
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md glass-card p-8 space-y-4 text-center">
+          <h1 className="text-xl font-semibold text-foreground">Fast geschafft!</h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Dein Konto{email ? <> (<span className="font-mono text-xs">{email}</span>)</> : null} ist
+            noch keinem Betrieb zugeordnet. Bitte deinen Chef, dich in der UseEasy-Console unter
+            <b> Einstellungen → Team</b> mit genau dieser E-Mail-Adresse anzulegen — danach hier
+            einfach neu laden und du landest direkt in der Zeiterfassung.
+          </p>
+          <div className="space-y-2 pt-2">
+            <button onClick={() => window.location.reload()}
+              className="w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-medium">
+              Erneut prüfen
+            </button>
+            <button onClick={() => { localStorage.setItem("ue_login_tile", "company"); window.location.reload(); }}
+              className="w-full h-10 rounded-lg border border-border text-sm text-muted-foreground">
+              Ich bin Unternehmer — zur Console
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
   return <>{children}</>;
