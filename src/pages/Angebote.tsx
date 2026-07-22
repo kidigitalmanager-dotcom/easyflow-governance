@@ -85,15 +85,18 @@ export default function Angebote() {
   // Postfach-Ausloeser: das Outlook-Add-in oeffnet
   // /angebote?generate_from_message=<id>&provider=outlook. Nur message-id + Provider kommen an;
   // den Mail-Text liest offer/generate selbst (fetchInboundMessageText) -> kein PII im Client.
-  // Bewusst KEIN Auto-Generieren: erst eine Bestaetigungs-Karte, dann Generieren auf Klick.
+  // v4.131.0 (Leon 22.07.): Der Klick in der Mail IST die Bestaetigung -> SOFORT generieren
+  // und direkt in den Editor springen. Die Karte bleibt nur als Fehler-Fallback.
   useEffect(() => {
     const mid = searchParams.get("generate_from_message");
     if (!mid) return;
-    setPendingMsg({ messageId: mid, provider: searchParams.get("provider") || "outlook" });
+    const prov = searchParams.get("provider") || "outlook";
     const next = new URLSearchParams(searchParams);
     next.delete("generate_from_message");
     next.delete("provider");
     setSearchParams(next, { replace: true });
+    setPendingMsg({ messageId: mid, provider: prov });
+    void generateFromMessage(mid, prov);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -294,15 +297,23 @@ export default function Angebote() {
 
       {pendingMsg && (
         <Card className="border-primary/50">
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4" /> Angebot aus dieser Postfach-Nachricht?</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4" /> Angebot aus Ihrer Postfach-Nachricht</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">Jana liest den Mail-Text der ausgewählten Nachricht und schlägt Positionen und Anschreiben vor. Danach prüfen Sie den Positions-Tisch und geben frei.</p>
-            <div className="flex items-center gap-2">
-              <Button size="sm" onClick={() => generateFromMessage(pendingMsg.messageId, pendingMsg.provider)} disabled={genOffer.isPending}>
-                {genOffer.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1 h-4 w-4" />} Angebot erstellen
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setPendingMsg(null)} disabled={genOffer.isPending}>Abbrechen</Button>
-            </div>
+            {genOffer.isPending ? (
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Jana liest die E-Mail und erstellt das Angebot mit Ihren Listenpreisen ...
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">Das Angebot konnte nicht automatisch erstellt werden. Erneut versuchen?</p>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={() => generateFromMessage(pendingMsg.messageId, pendingMsg.provider)} disabled={genOffer.isPending}>
+                    <Sparkles className="mr-1 h-4 w-4" /> Angebot erstellen
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setPendingMsg(null)} disabled={genOffer.isPending}>Abbrechen</Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       )}
@@ -340,11 +351,18 @@ export default function Angebote() {
             ?.filter((req) => listFilter === "alle" ? true
               : listFilter === "freigabe" ? (req.has_offer && req.offer_status === "draft")
               : !req.has_offer)
-            .map((req, i) => (
+            .map((req, i) => {
+            // v4.131.0: lesbare Liste — Betreff-Fallback (alte Threads ohne audit-Betreff)
+            const hasSubject = !!req.subject && req.subject !== "(kein Betreff)";
+            const when = req.event_at ? new Date(req.event_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : null;
+            const title = hasSubject ? req.subject : (req.summary || `Kundenanfrage${when ? ` vom ${when}` : ""}`);
+            const senderShown = req.sender && req.sender !== "(unbekannt)" ? req.sender : null;
+            const subline = [senderShown, when, hasSubject && req.summary ? req.summary : null].filter(Boolean).join(" · ");
+            return (
             <div key={i} className="flex items-center justify-between gap-3 rounded-lg border p-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium truncate">{req.subject}</span>
+                  <span className="font-medium truncate">{title}</span>
                   {req.has_offer && <Badge variant="secondary" className="text-[10px]">Angebot: {req.offer_status}</Badge>}
                   {req.offer_auto && (
                     <Badge className="text-[10px] gap-1 bg-primary/15 text-primary hover:bg-primary/15 border-0">
@@ -352,7 +370,7 @@ export default function Angebote() {
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{req.sender}{req.summary ? " · " + req.summary : ""}</p>
+                {subline && <p className="text-xs text-muted-foreground truncate">{subline}</p>}
               </div>
               <div className="shrink-0">
                 {req.has_offer && req.offer_id != null ? (
@@ -366,7 +384,8 @@ export default function Angebote() {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
           {!requests.isLoading && (requests.data?.items?.length ?? 0) > 0 && listFilter !== "alle" &&
             (requests.data?.items ?? []).filter((req) => listFilter === "freigabe" ? (req.has_offer && req.offer_status === "draft") : !req.has_offer).length === 0 && (
             <p className="text-sm text-muted-foreground py-4">
