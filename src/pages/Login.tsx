@@ -25,6 +25,13 @@ export default function Login() {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotBusy, setForgotBusy] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
+  // v4.132.0 (Zeiterfassung): Konto-erstellen-Flow — Mitarbeiter registrieren sich
+  // mit GENAU der E-Mail, die der Chef unter Einstellungen -> Team angelegt hat.
+  // Backend ist fail-closed: ein Konto ohne Team-/Tenant-Zuordnung sieht nichts.
+  const [signupMode, setSignupMode] = useState(false);
+  const [signupBusy, setSignupBusy] = useState(false);
+  const [signupSent, setSignupSent] = useState(false);
+  const [password2, setPassword2] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { toast } = useToast();
@@ -96,6 +103,44 @@ export default function Login() {
     window.location.href = "/";
   };
 
+  // v4.132.0: Konto erstellen (Supabase signUp). Zwei Ausgänge:
+  // (a) E-Mail-Bestätigung AN -> Hinweis-Screen "Mail ist unterwegs";
+  // (b) Bestätigung AUS -> Session sofort da -> Full-Reload wie beim Login.
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (signupBusy) return;
+    if (password.length < 8) {
+      toast({ title: "Passwort zu kurz", description: "Bitte mindestens 8 Zeichen verwenden.", variant: "destructive" });
+      return;
+    }
+    if (password !== password2) {
+      toast({ title: "Passwörter stimmen nicht überein", description: "Bitte beide Felder identisch ausfüllen.", variant: "destructive" });
+      return;
+    }
+    setSignupBusy(true);
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { emailRedirectTo: window.location.origin + "/" },
+    });
+    setSignupBusy(false);
+    if (error) {
+      const msg = /signup.*(disabled|not allowed)/i.test(error.message)
+        ? "Registrierungen sind serverseitig deaktiviert (Supabase → Auth → 'Allow new users to sign up' aktivieren)."
+        : error.message;
+      toast({ title: "Registrierung fehlgeschlagen", description: msg, variant: "destructive" });
+      return;
+    }
+    // Mitarbeiter/Neu-Konten starten immer in der Unternehmens-Sicht (die
+    // Mitarbeiter-Weiche greift serverseitig über /me role:'employee').
+    localStorage.setItem("ue_role", "company");
+    if (data.session) {
+      window.location.href = "/";
+      return;
+    }
+    setSignupSent(true);
+  };
+
   // Quick-Win: Passwort-vergessen — Recovery-Link an die E-Mail-Adresse senden.
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,6 +187,85 @@ export default function Login() {
             }}
             cancelLabel="Zurück zum Login"
           />
+        </div>
+      </div>
+    );
+  }
+
+  // v4.132.0: Konto-erstellen-Ansicht (Muster forgotMode)
+  if (signupMode) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm space-y-8">
+          <div className="flex flex-col items-center gap-3">
+            <img src={logo} alt="UseEasy Logo" className="w-12 h-12 rounded-xl" />
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Use<span className="text-primary">Easy</span>
+            </h1>
+            <p className="text-sm text-muted-foreground">Konto erstellen</p>
+          </div>
+          <div className="glass-card p-6 space-y-4">
+            {signupSent ? (
+              <div className="space-y-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Fast geschafft — wir haben dir eine Bestätigungs-Mail geschickt.
+                  Bitte klicke den Link darin und melde dich danach an.
+                  (Nichts angekommen? Spam-Ordner prüfen.)
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => { setSignupMode(false); setSignupSent(false); setPassword(""); setPassword2(""); }}
+                >
+                  Zurück zum Login
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleSignup} className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Als <b>Mitarbeiter</b>: nutze genau die E-Mail-Adresse, die dein Chef
+                  für dich hinterlegt hat — dann landest du direkt in der Zeiterfassung.
+                </p>
+                <Input
+                  type="email"
+                  placeholder="E-Mail-Adresse"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={signupBusy}
+                  autoFocus
+                />
+                <Input
+                  type="password"
+                  placeholder="Passwort (mind. 8 Zeichen)"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={signupBusy}
+                />
+                <Input
+                  type="password"
+                  placeholder="Passwort wiederholen"
+                  value={password2}
+                  onChange={(e) => setPassword2(e.target.value)}
+                  required
+                  disabled={signupBusy}
+                />
+                <Button type="submit" disabled={signupBusy} className="w-full h-12 text-base font-medium">
+                  {signupBusy ? "Erstelle Konto..." : "Konto erstellen"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => setSignupMode(false)}
+                  disabled={signupBusy}
+                >
+                  Zurück zum Login
+                </Button>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -312,7 +436,7 @@ export default function Login() {
             <Button type="submit" disabled={loading} className="w-full h-12 text-base font-medium">
               {loadingBtn === "email" ? "Wird angemeldet..." : "Anmelden"}
             </Button>
-            <div className="text-center pt-1">
+            <div className="flex items-center justify-center gap-4 pt-1">
               <button
                 type="button"
                 className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
@@ -320,6 +444,16 @@ export default function Login() {
                 disabled={loading}
               >
                 Passwort vergessen?
+              </button>
+              <span className="text-xs text-muted-foreground/40">·</span>
+              {/* v4.132.0: Selbst-Registrierung (Mitarbeiter-Logins Zeiterfassung) */}
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+                onClick={() => { setSignupMode(true); setSignupSent(false); }}
+                disabled={loading}
+              >
+                Neu hier? Konto erstellen
               </button>
             </div>
           </form>
