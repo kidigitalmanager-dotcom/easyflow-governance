@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useMe, useDisconnectMailbox } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug, FileSpreadsheet, Phone, CreditCard, ShieldCheck, Unplug, Brain } from "lucide-react";
+import { ExternalLink, AlertTriangle, Mail, Settings, BookOpen, Plug, FileSpreadsheet, Phone, CreditCard, ShieldCheck, Unplug, Brain, Users } from "lucide-react";
+import { TeamTab } from "@/components/TeamTab"; // v4.132.0 — Zeiterfassung: Mitarbeiter + Stundensätze
 import { ChipDomainInput } from "@/components/ChipDomainInput";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -181,7 +182,7 @@ export default function Einstellungen() {
     // Redesign Follow-up: die frueheren Einzel-Tabs Audit/Stichproben leben als
     // Untersektionen im verschmolzenen Email-Autopilot-Bereich weiter.
     if (t === "email-autopilot-audit" || t === "email-autopilot-samples") return "email-autopilot";
-    return t === "knowledge" || t === "jana-wissen" || t === "integrations" || t === "spreadsheet" || t === "autopilot" || t === "billing" || t === "email-autopilot" || t === "ki-transparenz" ? t : "general";
+    return t === "knowledge" || t === "jana-wissen" || t === "integrations" || t === "spreadsheet" || t === "autopilot" || t === "billing" || t === "email-autopilot" || t === "ki-transparenz" || t === "team" ? t : "general";
   })();
 
   return (
@@ -199,6 +200,10 @@ export default function Einstellungen() {
           <TabsTrigger value="general" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <Settings className="w-3.5 h-3.5" />
             Allgemein &amp; Postfächer
+          </TabsTrigger>
+          <TabsTrigger value="team" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
+            <Users className="w-3.5 h-3.5" />
+            Team
           </TabsTrigger>
           <div className="px-3 pt-3 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground/60">Autopilot</div>
           <TabsTrigger value="email-autopilot" className="justify-start gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
@@ -238,6 +243,11 @@ export default function Einstellungen() {
         </TabsList>
 
         <div className="min-w-0">
+
+        <TabsContent value="team" className="space-y-8 mt-6">
+          {/* v4.132.0 — Zeiterfassung: Mitarbeiter-Logins + Stundensätze */}
+          <TeamTab />
+        </TabsContent>
 
         <TabsContent value="general" className="space-y-8 mt-6">
           {/* v4.130.0 — Auto-Angebot-Toggle (rendert nur wenn documents_enabled) */}

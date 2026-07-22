@@ -17,6 +17,7 @@ import { computeOffer, fmtEUR, fmtDateDe } from "@/lib/offer-calc";
 import { InvoicePositionsTable, type InvoiceDraftState } from "@/components/documents/InvoicePositionsTable";
 import { InvoicePdf } from "@/components/documents/InvoicePdf";
 import { BillingProfileForm } from "@/components/documents/BillingProfileForm";
+import { TimeApplyButton } from "@/components/documents/TimeApplyDialog"; // v4.132.0 — Zeiterfassung
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -205,6 +206,14 @@ export default function Rechnungen() {
 
   function backToList() { setEditId(null); setDraft(EMPTY_DRAFT); setDirty(false); setView("list"); invoices.refetch(); approved.refetch(); }
 
+  // v4.132.0 — Zeiterfassung: nach der Übernahme hat der SERVER neue Positionen
+  // + Totals geschrieben → Rechnung neu laden und den lokalen Draft neu befüllen.
+  async function onTimesApplied() {
+    await invoiceQuery.refetch();
+    setDraft(EMPTY_DRAFT);
+    setDirty(false);
+  }
+
   const computed = computeOffer(draft.positions, draft.opts);
   const missing = clientMissing(draft, sellerComplete, computed.incomplete, computed.totals.reverse_charge);
   const canFinalize = !dirty && missing.length === 0 && isDraft;
@@ -239,6 +248,10 @@ export default function Rechnungen() {
             <Button variant="outline" size="sm" onClick={() => setShowPdf(true)}><Printer className="mr-1 h-4 w-4" /> Als PDF</Button>
             {isDraft && (
               <>
+                {/* v4.132.0 — offene Zeiteinträge als Positionen übernehmen (Server rechnet neu) */}
+                <span title={dirty ? "Bitte zuerst speichern — die Übernahme lädt das Dokument neu." : ""}>
+                  <TimeApplyButton documentId={editId} docType="invoice" customer={draft.counterpart_name} disabled={busy || dirty} onApplied={onTimesApplied} />
+                </span>
                 <Button variant="outline" size="sm" onClick={save} disabled={busy || !dirty}>
                   {updInv.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />} Speichern
                 </Button>

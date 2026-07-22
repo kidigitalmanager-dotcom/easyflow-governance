@@ -1205,3 +1205,101 @@ export function useUpdateBillingProfile() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["documents-billing-profile"] }); },
   });
 }
+
+// ============================================================================
+// v4.132.0 — Zeiterfassung
+// ============================================================================
+import {
+  listTimeEntries, createTimeEntry, updateTimeEntry, deleteTimeEntry, unbillTimeEntry,
+  fetchTimeSummary, applyTimeToDocument, listTeamMembers, upsertTeamMember, deleteTeamMember,
+  updateTimeSettings,
+} from "@/lib/api-client";
+import type { TimeEntryInput } from "@/lib/api-client";
+
+export function useTimeEntries(params: { from?: string; to?: string; customer?: string; member?: string; status?: "open" | "billed" } = {}, enabled = true) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["time-entries", params],
+    queryFn: () => listTimeEntries(params),
+    enabled: !!session && enabled,
+  });
+}
+export function useCreateTimeEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: TimeEntryInput) => createTimeEntry(body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["time-entries"] }); qc.invalidateQueries({ queryKey: ["time-summary"] }); },
+  });
+}
+export function useUpdateTimeEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<TimeEntryInput> & { id: number; hourly_rate_cents?: number | null }) => updateTimeEntry(body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["time-entries"] }); qc.invalidateQueries({ queryKey: ["time-summary"] }); },
+  });
+}
+export function useDeleteTimeEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteTimeEntry(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["time-entries"] }); qc.invalidateQueries({ queryKey: ["time-summary"] }); },
+  });
+}
+export function useUnbillTimeEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => unbillTimeEntry(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["time-entries"] }); qc.invalidateQueries({ queryKey: ["time-summary"] }); },
+  });
+}
+export function useTimeSummary(params: { customer?: string; from?: string; to?: string; status?: "open" | "billed" } = {}, enabled = true) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["time-summary", params],
+    queryFn: () => fetchTimeSummary(params),
+    enabled: !!session && enabled,
+  });
+}
+export function useApplyTimeToDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: applyTimeToDocument,
+    onSuccess: (_res, vars) => {
+      qc.invalidateQueries({ queryKey: ["time-entries"] });
+      qc.invalidateQueries({ queryKey: ["time-summary"] });
+      qc.invalidateQueries({ queryKey: ["documents-invoice", vars.document_id] });
+      qc.invalidateQueries({ queryKey: ["documents-offer", vars.document_id] });
+      qc.invalidateQueries({ queryKey: ["documents-invoices"] });
+    },
+  });
+}
+export function useTeamMembers(enabled = true) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["team-members"],
+    queryFn: listTeamMembers,
+    enabled: !!session && enabled,
+    retry: false, // vor Backend-Deploy/Migration liefert die Route 403/404 → kein Retry-Spam
+  });
+}
+export function useUpsertTeamMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: upsertTeamMember,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["team-members"] }); },
+  });
+}
+export function useDeleteTeamMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteTeamMember,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["team-members"] }); },
+  });
+}
+export function useUpdateTimeSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: updateTimeSettings,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["team-members"] }); },
+  });
+}

@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield,
   Activity, GraduationCap, Receipt, ReceiptText, FileText, AlertTriangle, Sparkles,
-  Database, type LucideIcon,
+  Database, Clock, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
@@ -33,6 +33,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { to: "/forderungen", label: "Forderungen", icon: Receipt },
       { to: "/angebote", label: "Angebote", icon: FileText },
       { to: "/rechnungen", label: "Rechnungen", icon: ReceiptText },
+      { to: "/zeiterfassung", label: "Zeiterfassung", icon: Clock }, // v4.132.0
     ],
   },
   {

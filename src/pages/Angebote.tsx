@@ -15,6 +15,7 @@ import type { OfferPosition, OfferOpts } from "@/lib/offer-calc";
 import { computeOffer } from "@/lib/offer-calc";
 import { OfferPositionsTable, type OfferDraftState } from "@/components/documents/OfferPositionsTable";
 import { OfferPdf } from "@/components/documents/OfferPdf";
+import { TimeApplyButton } from "@/components/documents/TimeApplyDialog"; // v4.132.0 — Zeiterfassung
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -215,6 +216,14 @@ export default function Angebote() {
 
   function backToList() { setEditId(null); setDraft(EMPTY_DRAFT); setDirty(false); requests.refetch(); }
 
+  // v4.132.0 — Zeiterfassung: nach der Übernahme hat der SERVER neue Positionen
+  // + Totals geschrieben → Angebot neu laden und den lokalen Draft neu befüllen.
+  async function onTimesApplied() {
+    await offerQuery.refetch();
+    setDraft(EMPTY_DRAFT);
+    setDirty(false);
+  }
+
   const computed = computeOffer(draft.positions, draft.opts);
   const canApprove = !dirty && !computed.incomplete && draft.positions.length > 0 && computed.errors.length === 0;
 
@@ -234,6 +243,12 @@ export default function Angebote() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" size="sm" onClick={() => setShowPdf(true)}><Printer className="mr-1 h-4 w-4" /> Als PDF</Button>
+            {/* v4.132.0 — offene Zeiteinträge als Positionen übernehmen (nur Entwurf; Server rechnet neu) */}
+            {(offerQuery.data?.offer?.status ?? "draft") === "draft" && (
+              <span title={dirty ? "Bitte zuerst speichern — die Übernahme lädt das Dokument neu." : ""}>
+                <TimeApplyButton documentId={editId} docType="offer" customer={draft.counterpart_name} disabled={busy || dirty} onApplied={onTimesApplied} />
+              </span>
+            )}
             <Button variant="outline" size="sm" onClick={save} disabled={busy || !dirty}>
               {updOffer.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />} Speichern
             </Button>

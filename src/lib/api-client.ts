@@ -2950,3 +2950,87 @@ export async function getBillingProfile(): Promise<{ ok: boolean; profile: Billi
 export async function updateBillingProfile(body: Partial<BillingProfile>): Promise<{ ok: boolean; profile: BillingProfile | null }> {
   return apiPost<{ ok: boolean; profile: BillingProfile | null }>("/documents/billing-profile", body as Record<string, unknown>);
 }
+
+// ============================================================================
+// v4.132.0 — Zeiterfassung (BRIEFING-ZEITERFASSUNG-MITARBEITER-2026-07-21)
+// Mitarbeiter erfassen Zeiten (mobil-first), Owner uebernimmt sie als
+// Positionen in Angebot/Rechnung. Employee-Routen laufen ueber den eigenen
+// Backend-Resolver (resolveTimeActor) — hier nur duenne Client-Wrapper.
+// ============================================================================
+
+export interface TimeEntry {
+  id: number;
+  member_email: string;
+  customer_name: string | null;
+  description: string | null;
+  started_at: string;
+  ended_at: string;
+  duration_min: number;
+  billable: boolean;
+  hourly_rate_cents: number | null;
+  status: "open" | "billed";
+  invoice_document_id: number | null;
+  source: string;
+}
+export interface TimeTotals { scope_min: number; open_billable_min: number; week_min: number; month_min: number }
+export interface TimeEntriesResponse { ok: boolean; role: "owner" | "employee"; items: TimeEntry[]; totals: TimeTotals; customers: string[] }
+export interface TimeEntryInput {
+  customer_name?: string;
+  description?: string;
+  billable?: boolean;
+  started_at?: string;
+  ended_at?: string;
+  date?: string;
+  duration_min?: number;
+  member_email?: string; // nur Owner (Nacherfassung); Backend erzwingt Token-Mail fuer Employees
+}
+export interface TeamMember { id: number; email: string; display_name: string | null; role: "owner" | "employee"; hourly_rate_cents: number | null; active: boolean; created_at?: string }
+export interface TimeSummaryItem { customer_name: string | null; member_email: string; display_name: string; entries: number; minutes: number; hours: number | null; open_billable_minutes: number; amount_cents: number; entries_without_rate: number }
+
+export function listTimeEntries(params: { from?: string; to?: string; customer?: string; member?: string; status?: "open" | "billed" } = {}): Promise<TimeEntriesResponse> {
+  const q = new URLSearchParams();
+  if (params.from) q.set("from", params.from);
+  if (params.to) q.set("to", params.to);
+  if (params.customer) q.set("customer", params.customer);
+  if (params.member) q.set("member", params.member);
+  if (params.status) q.set("status", params.status);
+  const qs = q.toString();
+  return apiFetch<TimeEntriesResponse>(`/time/entries${qs ? "?" + qs : ""}`);
+}
+export function createTimeEntry(body: TimeEntryInput): Promise<{ ok: boolean; entry: TimeEntry; rate_missing?: boolean; error?: string }> {
+  return apiPost("/time/entries", body as Record<string, unknown>);
+}
+export function updateTimeEntry(body: Partial<TimeEntryInput> & { id: number; hourly_rate_cents?: number | null }): Promise<{ ok: boolean; entry: TimeEntry; error?: string }> {
+  return apiPost("/time/entries/update", body as Record<string, unknown>);
+}
+export function deleteTimeEntry(id: number): Promise<{ ok: boolean; deleted?: number; error?: string }> {
+  return apiPost("/time/entries/delete", { id });
+}
+export function unbillTimeEntry(id: number): Promise<{ ok: boolean; entry?: TimeEntry; hint?: string; error?: string }> {
+  return apiPost("/time/entries/unbill", { id });
+}
+export function fetchTimeSummary(params: { customer?: string; from?: string; to?: string; status?: "open" | "billed" } = {}): Promise<{ ok: boolean; items: TimeSummaryItem[] }> {
+  const q = new URLSearchParams();
+  if (params.customer) q.set("customer", params.customer);
+  if (params.from) q.set("from", params.from);
+  if (params.to) q.set("to", params.to);
+  if (params.status) q.set("status", params.status);
+  const qs = q.toString();
+  return apiFetch(`/time/summary${qs ? "?" + qs : ""}`);
+}
+export interface ApplyTimeResult { ok: boolean; document_id?: number; doc_type?: string; added_positions?: number; applied_entry_ids?: number[]; skipped_entry_ids?: number[]; entries_without_rate?: number; totals?: OfferTotals; incomplete?: boolean; error?: string }
+export function applyTimeToDocument(body: { document_id: number; entry_ids: number[]; gruppierung?: "je_eintrag" | "je_mitarbeiter" | "gesamt" }): Promise<ApplyTimeResult> {
+  return apiPost("/time/apply-to-document", body as unknown as Record<string, unknown>);
+}
+export function listTeamMembers(): Promise<{ ok: boolean; members: TeamMember[]; settings: { default_hourly_rate_cents: number | null } }> {
+  return apiFetch("/team/members");
+}
+export function upsertTeamMember(body: { email: string; display_name?: string; hourly_rate_cents?: number | null; role?: "owner" | "employee"; active?: boolean }): Promise<{ ok: boolean; member?: TeamMember; error?: string }> {
+  return apiPost("/team/members", body as Record<string, unknown>);
+}
+export function deleteTeamMember(body: { email?: string; id?: number; hard?: boolean }): Promise<{ ok: boolean; deactivated?: string; deleted?: string; error?: string; entries?: number }> {
+  return apiPost("/team/members/delete", body as Record<string, unknown>);
+}
+export function updateTimeSettings(body: { default_hourly_rate_cents: number | null }): Promise<{ ok: boolean; settings?: { default_hourly_rate_cents: number | null }; error?: string }> {
+  return apiPost("/time/settings", body as Record<string, unknown>);
+}

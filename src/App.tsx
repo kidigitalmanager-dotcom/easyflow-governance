@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { InvestorLayout } from "@/components/layout/InvestorLayout";
+import { EmployeeLayout } from "@/components/layout/EmployeeLayout";
+import { useMe } from "@/hooks/use-api";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
@@ -26,6 +28,7 @@ import Chancen from "./pages/Chancen";
 import Datenquellen from "./pages/Datenquellen";
 import Onboarding from "./pages/Onboarding";
 import Investoren from "./pages/Investoren";
+import Zeiterfassung from "./pages/Zeiterfassung";
 import NotFound from "./pages/NotFound";
 import AdminPromotion from "./pages/AdminPromotion";
 import Admin from "./pages/Admin";
@@ -46,6 +49,24 @@ function RoleHome() {
 function RoleGate({ children }: { children: React.ReactNode }) {
   const role = typeof window !== "undefined" ? localStorage.getItem("ue_role") : null;
   if (role === "investor") return <Navigate to="/investoren" replace />;
+  return <>{children}</>;
+}
+
+// v4.132.0 — Mitarbeiter-Weiche (Zeiterfassung): /v1/dashboard/me liefert für
+// tenant_members-Logins role:'employee' → schlankes Mitarbeiter-Frontend
+// (EmployeeLayout, Muster InvestorLayout), egal welcher Pfad aufgerufen wurde.
+// Admins/Owner bleiben unberührt (role fehlt bzw. != 'employee'). Backend ist
+// fail-closed: Mitarbeiter erreichen ohnehin nur die /time-Endpoints.
+function EmployeeSwitch({ children }: { children: React.ReactNode }) {
+  const me = useMe();
+  const data = me.data as { role?: string; display_name?: string } | undefined;
+  if (data?.role === "employee") {
+    return (
+      <EmployeeLayout displayName={data.display_name}>
+        <Zeiterfassung />
+      </EmployeeLayout>
+    );
+  }
   return <>{children}</>;
 }
 
@@ -86,6 +107,7 @@ const App = () => (
               path="/*"
               element={
                 <ProtectedRoute>
+                  <EmployeeSwitch>
                   <RoleGate>
                   <AppLayout>
                     <Routes>
@@ -101,6 +123,7 @@ const App = () => (
                       <Route path="/forderungen" element={<Forderungen />} />
                       <Route path="/angebote" element={<Angebote />} />
                       <Route path="/rechnungen" element={<Rechnungen />} />
+                      <Route path="/zeiterfassung" element={<Zeiterfassung />} />
                       <Route path="/voice" element={<VoiceCalls />} />
                       <Route path="/einstellungen" element={<Einstellungen />} />
                       <Route path="/admin" element={<Admin />} />
@@ -112,6 +135,7 @@ const App = () => (
                     </Routes>
                   </AppLayout>
                   </RoleGate>
+                  </EmployeeSwitch>
                 </ProtectedRoute>
               }
             />
