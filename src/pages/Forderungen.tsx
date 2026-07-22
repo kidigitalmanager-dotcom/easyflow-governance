@@ -7,9 +7,11 @@ import {
   useMarkArPaid,
   useAddManualAr,
   useImportArXlsx,
+  useConfirmArInvoice,
+  useRunDunning,
 } from "@/hooks/use-api";
-import type { TenantDocument, DunningDraft } from "@/lib/api-client";
-import { exportArXlsx } from "@/lib/api-client";
+import type { TenantDocument, DunningDraft, DunningRunResult, DunningRunItem } from "@/lib/api-client";
+import { exportArXlsx, exportArCsvDatev } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,30 +26,63 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import {
   Receipt, RefreshCw, Download, Upload, Plus, Mail, CheckCircle2, Loader2, AlertTriangle,
+  Send, FileSpreadsheet, FileText, ChevronDown, PlayCircle,
 } from "lucide-react";
 
-// Forderungen & Erinnerungen (Phase 0/1a). Der Ledger fuellt sich thread-abgeleitet
-// aus dem Gesendet-Ordner ("Jetzt scannen") + optional aus einer Excel-Liste.
+// Forderungen & Erinnerungen (Phase 0/1a + v4.134.0 Mahn-Zyklus). Der Ledger fuellt sich
+// thread-abgeleitet aus dem Gesendet-Ordner ("Jetzt scannen") + optional aus einer Excel-Liste.
 // Eine Erinnerung wird als Entwurf ins Postfach gelegt — NIE automatisch versendet.
+// v4.134.0: Zyklus-Spalten (Mahnstufe/zuletzt erinnert/naechste Aktion), Bestaetigen-Geste,
+// on-demand "Alle faelligen Entwuerfe" (dry_run-Vorschau -> echt), Entwurfs-Warteschlange,
+// Steuerberater-CSV (DATEV-kompatibel).
 
 function stufeLabel(s: number | null): string {
   if (s === 3) return "Letzte Erinnerung";
   if (s === 2) return "2. Erinnerung";
   return "Zahlungserinnerung";
 }
+function stufeBadge(s: number | null | undefined) {
+  if (!s) return <span className="text-xs text-muted-foreground">keine</span>;
+  const variant = s >= 3 ? "destructive" : s === 2 ? "default" : "secondary";
+  return <Badge variant={variant as "destructive" | "default" | "secondary"}>Stufe {s}</Badge>;
+}
+function naechsteAktion(r: TenantDocument): string {
+  if (!r.overdue) return "noch nicht faellig";
+  if (r.needs_confirmation) return "erst bestaetigen";
+  const s = r.suggested_mahnstufe ?? (Math.min(3, (r.mahnstufe ?? 0) + 1) || 1);
+  return `Stufe ${s} vorbereiten`;
+}
+function previewItems(r: DunningRunResult | null): DunningRunItem[] {
+  if (!r?.results) return [];
+  return r.results.flatMap((x) => x.items ?? []);
+}
+function formatAmount(v: number | null | undefined, currency: string | null | undefined): string {
+  if (v == null) return "keine";
+  try { return new Intl.NumberFormat("de-DE", { style: "currency", currency: currency || "EUR" }).format(v); }
+  catch { return `${v} ${currency || "EUR"}`; }
+}
+function fmtDate(d: string | null | undefined): string {
+  return d ? new Date(d).toLocaleDateString("de-DE") : "";
+}
 
 export default function Forderungen() {
   const open = useDocuments("ar_invoice", "open");
   const paid = useDocuments("ar_invoice", "paid");
+  const dunningQueue = useDocuments("dunning", "draft");
   const scan = useScanSentForAr();
   const generate = useGenerateDunning();
   const verdict = useDocumentVerdict();
   const markPaid = useMarkArPaid();
   const addManual = useAddManualAr();
   const importXlsx = useImportArXlsx();
+  const confirmAr = useConfirmArInvoice();
+  const runDun = useRunDunning();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [draft, setDraft] = useState<DunningDraft | null>(null);
@@ -56,9 +91,14 @@ export default function Forderungen() {
   const [useLlm, setUseLlm] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [manual, setManual] = useState({ counterpart_name: "", counterpart_email: "", invoice_ref: "", amount_gross: "", due_date: "" });
+  const [preview, setPreview] = useState<DunningRunResult | null>(null);
+  const [showCsv, setShowCsv] = useState(false);
+  const [csvFrom, setCsvFrom] = useState("");
+  const [csvTo, setCsvTo] = useState("");
 
   const rows = open.data?.items ?? [];
   const paidRows = paid.data?.items ?? [];
+  const queue = dunningQueue.data?.items ?? [];
 
   async function handleScan() {
     try {
@@ -89,6 +129,44 @@ export default function Forderungen() {
     catch (e) { toast.error("Aktion fehlgeschlagen."); }
   }
 
+  // v4.134.0 — Entwurfs-Warteschlange: Freigeben/Verwerfen direkt (bestehender verdict-Flow).
+  async function queueApprove(d: TenantDocument) {
+    try { await verdict.mutateAsync({ documentId: d.id, action: "approve" }); toast.success("Erinnerung liegt als Entwurf in deinem Postfach."); }
+    catch (e) { toast.error("Konnte den Entwurf nicht ins Postfach legen."); }
+  }
+  async function queueReject(d: TenantDocument) {
+    try { await verdict.mutateAsync({ documentId: d.id, action: "reject" }); toast.info("Entwurf verworfen."); }
+    catch (e) { toast.error("Aktion fehlgeschlagen."); }
+  }
+
+  // v4.134.0 — Bestaetigen-Geste fuer needs_confirmation-Zeilen (Text-Fallback).
+  async function handleConfirm(r: TenantDocument) {
+    try {
+      const res = await confirmAr.mutateAsync(r.id);
+      if (!res.ok) { toast.error("Konnte die Forderung nicht bestaetigen."); return; }
+      toast.success("Forderung bestaetigt. Sie kann jetzt automatisch bemahnt werden.");
+      open.refetch();
+    } catch (e) { toast.error("Konnte die Forderung nicht bestaetigen."); }
+  }
+
+  // v4.134.0 — "Alle faelligen Entwuerfe": erst dry_run-Vorschau, dann echt.
+  async function handleDryRun() {
+    try {
+      const r = await runDun.mutateAsync(true);
+      if (r.migration_missing) { toast.error("Der Zyklus ist serverseitig noch nicht freigeschaltet (Migration ausstehend)."); return; }
+      setPreview(r);
+    } catch (e) { toast.error("Vorschau fehlgeschlagen."); }
+  }
+  async function handleRunReal() {
+    try {
+      const r = await runDun.mutateAsync(false);
+      const n = previewItems(preview).length;
+      toast.success(`${n} Erinnerungs-Entwuerfe erzeugt. Sie liegen unten zur Freigabe bereit.`);
+      setPreview(null);
+      open.refetch(); dunningQueue.refetch();
+    } catch (e) { toast.error("Erzeugen fehlgeschlagen."); }
+  }
+
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -112,6 +190,15 @@ export default function Forderungen() {
     } catch (e) { toast.error("Konnte die Forderung nicht speichern."); }
   }
 
+  async function handleCsvExport() {
+    try {
+      await exportArCsvDatev({ from: csvFrom || undefined, to: csvTo || undefined });
+      setShowCsv(false);
+    } catch (e) { toast.error("CSV-Export fehlgeschlagen."); }
+  }
+
+  const previewCount = previewItems(preview).length;
+
   return (
     <div className="space-y-6 p-4 md:p-6 max-w-6xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -126,9 +213,25 @@ export default function Forderungen() {
           <Button variant="outline" size="sm" onClick={handleScan} disabled={scan.isPending}>
             {scan.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Jetzt scannen
           </Button>
-          <Button variant="outline" size="sm" onClick={() => exportArXlsx().catch(() => toast.error("Export fehlgeschlagen."))}>
-            <Download className="h-4 w-4" /> Export
+          <Button variant="outline" size="sm" onClick={handleDryRun} disabled={runDun.isPending}>
+            {runDun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />} Alle faelligen Entwuerfe
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4" /> Export <ChevronDown className="h-3 w-3 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Forderungen exportieren</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => exportArXlsx().catch(() => toast.error("Export fehlgeschlagen."))}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel (Betrieb)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowCsv(true)}>
+                <FileText className="h-4 w-4 mr-2" /> CSV fuer Steuerberater (DATEV-kompatibel)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
             <Upload className="h-4 w-4" /> Liste importieren
           </Button>
@@ -141,6 +244,40 @@ export default function Forderungen() {
         <Switch checked={useLlm} onCheckedChange={setUseLlm} id="llm" />
         <Label htmlFor="llm" className="text-muted-foreground">Erinnerungen im Jana-Ton formulieren (sonst neutrale Vorlage)</Label>
       </div>
+
+      {/* v4.134.0 — Entwurfs-Warteschlange: vom Zyklus erzeugte Erinnerungen zur Freigabe */}
+      {queue.length > 0 && (
+        <Card className="border-primary/40">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Send className="h-4 w-4" /> Erinnerungs-Entwuerfe zur Freigabe ({queue.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {queue.map((d) => (
+                <div key={d.id} className="flex items-start justify-between gap-3 border rounded-md p-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {stufeBadge(d.mahnstufe)}
+                      <span className="font-medium truncate">{d.counterpart_name || d.counterpart_email || "keine Angabe"}</span>
+                      {d.invoice_ref && <span className="text-xs text-muted-foreground">Rechnung {d.invoice_ref}</span>}
+                    </div>
+                    {d.subject && <div className="text-sm mt-1 truncate">{d.subject}</div>}
+                    {d.amount_display && <div className="text-xs text-muted-foreground">{d.amount_display}</div>}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button size="sm" variant="ghost" onClick={() => queueReject(d)} disabled={verdict.isPending}>Verwerfen</Button>
+                    <Button size="sm" onClick={() => queueApprove(d)} disabled={verdict.isPending}>
+                      {verdict.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Freigeben
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader><CardTitle className="text-base">Offene Forderungen</CardTitle></CardHeader>
@@ -160,7 +297,9 @@ export default function Forderungen() {
                   <TableHead>Rechnung</TableHead>
                   <TableHead className="text-right">Betrag</TableHead>
                   <TableHead>Faellig</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Mahnstufe</TableHead>
+                  <TableHead>Zuletzt erinnert</TableHead>
+                  <TableHead>Naechste Aktion</TableHead>
                   <TableHead className="text-right">Aktion</TableHead>
                 </TableRow>
               </TableHeader>
@@ -171,22 +310,31 @@ export default function Forderungen() {
                       <div className="font-medium">{r.counterpart_name || r.counterpart_email || "—"}</div>
                       {r.counterpart_email && r.counterpart_name && <div className="text-xs text-muted-foreground">{r.counterpart_email}</div>}
                       {r.needs_confirmation && (
-                        <Badge variant="outline" className="mt-1 text-amber-600 border-amber-300">
-                          <AlertTriangle className="h-3 w-3 mr-1" /> bitte pruefen
-                        </Badge>
+                        <div className="mt-1 flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="text-amber-600 border-amber-300">
+                            <AlertTriangle className="h-3 w-3 mr-1" /> bitte pruefen
+                          </Badge>
+                          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => handleConfirm(r)} disabled={confirmAr.isPending}>
+                            {confirmAr.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3 mr-1" />} Bestaetigen
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                     <TableCell className="text-sm">{r.invoice_ref || "—"}</TableCell>
                     <TableCell className="text-right font-medium">{r.amount_display || "—"}</TableCell>
                     <TableCell className="text-sm">
-                      {r.due_date ? new Date(r.due_date).toLocaleDateString("de-DE") : "—"}
+                      {fmtDate(r.due_date) || "—"}
                       {r.overdue && r.days_overdue != null && (
                         <Badge variant="destructive" className="ml-2">{r.days_overdue} T ueberfaellig</Badge>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {r.reminder_count ? <span className="text-xs text-muted-foreground">{r.reminder_count}x erinnert</span> : <span className="text-xs text-muted-foreground">offen</span>}
+                    <TableCell>{stufeBadge(r.mahnstufe || r.suggested_mahnstufe)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {r.last_reminded_at
+                        ? <span>{fmtDate(r.last_reminded_at)}{r.reminder_count ? ` (${r.reminder_count}x)` : ""}</span>
+                        : <span>noch nie</span>}
                     </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{naechsteAktion(r)}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">
                       {r.overdue ? (
                         <Button size="sm" variant="default" onClick={() => handleGenerate(r)} disabled={generate.isPending}>
@@ -254,6 +402,73 @@ export default function Forderungen() {
             <Button onClick={handleApprove} disabled={verdict.isPending}>
               {verdict.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} In Postfach-Entwuerfe legen
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* v4.134.0 — dry_run-Vorschau: welche Forderungen erinnerungsreif sind */}
+      <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Faellige Zahlungserinnerungen</DialogTitle>
+            <DialogDescription>
+              {previewCount === 0
+                ? "Aktuell ist keine Forderung erinnerungsreif (Karenz, Abstand und Bestaetigung werden beachtet)."
+                : `${previewCount} Forderung(en) sind erinnerungsreif. Es werden Entwuerfe in der Konsole erzeugt, die du unten einzeln freigibst. Es wird nichts versendet.`}
+            </DialogDescription>
+          </DialogHeader>
+          {previewCount > 0 && (
+            <div className="max-h-80 overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Kunde</TableHead>
+                    <TableHead>Rechnung</TableHead>
+                    <TableHead className="text-right">Betrag</TableHead>
+                    <TableHead>Ueberfaellig</TableHead>
+                    <TableHead>Stufe</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {previewItems(preview).map((it) => (
+                    <TableRow key={it.ar_invoice_id}>
+                      <TableCell>{it.counterpart_name || "—"}</TableCell>
+                      <TableCell className="text-sm">{it.invoice_ref || "—"}</TableCell>
+                      <TableCell className="text-right">{formatAmount(it.amount_gross, it.currency)}</TableCell>
+                      <TableCell>{it.days_overdue != null ? `${it.days_overdue} T` : "—"}</TableCell>
+                      <TableCell>{stufeBadge(it.suggested_mahnstufe)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPreview(null)}>Abbrechen</Button>
+            <Button onClick={handleRunReal} disabled={runDun.isPending || previewCount === 0}>
+              {runDun.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} {previewCount} Entwuerfe erzeugen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* v4.134.0 — Steuerberater-CSV mit optionalem Zeitraum */}
+      <Dialog open={showCsv} onOpenChange={setShowCsv}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>CSV fuer Steuerberater</DialogTitle>
+            <DialogDescription>
+              DATEV-kompatible OPOS-Liste (offene Posten) mit Mahnstatus. Zeitraum ist optional
+              und filtert nach Belegdatum.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label className="text-xs">Von (optional)</Label><Input type="date" value={csvFrom} onChange={(e) => setCsvFrom(e.target.value)} /></div>
+            <div><Label className="text-xs">Bis (optional)</Label><Input type="date" value={csvTo} onChange={(e) => setCsvTo(e.target.value)} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowCsv(false)}>Abbrechen</Button>
+            <Button onClick={handleCsvExport}><FileText className="h-4 w-4 mr-1" /> CSV herunterladen</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

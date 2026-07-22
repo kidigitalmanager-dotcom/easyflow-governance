@@ -2691,6 +2691,82 @@ export async function exportArXlsx(): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
+// ---- v4.134.0 Mahn-Zyklus (on-demand Scanner-Lauf + Per-Tenant-Settings) + Steuerberater-CSV ----
+// Alles ueber die BESTEHENDE /documents/ar-Route gemultiplext (action-Feld) bzw. die
+// bestehende /documents/export-Route (format-Param) — bewusst NULL neue API-GW-Routen.
+export interface DunningSettings {
+  ok?: boolean;
+  enabled: boolean;
+  documents_enabled: boolean;
+  feature_on: boolean;
+  grace_days: number;
+  cooldown_days: number;
+  use_llm_tone: boolean;
+  migration_missing?: boolean;
+}
+export const fetchDunningSettings = () =>
+  apiPost<DunningSettings>("/documents/ar", { action: "dunning_settings_get" });
+export const setDunningSettings = (
+  patch: { enabled?: boolean; grace_days?: number; cooldown_days?: number; use_llm_tone?: boolean },
+) => apiPost<{ ok: boolean; error?: string } & Partial<DunningSettings>>(
+  "/documents/ar", { action: "dunning_settings_set", ...patch },
+);
+
+// Bestaetigen-Geste fuer needs_confirmation-Zeilen (Text-Fallback). Erst danach darf
+// der Zyklus die Zeile automatisch bemahnen (needs_confirmation -> false).
+export const confirmArInvoice = (arInvoiceId: number) =>
+  apiPost<{ ok: boolean; ar_invoice_id: number; needs_confirmation?: boolean; error?: string }>(
+    "/documents/ar", { action: "confirm", ar_invoice_id: arInvoiceId },
+  );
+
+export interface DunningRunItem {
+  ar_invoice_id: number;
+  invoice_ref: string | null;
+  counterpart_name: string | null;
+  amount_gross: number | null;
+  currency: string | null;
+  due_date: string | null;
+  days_overdue: number | null;
+  reminder_count: number | null;
+  suggested_mahnstufe: number | null;
+}
+export interface DunningRunTenantResult {
+  tenant_id?: string;
+  items?: DunningRunItem[];
+  would_generate?: number;
+  generated?: number;
+  [k: string]: unknown;
+}
+export interface DunningRunResult {
+  ok: boolean;
+  dry_run?: boolean;
+  results?: DunningRunTenantResult[];
+  would_generate?: number;
+  generated?: number;
+  error?: string;
+  migration_missing?: boolean;
+}
+// dry_run=true -> Vorschau (keine Entwuerfe). dry_run=false -> erzeugt Konsole-Entwuerfe
+// (force intern; der Button ist die explizite Owner-Geste, kein Automatik-Opt-in noetig).
+export const runDunning = (dryRun: boolean) =>
+  apiPost<DunningRunResult>("/documents/ar", { action: "dunning_run", dry_run: dryRun });
+
+// Steuerberater-OPOS als DATEV-kompatible CSV (UTF-8-BOM, Semikolon). Bestehende
+// /documents/export-Route mit ?format=datev (+ optional von/bis auf issue_date).
+export async function exportArCsvDatev(range?: { from?: string; to?: string }): Promise<void> {
+  const token = await getToken();
+  const qs = new URLSearchParams({ format: "datev" });
+  if (range?.from) qs.set("from", range.from);
+  if (range?.to) qs.set("to", range.to);
+  const res = await fetch(`${API_BASE}/documents/export?${qs.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error("export_failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "forderungen-steuerberater.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
 import type { OfferPosition, OfferTotals } from "@/lib/offer-calc";
 
 export interface TenantOffer {

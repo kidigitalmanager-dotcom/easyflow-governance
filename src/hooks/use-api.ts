@@ -1303,3 +1303,42 @@ export function useUpdateTimeSettings() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["team-members"] }); },
   });
 }
+
+// ============================================================================
+// v4.134.0 — Mahn-Zyklus (on-demand Lauf + Per-Tenant-Settings + Bestaetigen-Geste)
+// ============================================================================
+import {
+  fetchDunningSettings, setDunningSettings, confirmArInvoice, runDunning,
+} from "@/lib/api-client";
+
+export function useDunningSettings() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["dunning-settings"],
+    queryFn: fetchDunningSettings,
+    enabled: !!session,
+    staleTime: 30_000,
+    retry: false, // vor Migration liefert die Action migration_missing -> kein Retry-Spam
+  });
+}
+export function useSetDunningSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: { enabled?: boolean; grace_days?: number; cooldown_days?: number; use_llm_tone?: boolean }) => setDunningSettings(patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dunning-settings"] }),
+  });
+}
+export function useConfirmArInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (arInvoiceId: number) => confirmArInvoice(arInvoiceId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["documents"] }),
+  });
+}
+export function useRunDunning() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dryRun: boolean) => runDunning(dryRun),
+    onSuccess: (_res, dryRun) => { if (!dryRun) qc.invalidateQueries({ queryKey: ["documents"] }); },
+  });
+}

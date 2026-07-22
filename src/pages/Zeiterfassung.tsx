@@ -319,7 +319,7 @@ export default function Zeiterfassung() {
         counterpart_name: kunde === "(ohne Kunde)" ? undefined : kunde,
         subject: "Rechnung" + (kunde !== "(ohne Kunde)" ? " für " + kunde : ""),
       });
-      if ((inv as { skipped?: boolean }).skipped) { toast.error("Rechnungen sind noch nicht aktiviert (Feature/Postfach)."); return; }
+      if ((inv as { skipped?: unknown }).skipped) { toast.error("Rechnungen sind noch nicht aktiviert (Feature/Postfach)."); return; }
       if (!inv.ok || !inv.document_id) { toast.error("Rechnung konnte nicht erstellt werden."); return; }
       const res = await applyTime.mutateAsync({ document_id: inv.document_id, entry_ids: ids, gruppierung: "je_eintrag" });
       if (!res.ok) { toast.error("Zeiten-Übernahme fehlgeschlagen: " + (res.error || "")); return; }

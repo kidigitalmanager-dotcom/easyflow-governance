@@ -27,6 +27,7 @@ import StichprobenAuditTab from "@/components/StichprobenAuditTab";
 import BillingTab from "@/components/BillingTab";
 import AiTransparencyTab from "@/components/AiTransparencyTab";
 import AutoOfferSettingsCard from "@/components/AutoOfferSettingsCard"; // v4.130.0
+import DunningSettingsCard from "@/components/DunningSettingsCard"; // v4.134.0
 import PriceListsCard from "@/components/PriceListsCard"; // v4.130.0
 
 function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
@@ -252,6 +253,8 @@ export default function Einstellungen() {
         <TabsContent value="general" className="space-y-8 mt-6">
           {/* v4.130.0 — Auto-Angebot-Toggle (rendert nur wenn documents_enabled) */}
           <AutoOfferSettingsCard />
+          {/* v4.134.0 — Automatische Zahlungserinnerungen / Mahn-Zyklus (rendert nur wenn documents_enabled) */}
+          <DunningSettingsCard />
           <div className="glass-card p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold">UseEasy pro Mailbox</h2>
