@@ -394,7 +394,9 @@ export default function Rechnungen() {
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground truncate">
-                  {inv.counterpart_name || inv.subject || ""}{inv.amount_gross != null ? " · " + fmtEUR(inv.amount_gross) : ""}{inv.issue_date ? " · " + fmtDateDe(inv.issue_date) : ""}
+                  {inv.counterpart_name || inv.subject || ""}{inv.amount_gross != null ? " · " + fmtEUR(inv.amount_gross) : ""}
+                  {inv.created_at ? " · erstellt " + fmtDateDe(inv.created_at) : ""}
+                  {inv.issue_date ? " · Rechnungsdatum " + fmtDateDe(inv.issue_date) : ""}
                 </p>
               </div>
               <div className="shrink-0">
