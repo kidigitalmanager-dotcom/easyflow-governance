@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, Landmark } from "lucide-react";
+import { Building2, Landmark, HardHat } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,6 +37,22 @@ export default function Login() {
   const { toast } = useToast();
   const [role, setRole] = useState<string | null>(() => (typeof window !== "undefined" ? localStorage.getItem("ue_role") : null));
   const chooseRole = (r: string) => { localStorage.setItem("ue_role", r); setRole(r); };
+  // v4.132.0: dritte Kachel "Mitarbeiter" — reine UX-Weiche (KEINE Rechte-Quelle!).
+  // Die echte Rolle kommt serverseitig aus /me (tenant_members -> role:'employee').
+  // ue_role bleibt 'company', damit RoleGate/RoleHome unverändert funktionieren;
+  // die Kachel merkt sich nur lokal, dass der Mitarbeiter-Einstieg gewählt wurde.
+  const [workerTile, setWorkerTile] = useState<boolean>(() => (typeof window !== "undefined" ? localStorage.getItem("ue_login_tile") === "worker" : false));
+  const chooseWorker = () => {
+    localStorage.setItem("ue_role", "company");
+    localStorage.setItem("ue_login_tile", "worker");
+    setRole("company");
+    setWorkerTile(true);
+  };
+  const chooseNonWorker = (r: string) => {
+    localStorage.setItem("ue_login_tile", r);
+    setWorkerTile(false);
+    chooseRole(r);
+  };
   const { session, loading: authLoading } = useAuth();
 
   const handleGoogleLogin = async () => {
@@ -358,16 +374,21 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Rolle: 2 Kacheln */}
-        <div className="grid grid-cols-2 gap-3">
-          <button type="button" onClick={() => chooseRole("company")}
-            className={"flex flex-col items-center gap-2 rounded-xl border p-4 transition-colors " + (role === "company" ? "border-primary/50 bg-primary/10" : "border-border hover:bg-muted/40")}>
-            <Building2 className={"w-6 h-6 " + (role === "company" ? "text-primary" : "text-muted-foreground")} />
+        {/* Rolle: 3 Kacheln (v4.132.0: + Mitarbeiter — Registrierung NUR dort) */}
+        <div className="grid grid-cols-3 gap-3">
+          <button type="button" onClick={() => chooseNonWorker("company")}
+            className={"flex flex-col items-center gap-2 rounded-xl border p-4 transition-colors " + (role === "company" && !workerTile ? "border-primary/50 bg-primary/10" : "border-border hover:bg-muted/40")}>
+            <Building2 className={"w-6 h-6 " + (role === "company" && !workerTile ? "text-primary" : "text-muted-foreground")} />
             <span className="text-sm font-medium text-foreground">Unternehmen</span>
           </button>
-          <button type="button" onClick={() => chooseRole("investor")}
-            className={"flex flex-col items-center gap-2 rounded-xl border p-4 transition-colors " + (role === "investor" ? "border-primary/50 bg-primary/10" : "border-border hover:bg-muted/40")}>
-            <Landmark className={"w-6 h-6 " + (role === "investor" ? "text-primary" : "text-muted-foreground")} />
+          <button type="button" onClick={chooseWorker}
+            className={"flex flex-col items-center gap-2 rounded-xl border p-4 transition-colors " + (workerTile ? "border-primary/50 bg-primary/10" : "border-border hover:bg-muted/40")}>
+            <HardHat className={"w-6 h-6 " + (workerTile ? "text-primary" : "text-muted-foreground")} />
+            <span className="text-sm font-medium text-foreground">Mitarbeiter</span>
+          </button>
+          <button type="button" onClick={() => chooseNonWorker("investor")}
+            className={"flex flex-col items-center gap-2 rounded-xl border p-4 transition-colors " + (role === "investor" && !workerTile ? "border-primary/50 bg-primary/10" : "border-border hover:bg-muted/40")}>
+            <Landmark className={"w-6 h-6 " + (role === "investor" && !workerTile ? "text-primary" : "text-muted-foreground")} />
             <span className="text-sm font-medium text-foreground">Investor</span>
           </button>
         </div>
@@ -445,17 +466,30 @@ export default function Login() {
               >
                 Passwort vergessen?
               </button>
-              <span className="text-xs text-muted-foreground/40">·</span>
-              {/* v4.132.0: Selbst-Registrierung (Mitarbeiter-Logins Zeiterfassung) */}
-              <button
-                type="button"
-                className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
-                onClick={() => { setSignupMode(true); setSignupSent(false); }}
-                disabled={loading}
-              >
-                Neu hier? Konto erstellen
-              </button>
+              {/* v4.132.0: Selbst-Registrierung NUR unter der Mitarbeiter-Kachel.
+                  Unternehmen entstehen über den Kauf (Kauf-E-Mail), Investoren per
+                  Einladung — die Kachel ist reine UX, Rechte vergibt der Server. */}
+              {workerTile && (
+                <>
+                  <span className="text-xs text-muted-foreground/40">·</span>
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+                    onClick={() => { setSignupMode(true); setSignupSent(false); }}
+                    disabled={loading}
+                  >
+                    Neu hier? Konto erstellen
+                  </button>
+                </>
+              )}
             </div>
+            {!workerTile && (
+              <p className="text-[11px] leading-relaxed text-muted-foreground/70 text-center pt-1">
+                {role === "investor"
+                  ? "Investoren-Zugänge werden per Einladung freigeschaltet — melde dich mit der eingeladenen E-Mail-Adresse an."
+                  : "Dein Unternehmens-Zugang entsteht automatisch mit dem Kauf — melde dich mit der E-Mail an, mit der gekauft wurde. Mitarbeiter registrieren sich über die Kachel „Mitarbeiter“."}
+              </p>
+            )}
           </form>
         </div>
       </div>
