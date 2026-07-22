@@ -154,6 +154,18 @@ export default function Login() {
       window.location.href = "/";
       return;
     }
+    // Supabase antwortet bei BEREITS registrierter Adresse aus Sicherheitsgruenden
+    // neutral (user mit identities: [] und ohne Session) — es kommt dann KEINE Mail.
+    // E2E-Fund 22.07.: ohne diese Erkennung wartet man ewig auf eine Bestaetigung.
+    const identities = (data.user && (data.user.identities as unknown[] | null)) || [];
+    if (data.user && identities.length === 0) {
+      toast({
+        title: "Diese Adresse hat bereits ein Konto",
+        description: "Einfach oben anmelden — oder über „Passwort vergessen“ ein neues Passwort setzen. Eine Bestätigungs-Mail kommt in diesem Fall nicht.",
+      });
+      setSignupMode(false);
+      return;
+    }
     setSignupSent(true);
   };
 
