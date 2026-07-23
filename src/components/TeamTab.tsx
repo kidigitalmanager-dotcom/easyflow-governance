@@ -115,7 +115,7 @@ export function TeamTab() {
           die Zeiterfassung — keine Postfächer, keine Einstellungen.
         </p>
         <p className="text-xs text-muted-foreground/70">
-          Hinweis: Deine <b>Vertriebler</b> (Telefonie/Co-Pilot) sind davon getrennt und werden unter Voice &amp; Co-Pilot bzw. admin.useeasy.ai verwaltet.
+          Hinweis: Deine <b>Vertriebler</b> (Telefonie/Co-Pilot) sind davon getrennt und werden unter Voice &amp; Co-Pilot verwaltet.
         </p>
 
         {backendMissing && (

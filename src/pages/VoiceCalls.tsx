@@ -1,16 +1,17 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Users, PhoneCall, ShieldCheck, Rocket, Bot } from "lucide-react";
+import { Users, PhoneCall, ShieldCheck, Rocket, Bot, ListChecks } from "lucide-react";
 import VoiceRepsTab from "@/components/VoiceRepsTab";
 import CoPilotRepsTab from "@/components/CoPilotRepsTab";
 import SalesCallsAuditTab from "@/components/SalesCallsAuditTab";
 import RecordingConsentTab from "@/components/RecordingConsentTab";
 import VoiceAgentsTab from "@/components/VoiceAgentsTab";
+import LeadUploadTab from "@/components/LeadUploadTab";
 
 export default function VoiceCalls() {
   const initialTab = (() => {
     if (typeof window === "undefined") return "reps";
     const t = new URLSearchParams(window.location.search).get("tab");
-    return t === "calls" || t === "consent" || t === "copilot" || t === "agents" ? t : "reps";
+    return t === "calls" || t === "consent" || t === "copilot" || t === "agents" || t === "leads" ? t : "reps";
   })();
 
   return (
@@ -44,6 +45,10 @@ export default function VoiceCalls() {
             <Bot className="w-3.5 h-3.5" />
             KI-Agenten
           </TabsTrigger>
+          <TabsTrigger value="leads" className="gap-1.5">
+            <ListChecks className="w-3.5 h-3.5" />
+            Leads
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="reps" className="mt-6">
@@ -64,6 +69,10 @@ export default function VoiceCalls() {
 
         <TabsContent value="agents" className="mt-6">
           <VoiceAgentsTab />
+        </TabsContent>
+
+        <TabsContent value="leads" className="mt-6">
+          <LeadUploadTab />
         </TabsContent>
       </Tabs>
     </div>

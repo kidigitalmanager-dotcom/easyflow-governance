@@ -1542,6 +1542,127 @@ export const updateVoiceRep = (repId: string, payload: {
 export const deleteVoiceRep = (repId: string) =>
   apiDelete<VoiceRepMutationResponse>(`/voice/reps/${encodeURIComponent(repId)}`);
 
+// ── Fetchers: Self-Serve (v4.138.0) — Vertriebler einladen + Twilio-Nummernkauf ──
+
+export interface InviteVoiceRepResponse {
+  ok: boolean;
+  rep_id?: string;
+  already_existed?: boolean;
+  deployed_url?: string | null;
+  vertriebler?: { client_id: string; display_name: string; status: string } | null;
+  sales_user?: { rep_id: string; twilio_number: string | null; active: boolean } | null;
+  error?: string;
+  hint?: string;
+}
+
+// Legt einen Vertriebler self-serve an (Co-Pilot-Deploy via leads-sync). Idempotent.
+export const inviteVoiceRep = (payload: {
+  rep_id: string;
+  display_name: string;
+  email?: string;
+  variant?: "jana" | "cold-only";
+}) => apiPost<InviteVoiceRepResponse>("/voice/reps/invite", payload);
+
+export interface TwilioAvailableNumber {
+  phone_number: string;
+  friendly_name: string;
+  locality: string | null;
+  region: string | null;
+  iso_country: string;
+  capabilities: Record<string, boolean> | null;
+}
+
+export interface NumberSearchResponse {
+  ok: boolean;
+  country: string;
+  type: string;
+  monthly_price: string | null;
+  price_unit: string | null;
+  numbers: TwilioAvailableNumber[];
+  total: number;
+  error?: string;
+  message?: string;
+}
+
+export const searchNumbers = (params: {
+  country?: string;
+  type?: string;
+  areaCode?: string;
+  contains?: string;
+  limit?: number;
+}) => {
+  const qs = new URLSearchParams();
+  if (params.country) qs.set("country", params.country);
+  if (params.type) qs.set("type", params.type);
+  if (params.areaCode) qs.set("areaCode", params.areaCode);
+  if (params.contains) qs.set("contains", params.contains);
+  if (params.limit) qs.set("limit", String(params.limit));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch<NumberSearchResponse>(`/voice/numbers/search${suffix}`);
+};
+
+export interface NumberBuyResponse {
+  ok: boolean;
+  rep_id?: string;
+  phone_number?: string;
+  twilio_sid?: string | null;
+  caller_id_status?: string;
+  caller_id_set?: boolean;
+  voice_url_configured?: boolean;
+  error?: string;
+  twilio_code?: number | null;
+  twilio_message?: string | null;
+  hint?: string;
+}
+
+export const buyNumber = (payload: { rep_id: string; phone_number: string; country?: string }) =>
+  apiPost<NumberBuyResponse>("/voice/numbers/buy", payload);
+
+// ════════════════════════════════════════════════════════════════════════════
+// Lead-Upload (Phase 3) — Backend: /v1/dashboard/leads/* (delegiert an leads-sync)
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface LeadListSummary {
+  list_id: string;
+  list_name: string;
+  uploaded_at: string | null;
+  uploaded_by: string | null;
+  source: string | null;
+  lead_count: number;
+}
+
+export interface LeadListsResponse {
+  ok: boolean;
+  status?: number;
+  schema_version?: number;
+  tenant_id?: string;
+  updated_at?: string | null;
+  lists: LeadListSummary[];
+  error?: string;
+}
+
+export interface LeadUploadResponse {
+  ok: boolean;
+  status?: number;
+  list_id?: string;
+  list_name?: string;
+  uploaded_at?: string;
+  uploaded_by?: string;
+  lead_count?: number;
+  error?: string;
+  max?: number;
+}
+
+export const fetchLeadLists = () => apiFetch<LeadListsResponse>("/leads/lists");
+
+export const uploadLeads = (payload: { list_name: string; leads: Record<string, unknown>[] }) =>
+  apiPost<LeadUploadResponse>("/leads/lists", payload);
+
+export const deleteLeadList = (listId: string) =>
+  apiDelete<{ ok: boolean; status?: number; list_id?: string; remaining_lists?: number; error?: string }>(
+    `/leads/lists/${encodeURIComponent(listId)}`,
+  );
+
 // ── Fetchers: Sales Calls (Block 3) ──────────────────────────────────
 
 export const fetchSalesCalls = (params?: {

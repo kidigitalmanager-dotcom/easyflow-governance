@@ -39,6 +39,12 @@ import {
   createVoiceRep,
   updateVoiceRep,
   deleteVoiceRep,
+  inviteVoiceRep,
+  searchNumbers,
+  buyNumber,
+  fetchLeadLists,
+  uploadLeads,
+  deleteLeadList,
   fetchSalesCalls,
   fetchRecordingConsent,
   updateRecordingConsent,
@@ -449,6 +455,57 @@ export function useVoiceRepDelete() {
   return useMutation({
     mutationFn: deleteVoiceRep,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["voice-reps"] }),
+  });
+}
+
+// ── Self-Serve (v4.138.0): Invite + Twilio-Nummernkauf ──
+
+export function useVoiceRepInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: inviteVoiceRep,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["voice-reps"] }),
+  });
+}
+
+export function useNumberSearch() {
+  // manuelle Suche (kein Auto-Query) — via mutateAsync ausgeloest, Kostenkontrolle
+  return useMutation({ mutationFn: searchNumbers });
+}
+
+export function useNumberBuy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: buyNumber,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["voice-reps"] }),
+  });
+}
+
+// ── Lead-Upload (Phase 3) ──
+
+export function useLeadLists() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["lead-lists"],
+    queryFn: fetchLeadLists,
+    enabled: !!session,
+    staleTime: 30_000,
+  });
+}
+
+export function useLeadUpload() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: uploadLeads,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lead-lists"] }),
+  });
+}
+
+export function useLeadListDelete() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteLeadList,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lead-lists"] }),
   });
 }
 
