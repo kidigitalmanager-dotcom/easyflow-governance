@@ -6,13 +6,15 @@
 // Nacherfassung, billed-Einträge zurücksetzen. Übernahme in Angebot/Rechnung
 // läuft über den Dialog in Rechnungen.tsx/Angebote.tsx (TimeApplyDialog).
 // -----------------------------------------------------------------------------
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 import {
   useMe, useTimeEntries, useCreateTimeEntry, useUpdateTimeEntry, useDeleteTimeEntry,
   useUnbillTimeEntry, useTeamMembers, useGenerateInvoice, useApplyTimeToDocument, useBillingProfile,
+  useTimeProjects, useCreateTimeProject, useUpdateTimeProject, useDeleteTimeProject,
 } from "@/hooks/use-api";
-import type { TimeEntry } from "@/lib/api-client";
+import type { TimeEntry, TimeEntryInput, TimeProject } from "@/lib/api-client";
 import { MitarbeiterAbrechnungPdf } from "@/components/documents/MitarbeiterAbrechnungPdf";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Clock, Plus, Trash2, Loader2, Pencil, RotateCcw, Download, Lock, Users, ReceiptText, FileText, Wallet } from "lucide-react";
+import { Clock, Plus, Trash2, Loader2, Pencil, RotateCcw, Download, Lock, Users, ReceiptText, FileText, Wallet, Check, AlertTriangle, FolderKanban, Archive, ArrowUp, ArrowDown, Sheet } from "lucide-react";
 
 function todayIso(): string { return new Date().toISOString().slice(0, 10); }
 function isoDaysAgo(days: number): string { return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10); }
@@ -48,15 +50,16 @@ function fmtCents(cents: number | null | undefined): string {
 const DUR_CHIPS = [30, 60, 90, 120, 240, 480];
 
 type FormState = {
+  projectId: string; // "" = Freitext/anderer Ort; sonst Projekt-ID als String
   customer: string; date: string; mode: "vonbis" | "dauer";
   from: string; to: string; durationMin: string;
   note: string; billable: boolean; memberEmail: string;
 };
-const EMPTY_FORM: FormState = { customer: "", date: todayIso(), mode: "vonbis", from: "", to: "", durationMin: "60", note: "", billable: true, memberEmail: "" };
+const EMPTY_FORM: FormState = { projectId: "", customer: "", date: todayIso(), mode: "vonbis", from: "", to: "", durationMin: "60", note: "", billable: true, memberEmail: "" };
 
 // ── Erfassungs-Formular (Mitarbeiter + Owner-Nacherfassung) ──────────────────
-function EntryForm({ customers, isOwner, memberOptions, editEntry, onDone }: {
-  customers: string[]; isOwner: boolean;
+function EntryForm({ customers, projects, isOwner, isEmployee, memberOptions, editEntry, onDone }: {
+  customers: string[]; projects: TimeProject[]; isOwner: boolean; isEmployee: boolean;
   memberOptions: { email: string; name: string }[];
   editEntry: TimeEntry | null; onDone: () => void;
 }) {
@@ -65,6 +68,7 @@ function EntryForm({ customers, isOwner, memberOptions, editEntry, onDone }: {
   const [f, setF] = useState<FormState>(() => {
     if (!editEntry) return EMPTY_FORM;
     return {
+      projectId: editEntry.project_id ? String(editEntry.project_id) : "",
       customer: editEntry.customer_name || "",
       date: (editEntry.started_at || "").slice(0, 10),
       mode: "vonbis",
@@ -73,48 +77,128 @@ function EntryForm({ customers, isOwner, memberOptions, editEntry, onDone }: {
       note: editEntry.description || "", billable: editEntry.billable, memberEmail: editEntry.member_email,
     };
   });
+  const [savedId, setSavedId] = useState<number | null>(editEntry ? editEntry.id : null);
+  const [saveState, setSaveState] = useState<{ status: "idle" | "saving" | "saved" | "error"; at?: string; msg?: string }>({ status: "idle" });
   const busy = create.isPending || update.isPending;
+  // Auto-Save gilt fuer den Mitarbeiter (dessen "keine Fehler"-Flow) und beim
+  // Bearbeiten. Owner-Nacherfassung bleibt bewusst Button-gesteuert (kein
+  // versehentlicher Selbst-Eintrag). Der Speichern-Button bleibt immer als Backup.
+  const autoSaveEnabled = isEmployee || !!editEntry;
 
-  async function submit() {
-    if (!f.date) { toast.error("Bitte ein Datum wählen."); return; }
-    const base: Record<string, unknown> = {
-      customer_name: f.customer.trim() || undefined,
-      description: f.note.trim() || undefined,
-      billable: f.billable,
-    };
-    if (isOwner && !editEntry && f.memberEmail) base.member_email = f.memberEmail;
-    if (f.mode === "vonbis") {
-      if (!f.from || !f.to) { toast.error("Bitte Von- und Bis-Zeit angeben (oder auf „Dauer“ wechseln)."); return; }
-      const start = new Date(`${f.date}T${f.from}:00`);
-      const end = new Date(`${f.date}T${f.to}:00`);
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) { toast.error("Zeitangabe ungültig."); return; }
-      if (end <= start) { toast.error("Bis-Zeit muss nach der Von-Zeit liegen."); return; }
-      base.started_at = start.toISOString();
-      base.ended_at = end.toISOString();
+  const fRef = useRef(f); fRef.current = f;
+  const savedIdRef = useRef(savedId); savedIdRef.current = savedId;
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSigRef = useRef<string>("");
+  const flushingRef = useRef(false);
+  const ratedHintRef = useRef(false);
+
+  // Baut die Payload NUR, wenn der Eintrag sinnvoll persistierbar ist (Datum +
+  // gueltige Zeiten). Projekt gewaehlt -> Server-Snapshot ueberschreibt Kunde;
+  // sonst Freitext-Kunde (Fallback "anderer Ort"). Beim Bearbeiten loest ein
+  // leeres Projekt die Bindung (project_id: null).
+  function buildPayload(s: FormState): { ok: true; body: TimeEntryInput } | { ok: false; error?: string } {
+    if (!s.date) return { ok: false, error: "Bitte ein Datum wählen." };
+    const body: TimeEntryInput = { description: s.note.trim() || undefined, billable: s.billable };
+    if (s.projectId) body.project_id = Number(s.projectId);
+    else { body.customer_name = s.customer.trim() || undefined; if (editEntry) body.project_id = null; }
+    if (isOwner && !editEntry && s.memberEmail) body.member_email = s.memberEmail;
+    if (s.mode === "vonbis") {
+      if (!s.from || !s.to) return { ok: false };
+      const start = new Date(`${s.date}T${s.from}:00`);
+      const end = new Date(`${s.date}T${s.to}:00`);
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) return { ok: false };
+      body.started_at = start.toISOString(); body.ended_at = end.toISOString();
     } else {
-      const dur = parseInt(f.durationMin, 10);
-      if (!Number.isFinite(dur) || dur <= 0) { toast.error("Bitte eine Dauer angeben."); return; }
-      base.date = f.date; base.duration_min = dur;
+      const dur = parseInt(s.durationMin, 10);
+      if (!Number.isFinite(dur) || dur <= 0) return { ok: false };
+      body.date = s.date; body.duration_min = dur;
     }
+    return { ok: true, body };
+  }
+
+  const persist = buildPayload(f);
+  const signature = persist.ok ? JSON.stringify(persist.body) : "";
+
+  async function flush(): Promise<boolean> {
+    const p = buildPayload(fRef.current);
+    if (!p.ok) return false;
+    const sig = JSON.stringify(p.body);
+    if (sig === lastSigRef.current && savedIdRef.current != null && saveState.status !== "error") return true;
+    if (flushingRef.current) return false;
+    flushingRef.current = true;
+    setSaveState({ status: "saving" });
+    let ok2 = false;
     try {
-      const res = editEntry
-        ? await update.mutateAsync({ id: editEntry.id, ...base })
-        : await create.mutateAsync(base);
-      if (!res.ok) { toast.error("Speichern fehlgeschlagen: " + (res.error || "")); return; }
-      if (!editEntry && (res as { rate_missing?: boolean }).rate_missing) {
-        toast.message("Zeit erfasst — noch ohne Stundensatz.", { description: "Der Chef hinterlegt Stundensätze unter Einstellungen → Team; bei der Übernahme bleibt der Preis sonst offen." });
+      let res: { ok: boolean; entry?: TimeEntry; error?: string; rate_missing?: boolean };
+      if (savedIdRef.current == null) {
+        res = await create.mutateAsync(p.body);
+        if (res.ok && res.entry) { setSavedId(res.entry.id); savedIdRef.current = res.entry.id; }
+        if (res.ok && res.rate_missing && !ratedHintRef.current) {
+          ratedHintRef.current = true;
+          toast.message("Zeit erfasst — noch ohne Stundensatz.", { description: "Der Chef hinterlegt Stundensätze unter Einstellungen → Mitarbeiter." });
+        }
       } else {
-        toast.success(editEntry ? "Eintrag aktualisiert." : "Zeit erfasst.");
+        res = await update.mutateAsync({ id: savedIdRef.current, ...p.body });
       }
-      onDone();
+      if (!res.ok) { setSaveState({ status: "error", msg: res.error || "Speichern fehlgeschlagen." }); }
+      else {
+        lastSigRef.current = sig;
+        setSaveState({ status: "saved", at: new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) });
+        ok2 = true;
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
-      toast.error(msg.includes("409") ? "Eintrag ist bereits abgerechnet." : "Speichern fehlgeschlagen." + (msg ? " (" + msg + ")" : ""));
+      setSaveState({ status: "error", msg: msg.includes("409") ? "Bereits abgerechnet — nicht mehr änderbar." : "Nicht gespeichert. Bitte erneut versuchen." });
     }
+    flushingRef.current = false;
+    // Nachzuegler: hat sich waehrend des Speicherns etwas geaendert? -> erneut
+    // (nur nach Erfolg, damit ein echter Fehler keine Endlosschleife ausloest).
+    if (ok2) {
+      const latest = buildPayload(fRef.current);
+      if (latest.ok && JSON.stringify(latest.body) !== lastSigRef.current) {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => { flush(); }, 400);
+      }
+    }
+    return ok2;
+  }
+
+  // Auto-Save: debounced (~800 ms) bei jeder sinnvollen Aenderung.
+  useEffect(() => {
+    if (!autoSaveEnabled || !signature || signature === lastSigRef.current) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => { flush(); }, 800);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature, autoSaveEnabled]);
+
+  // Letzter Flush beim Verlassen (Zeile/Seite) — kein stiller Verlust.
+  useEffect(() => {
+    return () => {
+      if (!autoSaveEnabled) return;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      const p = buildPayload(fRef.current);
+      if (p.ok && JSON.stringify(p.body) !== lastSigRef.current) { flush(); }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Speichern-Button (Backup + Owner-Nacherfassung): validieren, flushen, schliessen.
+  async function submitButton() {
+    const p = buildPayload(fRef.current);
+    if (!p.ok) { toast.error((p as { error?: string }).error || "Bitte Datum und Zeiten prüfen (Von/Bis oder Dauer)."); return; }
+    const ok = await flush();
+    if (ok) { toast.success(editEntry ? "Eintrag gespeichert." : "Zeit gespeichert."); onDone(); }
+  }
+
+  function onCardBlur() {
+    if (!autoSaveEnabled) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    flush();
   }
 
   return (
-    <Card>
+    <Card onBlur={onCardBlur}>
       <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2">
         <Plus className="h-4 w-4" /> {editEntry ? "Eintrag bearbeiten" : "Zeit erfassen"}
       </CardTitle></CardHeader>
@@ -129,14 +213,26 @@ function EntryForm({ customers, isOwner, memberOptions, editEntry, onDone }: {
             </select>
           </div>
         )}
-        <div>
-          <Label className="text-xs">Kunde</Label>
-          <Input list="ue-time-customers" value={f.customer} placeholder="z. B. Familie Müller"
-            onChange={(e) => setF({ ...f, customer: e.target.value })} className="h-10" />
-          <datalist id="ue-time-customers">
-            {customers.map((c) => <option key={c} value={c} />)}
-          </datalist>
-        </div>
+        {projects.length > 0 && (
+          <div>
+            <Label className="text-xs">Projekt</Label>
+            <select className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" value={f.projectId}
+              onChange={(e) => setF({ ...f, projectId: e.target.value })}>
+              <option value="">— anderer Ort (Freitext) —</option>
+              {projects.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+            </select>
+          </div>
+        )}
+        {!f.projectId && (
+          <div>
+            <Label className="text-xs">{projects.length > 0 ? "Kunde / Ort (Freitext)" : "Kunde"}</Label>
+            <Input list="ue-time-customers" value={f.customer} placeholder="z. B. Familie Müller"
+              onChange={(e) => setF({ ...f, customer: e.target.value })} className="h-10" />
+            <datalist id="ue-time-customers">
+              {customers.map((c) => <option key={c} value={c} />)}
+            </datalist>
+          </div>
+        )}
         <div>
           <Label className="text-xs">Datum</Label>
           <Input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} className="h-10" />
@@ -173,11 +269,24 @@ function EntryForm({ customers, isOwner, memberOptions, editEntry, onDone }: {
           <span className="text-sm">An Kunden abrechenbar</span>
           <Switch checked={f.billable} onCheckedChange={(v) => setF({ ...f, billable: v })} />
         </div>
+        {autoSaveEnabled && (
+          <div className="flex items-center gap-2 text-xs min-h-[20px]">
+            {saveState.status === "saving" && <span className="text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Speichert…</span>}
+            {saveState.status === "saved" && <span className="text-emerald-600 flex items-center gap-1"><Check className="h-3.5 w-3.5" /> Gespeichert {saveState.at}</span>}
+            {saveState.status === "error" && (
+              <span className="text-destructive flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {saveState.msg}
+                <button type="button" className="underline font-medium" onClick={() => flush()}>Erneut speichern</button>
+              </span>
+            )}
+            {saveState.status === "idle" && <span className="text-muted-foreground">Wird beim Ausfüllen automatisch gespeichert.</span>}
+          </div>
+        )}
         <div className="flex gap-2">
-          {editEntry && <Button variant="outline" className="flex-1 h-11" onClick={onDone}>Abbrechen</Button>}
-          <Button className="flex-1 h-11 text-base" onClick={submit} disabled={busy}>
+          {editEntry && <Button variant="outline" className="flex-1 h-11" onClick={onDone}>Schließen</Button>}
+          <Button className="flex-1 h-11 text-base" onClick={submitButton} disabled={busy}>
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
-            {editEntry ? "Speichern" : "Zeit speichern"}
+            {editEntry ? "Speichern & schließen" : "Zeit speichern"}
           </Button>
         </div>
       </CardContent>
@@ -226,6 +335,126 @@ function EntryRow({ e, isOwner, memberName, onEdit, onDelete, onUnbill }: {
   );
 }
 
+// ── Projekt-Verwaltung (Owner): anlegen / umbenennen / archivieren / sortieren ──
+function ProjekteVerwaltung() {
+  const projectsQ = useTimeProjects({}, true); // owner: alle inkl. archiviert (mit Flag)
+  const createP = useCreateTimeProject();
+  const updateP = useUpdateTimeProject();
+  const deleteP = useDeleteTimeProject();
+  const [newName, setNewName] = useState("");
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const items = projectsQ.data?.items || [];
+  const active = items.filter((p) => !p.archived);
+  const archived = items.filter((p) => p.archived);
+
+  async function addProject() {
+    const name = newName.trim();
+    if (!name) return;
+    try {
+      const res = await createP.mutateAsync({ name });
+      if (!res.ok) { toast.error(res.error === "projects_migration_missing" ? "Projekte sind noch nicht freigeschaltet (Migration ausstehend)." : "Anlegen fehlgeschlagen."); return; }
+      toast.success(`Projekt „${name}" angelegt.`);
+      setNewName("");
+    } catch { toast.error("Anlegen fehlgeschlagen."); }
+  }
+  async function rename(id: number) {
+    const name = editName.trim();
+    if (!name) { setEditId(null); return; }
+    try {
+      const res = await updateP.mutateAsync({ id, name });
+      if (!res.ok) { toast.error(res.error === "name_exists" ? "Ein Projekt mit diesem Namen existiert schon." : "Umbenennen fehlgeschlagen."); return; }
+      toast.success("Projekt umbenannt (alte Einträge bleiben unverändert).");
+      setEditId(null);
+    } catch { toast.error("Umbenennen fehlgeschlagen."); }
+  }
+  async function archive(p: TimeProject) {
+    try {
+      const res = await deleteP.mutateAsync({ id: p.id });
+      if (!res.ok) { toast.error("Archivieren fehlgeschlagen."); return; }
+      toast.message(`„${p.name}" archiviert.`, { description: "Verschwindet aus dem Mitarbeiter-Dropdown. Erfasste Zeiten bleiben erhalten." });
+    } catch { toast.error("Archivieren fehlgeschlagen."); }
+  }
+  async function reactivate(p: TimeProject) {
+    try {
+      const res = await updateP.mutateAsync({ id: p.id, active: true });
+      if (!res.ok) { toast.error("Reaktivieren fehlgeschlagen."); return; }
+      toast.success(`„${p.name}" ist wieder aktiv.`);
+    } catch { toast.error("Reaktivieren fehlgeschlagen."); }
+  }
+  async function move(idx: number, dir: -1 | 1) {
+    const a = active[idx], b = active[idx + dir];
+    if (!a || !b) return;
+    const aOrder = a.sort_order ?? idx, bOrder = b.sort_order ?? (idx + dir);
+    try {
+      await updateP.mutateAsync({ id: a.id, sort_order: bOrder });
+      await updateP.mutateAsync({ id: b.id, sort_order: aOrder });
+    } catch { toast.error("Sortieren fehlgeschlagen."); }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2">
+        <FolderKanban className="h-4 w-4" /> Projekte — für den Ein-Klick-Dropdown deiner Mitarbeiter
+      </CardTitle></CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex gap-2">
+          <Input value={newName} placeholder="Neues Projekt, z. B. Familie Müller / Baustelle Hauptstraße"
+            onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addProject(); }} className="h-10" />
+          <Button className="h-10 shrink-0" onClick={addProject} disabled={createP.isPending || !newName.trim()}>
+            {createP.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />} Anlegen
+          </Button>
+        </div>
+
+        {projectsQ.isLoading && <Skeleton className="h-12 w-full" />}
+        {!projectsQ.isLoading && items.length === 0 && (
+          <p className="text-sm text-muted-foreground py-1">Noch keine Projekte. Leg oben das erste an — deine Mitarbeiter wählen es dann per Klick statt frei zu tippen.</p>
+        )}
+
+        {active.map((p, idx) => (
+          <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg border p-2.5">
+            {editId === p.id ? (
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <Input value={editName} autoFocus onChange={(e) => setEditName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") rename(p.id); if (e.key === "Escape") setEditId(null); }} className="h-9" />
+                <Button size="sm" className="h-9 shrink-0" onClick={() => rename(p.id)} disabled={updateP.isPending}>Speichern</Button>
+                <Button size="sm" variant="ghost" className="h-9 shrink-0" onClick={() => setEditId(null)}>Abbrechen</Button>
+              </div>
+            ) : (
+              <>
+                <span className="font-medium text-sm truncate">{p.name}</span>
+                <div className="shrink-0 flex items-center gap-0.5">
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Nach oben" disabled={idx === 0 || updateP.isPending} onClick={() => move(idx, -1)}><ArrowUp className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Nach unten" disabled={idx === active.length - 1 || updateP.isPending} onClick={() => move(idx, 1)}><ArrowDown className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Umbenennen" onClick={() => { setEditId(p.id); setEditName(p.name); }}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground" title="Archivieren" onClick={() => archive(p)}><Archive className="h-4 w-4" /></Button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+
+        {archived.length > 0 && (
+          <div className="pt-1">
+            <p className="text-[11px] text-muted-foreground mb-1">Archiviert ({archived.length}) — aus dem Dropdown ausgeblendet:</p>
+            <div className="space-y-1.5">
+              {archived.map((p) => (
+                <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg border border-dashed p-2 opacity-70">
+                  <span className="text-sm truncate flex items-center gap-1.5"><Archive className="h-3.5 w-3.5" /> {p.name}</span>
+                  <Button variant="ghost" size="sm" className="h-8 px-2 shrink-0" onClick={() => reactivate(p)} title="Wieder aktiv schalten"><RotateCcw className="mr-1 h-3.5 w-3.5" /> Reaktivieren</Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <p className="text-[11px] text-muted-foreground pt-1">
+          Umbenennen oder Archivieren ändert bereits erfasste Zeiten nicht (der Projektname wird beim Eintrag gespeichert). So bleiben alte Abrechnungen stabil.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Hauptseite ────────────────────────────────────────────────────────────────
 export default function Zeiterfassung() {
   const me = useMe();
@@ -249,6 +478,7 @@ export default function Zeiterfassung() {
 
   const entries = useTimeEntries(params, !me.isLoading);
   const team = useTeamMembers(isOwner);
+  const projectsActive = useTimeProjects({ active: true }, !me.isLoading); // fuer den One-Click-Dropdown (employee + owner-Nacherfassung)
   const del = useDeleteTimeEntry();
   const unbill = useUnbillTimeEntry();
 
@@ -310,6 +540,25 @@ export default function Zeiterfassung() {
     a.download = `lohnabrechnung-${(settlName || "mitarbeiter").replace(/[^a-z0-9]+/gi, "_")}-${todayIso()}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  // v4.137.0 — echte Excel-Datei (xlsx) fuer den Steuerberater, zusaetzlich zu PDF/CSV.
+  function exportSettlementXlsx() {
+    const head = ["Datum", "Kunde/Projekt", "Tätigkeit", "Dauer (min)", "Stunden", "Lohnsatz (EUR/Std)", "Betrag (EUR)"];
+    const body = [...settlEntries].sort((a, b) => String(a.started_at).localeCompare(String(b.started_at))).map((e) => {
+      const c = settlCostOf(e);
+      return [
+        fmtDay(e.started_at), e.customer_name || "", (e.description || "").replace(/[\r\n]+/g, " "),
+        e.duration_min, Math.round(e.duration_min / 60 * 100) / 100,
+        c != null ? Math.round(c) / 100 : "", c != null ? Math.round(e.duration_min / 60 * c) / 100 : "",
+      ];
+    });
+    const foot = ["Summe", "", "", settlMin, Math.round(settlMin / 60 * 100) / 100, "", Math.round(settlCents) / 100];
+    const ws = XLSX.utils.aoa_to_sheet([[`Lohnabrechnung ${settlName} — ${settlRangeLabel}`], [], head, ...body, foot]);
+    ws["!cols"] = [{ wch: 12 }, { wch: 22 }, { wch: 32 }, { wch: 11 }, { wch: 9 }, { wch: 16 }, { wch: 13 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Lohnabrechnung");
+    XLSX.writeFile(wb, `lohnabrechnung-${(settlName || "mitarbeiter").replace(/[^a-z0-9]+/gi, "_")}-${todayIso()}.xlsx`);
   }
 
   async function billCustomer(kunde: string, ids: number[]) {
@@ -495,6 +744,9 @@ export default function Zeiterfassung() {
                   <Button size="sm" onClick={() => setShowSettlPdf(true)} disabled={settlEntries.length === 0}>
                     <FileText className="mr-1 h-4 w-4" /> Als PDF
                   </Button>
+                  <Button size="sm" variant="outline" onClick={exportSettlementXlsx} disabled={settlEntries.length === 0}>
+                    <Sheet className="mr-1 h-4 w-4" /> Excel
+                  </Button>
                   <Button size="sm" variant="outline" onClick={exportSettlementCsv} disabled={settlEntries.length === 0}>
                     <Download className="mr-1 h-4 w-4" /> CSV
                   </Button>
@@ -520,6 +772,9 @@ export default function Zeiterfassung() {
         />
       )}
 
+      {/* v4.137.0 — Projekte verwalten (Owner): der Chef legt sie an, der Mitarbeiter waehlt per Klick. */}
+      {isOwner && <ProjekteVerwaltung />}
+
       {/* Erfassen: Mitarbeiter immer prominent; Owner nur zum Nacherfassen (eingeklappt). */}
       {isOwner && !showCapture && !editEntry && (
         <Button variant="outline" size="sm" className="w-fit" onClick={() => setShowCapture(true)}>
@@ -529,7 +784,8 @@ export default function Zeiterfassung() {
       {(isEmployee || showCapture || editEntry) && (
         <EntryForm key={editEntry ? "edit-" + editEntry.id : "new-" + formKey}
           customers={entries.data?.customers || []}
-          isOwner={isOwner} memberOptions={memberOptions} editEntry={editEntry}
+          projects={projectsActive.data?.items || []}
+          isOwner={isOwner} isEmployee={isEmployee} memberOptions={memberOptions} editEntry={editEntry}
           onDone={() => { setEditEntry(null); setFormKey((k) => k + 1); setShowCapture(false); }} />
       )}
 

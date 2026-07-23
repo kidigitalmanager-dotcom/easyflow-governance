@@ -1212,7 +1212,7 @@ export function useUpdateBillingProfile() {
 import {
   listTimeEntries, createTimeEntry, updateTimeEntry, deleteTimeEntry, unbillTimeEntry,
   fetchTimeSummary, applyTimeToDocument, listTeamMembers, upsertTeamMember, deleteTeamMember,
-  updateTimeSettings,
+  updateTimeSettings, listTimeProjects, createTimeProject, updateTimeProject, deleteTimeProject,
 } from "@/lib/api-client";
 import type { TimeEntryInput } from "@/lib/api-client";
 
@@ -1301,6 +1301,38 @@ export function useUpdateTimeSettings() {
   return useMutation({
     mutationFn: updateTimeSettings,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["team-members"] }); },
+  });
+}
+
+// ── v4.137.0 — Projekte (One-Click statt Freitext) ───────────────────────────
+export function useTimeProjects(params: { active?: boolean } = {}, enabled = true) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["time-projects", params],
+    queryFn: () => listTimeProjects(params),
+    enabled: !!session && enabled,
+    retry: false, // vor Migration liefert die Route eine leere Liste (degradiert) -> kein Retry-Spam
+  });
+}
+export function useCreateTimeProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createTimeProject,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["time-projects"] }); },
+  });
+}
+export function useUpdateTimeProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: updateTimeProject,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["time-projects"] }); qc.invalidateQueries({ queryKey: ["time-entries"] }); },
+  });
+}
+export function useDeleteTimeProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteTimeProject,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["time-projects"] }); },
   });
 }
 

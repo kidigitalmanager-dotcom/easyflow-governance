@@ -3048,6 +3048,8 @@ export interface TimeEntry {
   status: "open" | "billed";
   invoice_document_id: number | null;
   source: string;
+  project_id?: number | null;   // v4.137.0 — Projekt-Referenz (One-Click statt Freitext)
+  project_name?: string | null; // v4.137.0 — Namens-Snapshot bei Anlage (stabil bei Umbenennen/Archivieren)
 }
 export interface TimeTotals { scope_min: number; open_billable_min: number; week_min: number; month_min: number }
 export interface TimeEntriesResponse { ok: boolean; role: "owner" | "employee"; items: TimeEntry[]; totals: TimeTotals; customers: string[] }
@@ -3060,6 +3062,7 @@ export interface TimeEntryInput {
   date?: string;
   duration_min?: number;
   member_email?: string; // nur Owner (Nacherfassung); Backend erzwingt Token-Mail fuer Employees
+  project_id?: number | null; // v4.137.0 — Projektwahl; Server-Snapshot ueberschreibt customer_name, null loest die Bindung
 }
 export interface TeamMember { id: number; email: string; display_name: string | null; role: "owner" | "employee"; hourly_rate_cents: number | null; cost_rate_cents?: number | null; active: boolean; created_at?: string }
 export interface TimeSummaryItem { customer_name: string | null; member_email: string; display_name: string; entries: number; minutes: number; hours: number | null; open_billable_minutes: number; amount_cents: number; entries_without_rate: number }
@@ -3110,4 +3113,31 @@ export function deleteTeamMember(body: { email?: string; id?: number; hard?: boo
 }
 export function updateTimeSettings(body: { default_hourly_rate_cents?: number | null; default_cost_rate_cents?: number | null }): Promise<{ ok: boolean; settings?: { default_hourly_rate_cents: number | null; default_cost_rate_cents?: number | null }; error?: string }> {
   return apiPost("/time/settings", body as Record<string, unknown>);
+}
+
+// ── v4.137.0 — Projekte (One-Click-Auswahl statt Freitext-Kunde) ─────────────
+// Der Chef legt Projekte an ("Familie Mueller", "Baustelle Hauptstrasse"), der
+// Mitarbeiter waehlt per Dropdown. Owner-CRUD; Employee liest nur aktive.
+// Laeuft unter der bestehenden time-Greedy-Route (0 neue API-GW-Routen).
+export interface TimeProject {
+  id: number;
+  name: string;
+  address?: string | null;
+  note?: string | null;
+  active: boolean;
+  sort_order: number;
+  archived?: boolean;
+}
+export function listTimeProjects(params: { active?: boolean } = {}): Promise<{ ok: boolean; role?: "owner" | "employee"; items: TimeProject[]; projects_unavailable?: boolean }> {
+  const qs = params.active ? "?active=1" : "";
+  return apiFetch(`/time/projects${qs}`);
+}
+export function createTimeProject(body: { name: string; address?: string; note?: string; sort_order?: number }): Promise<{ ok: boolean; project?: TimeProject; error?: string; detail?: string }> {
+  return apiPost("/time/projects", body as Record<string, unknown>);
+}
+export function updateTimeProject(body: { id: number; name?: string; address?: string | null; note?: string | null; active?: boolean; sort_order?: number }): Promise<{ ok: boolean; project?: TimeProject; error?: string }> {
+  return apiPost("/time/projects/update", body as Record<string, unknown>);
+}
+export function deleteTimeProject(body: { id: number; hard?: boolean }): Promise<{ ok: boolean; archived?: number; deleted?: number; already_archived?: boolean; error?: string; entries?: number }> {
+  return apiPost("/time/projects/delete", body as Record<string, unknown>);
 }
