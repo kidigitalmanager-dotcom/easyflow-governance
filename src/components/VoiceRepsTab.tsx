@@ -54,11 +54,12 @@ interface RepFormState {
   name: string;
   email: string;
   twilio_number: string;
+  inbound_forward_number: string;
   caller_id_status: CallerIdStatus;
 }
 
 const EMPTY_FORM: RepFormState = {
-  rep_id: "", name: "", email: "", twilio_number: "", caller_id_status: "pending",
+  rep_id: "", name: "", email: "", twilio_number: "", inbound_forward_number: "", caller_id_status: "pending",
 };
 
 export default function VoiceRepsTab() {
@@ -89,6 +90,7 @@ export default function VoiceRepsTab() {
   const [results, setResults] = useState<TwilioAvailableNumber[] | null>(null);
   const [price, setPrice] = useState<{ amount: string | null; unit: string | null }>({ amount: null, unit: null });
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
+  const [buyForward, setBuyForward] = useState("");
 
   const reps = data?.reps ?? [];
   const effectiveRepId = inviteRepIdTouched ? inviteRepId : slugify(inviteName);
@@ -100,6 +102,7 @@ export default function VoiceRepsTab() {
       name: rep.name,
       email: rep.email ?? "",
       twilio_number: rep.twilio_number ?? "",
+      inbound_forward_number: rep.inbound_forward_number ?? "",
       caller_id_status: rep.caller_id_status,
     });
     setDialogOpen(true);
@@ -114,6 +117,7 @@ export default function VoiceRepsTab() {
           name: form.name.trim(),
           email: form.email.trim() || null,
           twilio_number: form.twilio_number.trim() || null,
+          inbound_forward_number: form.inbound_forward_number.trim() || null,
           caller_id_status: form.caller_id_status,
         },
       });
@@ -180,6 +184,7 @@ export default function VoiceRepsTab() {
   const openBuy = (rep: VoiceRep) => {
     setBuyRep(rep); setAreaCode(""); setResults(null);
     setPrice({ amount: null, unit: null }); setSelectedNumber(null);
+    setBuyForward(rep.inbound_forward_number ?? "");
     setBuyOpen(true);
   };
 
@@ -204,8 +209,16 @@ export default function VoiceRepsTab() {
 
   const confirmBuy = async () => {
     if (!buyRep || !selectedNumber) return;
+    const fwd = buyForward.trim();
+    if (fwd && !/^\+[1-9]\d{6,14}$/.test(fwd)) {
+      toast.error("Ungültige Weiterleitungsnummer (E.164, z. B. +4917612345678)");
+      return;
+    }
     try {
-      const res = await buyMut.mutateAsync({ rep_id: buyRep.rep_id, phone_number: selectedNumber, country: "DE" });
+      const res = await buyMut.mutateAsync({
+        rep_id: buyRep.rep_id, phone_number: selectedNumber, country: "DE",
+        inbound_forward_number: fwd || undefined,
+      });
       if (!res.ok) {
         toast.error(res.twilio_message || res.error || "Kauf fehlgeschlagen");
         return;
@@ -268,6 +281,7 @@ export default function VoiceRepsTab() {
                   </div>
                   <p className="text-xs text-muted-foreground truncate">
                     {rep.twilio_number ?? "keine Nummer zugewiesen"}
+                    {rep.inbound_forward_number && <span className="text-muted-foreground/60"> → {rep.inbound_forward_number}</span>}
                     {rep.email && <span className="text-muted-foreground/60"> · {rep.email}</span>}
                   </p>
                 </div>
@@ -442,6 +456,19 @@ export default function VoiceRepsTab() {
               </Button>
             </div>
 
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Eingehende Anrufe weiterleiten an (E.164, optional)</label>
+              <input
+                value={buyForward}
+                onChange={(e) => setBuyForward(e.target.value)}
+                placeholder="+4917612345678"
+                className="w-full bg-muted/50 border border-border rounded-md px-3 py-1.5 text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Wohin Anrufe an diese Nummer gehen. Leer lassen → Anrufbeantworter. Später jederzeit änderbar.
+              </p>
+            </div>
+
             {results && results.length > 0 && (
               <>
                 <div className="flex items-center justify-between text-xs">
@@ -519,6 +546,18 @@ export default function VoiceRepsTab() {
                 placeholder="+4930123456"
                 className="w-full bg-muted/50 border border-border rounded-md px-3 py-1.5 text-sm"
               />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Eingehende Anrufe weiterleiten an (E.164, optional)</label>
+              <input
+                value={form.inbound_forward_number}
+                onChange={(e) => setForm((f) => ({ ...f, inbound_forward_number: e.target.value }))}
+                placeholder="+4917612345678"
+                className="w-full bg-muted/50 border border-border rounded-md px-3 py-1.5 text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Wenn jemand die Twilio-Nummer anruft, wird an diese Nummer weitergeleitet. Leer lassen → Anrufbeantworter.
+              </p>
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Caller-ID-Status</label>

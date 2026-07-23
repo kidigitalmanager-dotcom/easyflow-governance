@@ -1434,6 +1434,7 @@ export interface VoiceRep {
   name: string;
   email: string | null;
   twilio_number: string | null;
+  inbound_forward_number: string | null;
   caller_id_status: CallerIdStatus;
   hubspot_user_id: string | null;
   active: boolean;
@@ -1535,6 +1536,7 @@ export const updateVoiceRep = (repId: string, payload: {
   name?: string;
   email?: string | null;
   twilio_number?: string | null;
+  inbound_forward_number?: string | null;
   caller_id_status?: CallerIdStatus;
   active?: boolean;
 }) => apiSend<VoiceRepMutationResponse>("PATCH", `/voice/reps/${encodeURIComponent(repId)}`, payload);
@@ -1608,6 +1610,7 @@ export interface NumberBuyResponse {
   twilio_sid?: string | null;
   caller_id_status?: string;
   caller_id_set?: boolean;
+  inbound_forward_set?: boolean;
   voice_url_configured?: boolean;
   error?: string;
   twilio_code?: number | null;
@@ -1615,7 +1618,7 @@ export interface NumberBuyResponse {
   hint?: string;
 }
 
-export const buyNumber = (payload: { rep_id: string; phone_number: string; country?: string }) =>
+export const buyNumber = (payload: { rep_id: string; phone_number: string; country?: string; inbound_forward_number?: string }) =>
   apiPost<NumberBuyResponse>("/voice/numbers/buy", payload);
 
 // ════════════════════════════════════════════════════════════════════════════
