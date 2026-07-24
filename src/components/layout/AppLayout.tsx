@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield,
   Activity, GraduationCap, Receipt, ReceiptText, FileText, AlertTriangle, Sparkles,
-  Database, Clock, type LucideIcon,
+  Database, Clock, Wallet, CreditCard, FileSpreadsheet, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
@@ -30,10 +30,21 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { to: "/", label: "Heute", icon: LayoutDashboard },
       { to: "/review", label: "Freigaben", icon: ListChecks },
       { to: "/audit", label: "Verlauf", icon: History },
-      { to: "/forderungen", label: "Forderungen", icon: Receipt },
-      { to: "/angebote", label: "Angebote", icon: FileText },
-      { to: "/rechnungen", label: "Rechnungen", icon: ReceiptText },
       { to: "/zeiterfassung", label: "Zeiterfassung", icon: Clock }, // v4.132.0
+    ],
+  },
+  {
+    // v4.142.0 (Lane 2) — Buchhaltung buendelt Cash-Dashboard + Ledger + Belege.
+    // Bestehende Routen (/forderungen, /rechnungen, /angebote) bleiben unveraendert,
+    // nur die Gruppierung/Navigation ist neu.
+    label: "Buchhaltung",
+    items: [
+      { to: "/buchhaltung", label: "Uebersicht", icon: Wallet },
+      { to: "/forderungen", label: "Forderungen", icon: Receipt },
+      { to: "/verbindlichkeiten", label: "Verbindlichkeiten", icon: CreditCard },
+      { to: "/rechnungen", label: "Rechnungen", icon: ReceiptText },
+      { to: "/angebote", label: "Angebote", icon: FileText },
+      { to: "/zeiterfassung", label: "Abrechnung", icon: FileSpreadsheet },
     ],
   },
   {

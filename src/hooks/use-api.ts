@@ -1488,3 +1488,52 @@ export function useRunDunning() {
     onSuccess: (_res, dryRun) => { if (!dryRun) qc.invalidateQueries({ queryKey: ["documents"] }); },
   });
 }
+
+// ---- v4.142.0 Verbindlichkeiten (AP) + Cash-Index (Lane 2) ----
+import {
+  listAp, getAp, createAp, confirmAp, markApPaid, setApStatus,
+  fetchCashIndex, fetchApSettings, setApSettings, uploadApPdf,
+} from "@/lib/api-client";
+
+export function useApInvoices(status?: string) {
+  return useQuery({ queryKey: ["ap", status ?? ""], queryFn: () => listAp(status) });
+}
+export function useApDetail(apId: number | null) {
+  return useQuery({ queryKey: ["ap-detail", apId], queryFn: () => getAp(apId as number), enabled: apId != null });
+}
+export function useCreateAp() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: createAp, onSuccess: () => qc.invalidateQueries({ queryKey: ["ap"] }) });
+}
+export function useConfirmAp() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (apId: number) => confirmAp(apId), onSuccess: () => qc.invalidateQueries({ queryKey: ["ap"] }) });
+}
+export function useMarkApPaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { apId: number; paid?: boolean }) => markApPaid(v.apId, v.paid ?? true),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["ap"] }); qc.invalidateQueries({ queryKey: ["cashindex"] }); },
+  });
+}
+export function useSetApStatus() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (v: { apId: number; status: string }) => setApStatus(v.apId, v.status), onSuccess: () => qc.invalidateQueries({ queryKey: ["ap"] }) });
+}
+export function useUploadApPdf() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (v: { apId: number; file: File }) => uploadApPdf(v.apId, v.file), onSuccess: () => qc.invalidateQueries({ queryKey: ["ap"] }) });
+}
+export function useCashIndex(horizon?: number) {
+  return useQuery({ queryKey: ["cashindex", horizon ?? 0], queryFn: () => fetchCashIndex(horizon) });
+}
+export function useApSettings() {
+  return useQuery({ queryKey: ["ap-settings"], queryFn: () => fetchApSettings() });
+}
+export function useSetApSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: setApSettings,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["ap-settings"] }); qc.invalidateQueries({ queryKey: ["ap"] }); },
+  });
+}

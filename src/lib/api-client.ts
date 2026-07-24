@@ -3335,3 +3335,110 @@ export function fetchVacationAccount(params: { year?: number; member?: string } 
 export function setVacationAccount(body: { member_email: string; year: number; annual_days: number; carried_over?: number }): Promise<{ ok: boolean; saved?: unknown; account?: VacationAccount; error?: string }> {
   return apiPost("/time/vacation/account", body as Record<string, unknown>);
 }
+
+// ============================================================================
+// v4.142.0 — Verbindlichkeiten (AP) + PDF-Ablage + Cash-Index (Lane 2).
+// Eine Route POST /documents/ap (action-Multiplex); Export ueber /documents/export
+// (?scope=ap). PDF: presigned S3 (Upload Browser->S3, Ansicht per presigned GET).
+// ============================================================================
+export interface ApInvoice {
+  id: number;
+  status: "open" | "paid" | "void" | "disputed" | string;
+  counterpart_name: string | null;
+  counterpart_email: string | null;
+  counterpart_entity_key: string | null;
+  invoice_ref: string | null;
+  amount_gross: number | null;
+  amount_display: string | null;
+  currency: string | null;
+  issue_date: string | null;
+  due_date: string | null;
+  days_overdue: number | null;
+  overdue: boolean;
+  needs_confirmation: boolean;
+  detected_from: string | null;
+  has_pdf: boolean;
+  paid_at: string | null;
+  created_at: string | null;
+  pdf_url?: string | null;
+  pdf_filename?: string | null;
+}
+export interface ApListResponse { ok: boolean; items: ApInvoice[]; skipped?: string; }
+export interface ApGetResponse { ok: boolean; item: ApInvoice; }
+export interface CashSide { total: number; due_horizon: number; overdue: number; }
+export interface CashIndex {
+  ok: boolean;
+  horizon_days: number;
+  receivables: CashSide;
+  payables: CashSide;
+  cash_index: number;
+  coverage_ratio: number | null;
+  ampel: "gruen" | "gelb" | "rot" | string;
+  currency: string;
+  as_of: string;
+}
+export interface ApSettings {
+  accounting_ap_enabled: boolean;
+  cash_horizon_days: number;
+  auto_ingest: boolean;
+  migration_missing?: boolean;
+}
+
+export const listAp = (status?: string, counterpart?: string) =>
+  apiPost<ApListResponse>("/documents/ap", { action: "list", status, counterpart });
+export const getAp = (apId: number) =>
+  apiPost<ApGetResponse>("/documents/ap", { action: "get", ap_id: apId });
+export const createAp = (rec: { counterpart_name: string; counterpart_email?: string; invoice_ref?: string; amount_gross: string | number; currency?: string; issue_date?: string; due_date?: string }) =>
+  apiPost<{ ok: boolean; ap_id: number; created: boolean; updated: boolean }>("/documents/ap", { action: "create", ...rec });
+export const confirmAp = (apId: number) =>
+  apiPost<{ ok: boolean; ap_id: number; needs_confirmation: boolean }>("/documents/ap", { action: "confirm", ap_id: apId });
+export const markApPaid = (apId: number, paid = true) =>
+  apiPost<{ ok: boolean; ap_id: number; status: string }>("/documents/ap", { action: paid ? "mark_paid" : "unmark_paid", ap_id: apId });
+export const setApStatus = (apId: number, status: string) =>
+  apiPost<{ ok: boolean; ap_id: number; status: string }>("/documents/ap", { action: "set_status", ap_id: apId, status });
+export const fetchCashIndex = (horizon?: number) =>
+  apiPost<CashIndex>("/documents/ap", { action: "cashindex", horizon });
+export const fetchApSettings = () =>
+  apiPost<{ ok: boolean; feature_on: boolean; settings: ApSettings }>("/documents/ap", { action: "settings_get" });
+export const setApSettings = (patch: { accounting_ap_enabled?: boolean; cash_horizon_days?: number; auto_ingest?: boolean }) =>
+  apiPost<{ ok: boolean; settings: ApSettings; error?: string }>("/documents/ap", { action: "settings_set", ...patch });
+
+async function _sha256Hex(buf: ArrayBuffer): Promise<string> {
+  const dig = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(dig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+// PDF hinterlegen: presigned PUT direkt Browser->S3, danach an die AP-Zeile haengen.
+export async function uploadApPdf(apId: number, file: File): Promise<{ ok: boolean; file_id?: number; error?: string }> {
+  const buf = await file.arrayBuffer();
+  const sha = await _sha256Hex(buf);
+  const mime = file.type || "application/pdf";
+  const u = await apiPost<{ ok: boolean; put_url: string; s3_key: string; error?: string }>(
+    "/documents/ap", { action: "upload_url", filename: file.name, mime, sha256: sha });
+  if (!u.ok || !u.put_url) throw new Error(u.error || "upload_url_failed");
+  const put = await fetch(u.put_url, { method: "PUT", body: file, headers: { "Content-Type": mime } });
+  if (!put.ok) throw new Error("s3_put_failed");
+  return apiPost<{ ok: boolean; file_id?: number; error?: string }>(
+    "/documents/ap", { action: "attach", ap_id: apId, s3_key: u.s3_key, filename: file.name, mime, byte_size: file.size, sha256: sha });
+}
+
+export async function exportApXlsx(): Promise<void> {
+  const token = await getToken();
+  const res = await fetch(`${API_BASE}/documents/export?scope=ap`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error("export_failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = "verbindlichkeiten.xlsx"; a.click();
+  URL.revokeObjectURL(url);
+}
+export async function exportApCsvDatev(range?: { from?: string; to?: string }): Promise<void> {
+  const token = await getToken();
+  const qs = new URLSearchParams({ scope: "ap", format: "datev" });
+  if (range?.from) qs.set("from", range.from);
+  if (range?.to) qs.set("to", range.to);
+  const res = await fetch(`${API_BASE}/documents/export?${qs.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error("export_failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = "verbindlichkeiten-steuerberater.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
