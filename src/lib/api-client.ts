@@ -3265,3 +3265,73 @@ export function updateTimeProject(body: { id: number; name?: string; address?: s
 export function deleteTimeProject(body: { id: number; hard?: boolean }): Promise<{ ok: boolean; archived?: number; deleted?: number; already_archived?: boolean; error?: string; entries?: number }> {
   return apiPost("/time/projects/delete", body as Record<string, unknown>);
 }
+
+// ── v4.140.0 — Urlaub + Krankmeldung (Abwesenheit) ───────────────────────────
+// Ein Abwesenheits-Modell fuer Urlaub UND Krank (Typ-Diskriminator absence_type).
+// Laeuft unter der bestehenden time-Greedy-Route (0 neue API-GW-Routen). Urlaub:
+// pending -> approved/rejected (bucht Resttage vom Urlaubskonto). Krank: reported
+// -> acknowledged (KEINE Genehmigung, KEINE Kontingent-Abbuchung). Mitarbeiter-
+// Identitaet kommt serverseitig aus dem Token; Owner darf ein Mitglied nennen.
+export type AbsenceType = "vacation" | "sick";
+export type AbsenceStatus = "pending" | "approved" | "rejected" | "cancelled" | "reported" | "acknowledged";
+export interface Absence {
+  id: number;
+  member_email: string;
+  absence_type: AbsenceType;
+  start_date: string;
+  end_date: string;
+  half_day_start: boolean;
+  half_day_end: boolean;
+  days_count: number | null;
+  note: string | null;
+  status: AbsenceStatus;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+  attest_file_id: number | null; // AU-Beleg (Lane-2-Fast-Follow); v1 immer null
+  created_at?: string;
+  updated_at?: string;
+}
+export interface VacationAccount {
+  year: number;
+  member_email: string;
+  annual_days: number;
+  carried_over: number;
+  used_days: number;
+  remaining_days: number;
+  source: "account" | "tenant_default" | "default";
+}
+export interface AbsenceListResponse { ok: boolean; role?: "owner" | "employee"; items: Absence[]; absence_unavailable?: boolean }
+export interface AbsenceMutationResponse { ok: boolean; absence?: Absence; vacation?: VacationAccount; overdraft?: boolean; cancelled?: number; conflict_id?: number; error?: string; detail?: string }
+
+export function listAbsences(params: { type?: AbsenceType; year?: number; status?: AbsenceStatus; member?: string } = {}): Promise<AbsenceListResponse> {
+  const q = new URLSearchParams();
+  if (params.type) q.set("type", params.type);
+  if (params.year) q.set("year", String(params.year));
+  if (params.status) q.set("status", params.status);
+  if (params.member) q.set("member", params.member);
+  const qs = q.toString();
+  return apiFetch<AbsenceListResponse>(`/time/absence${qs ? "?" + qs : ""}`);
+}
+export function createAbsence(body: { type: AbsenceType; start_date: string; end_date?: string; half_day_start?: boolean; half_day_end?: boolean; note?: string; member_email?: string }): Promise<AbsenceMutationResponse> {
+  return apiPost("/time/absence", body as Record<string, unknown>);
+}
+export function decideAbsence(body: { id: number; action: "approve" | "reject"; note?: string }): Promise<AbsenceMutationResponse> {
+  return apiPost("/time/absence/decide", body as Record<string, unknown>);
+}
+export function acknowledgeAbsence(id: number): Promise<AbsenceMutationResponse> {
+  return apiPost("/time/absence/acknowledge", { id });
+}
+export function cancelAbsence(id: number): Promise<AbsenceMutationResponse> {
+  return apiPost("/time/absence/cancel", { id });
+}
+export function fetchVacationAccount(params: { year?: number; member?: string } = {}): Promise<{ ok: boolean; role?: "owner" | "employee"; account: VacationAccount }> {
+  const q = new URLSearchParams();
+  if (params.year) q.set("year", String(params.year));
+  if (params.member) q.set("member", params.member);
+  const qs = q.toString();
+  return apiFetch(`/time/vacation/account${qs ? "?" + qs : ""}`);
+}
+export function setVacationAccount(body: { member_email: string; year: number; annual_days: number; carried_over?: number }): Promise<{ ok: boolean; saved?: unknown; account?: VacationAccount; error?: string }> {
+  return apiPost("/time/vacation/account", body as Record<string, unknown>);
+}

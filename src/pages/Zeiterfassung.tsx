@@ -12,10 +12,11 @@ import * as XLSX from "xlsx";
 import {
   useMe, useTimeEntries, useCreateTimeEntry, useUpdateTimeEntry, useDeleteTimeEntry,
   useUnbillTimeEntry, useTeamMembers, useGenerateInvoice, useApplyTimeToDocument, useBillingProfile,
-  useTimeProjects, useCreateTimeProject, useUpdateTimeProject, useDeleteTimeProject,
+  useTimeProjects, useCreateTimeProject, useUpdateTimeProject, useDeleteTimeProject, useAbsences,
 } from "@/hooks/use-api";
 import type { TimeEntry, TimeEntryInput, TimeProject } from "@/lib/api-client";
 import { MitarbeiterAbrechnungPdf } from "@/components/documents/MitarbeiterAbrechnungPdf";
+import { AbsencePanel } from "@/components/absence/AbsencePanel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -461,6 +462,15 @@ export default function Zeiterfassung() {
   const isEmployee = (me.data as { role?: string } | undefined)?.role === "employee";
   const isOwner = !isEmployee;
 
+  // v4.140.0 — Abwesenheit (Urlaub/Krank): Umschalter + Badge-Zaehler (Owner).
+  // Die Listen teilen sich den react-query-Cache mit dem AbsencePanel (gleicher
+  // queryKey), also keine doppelten Requests.
+  const [absView, setAbsView] = useState<"zeiten" | "urlaub" | "krank">("zeiten");
+  const absVacList = useAbsences({ type: "vacation" }, isOwner && !me.isLoading);
+  const absSickList = useAbsences({ type: "sick" }, isOwner && !me.isLoading);
+  const pendingVacCount = (absVacList.data?.items || []).filter((a) => a.status === "pending").length;
+  const reportedSickCount = (absSickList.data?.items || []).filter((a) => a.status === "reported").length;
+
   const [range, setRange] = useState<"week" | "month" | "all">("week");
   const [fltMember, setFltMember] = useState("");
   const [fltCustomer, setFltCustomer] = useState("");
@@ -645,6 +655,24 @@ export default function Zeiterfassung() {
         )}
       </div>
 
+      {/* v4.140.0 — Umschalter Zeiten / Urlaub / Krank (Mitarbeiter + Owner) */}
+      <div className="flex rounded-lg border overflow-hidden w-fit">
+        {([["zeiten", "Zeiten"], ["urlaub", "Urlaub"], ["krank", "Krank"]] as const).map(([v, l]) => {
+          const badge = isOwner ? (v === "urlaub" ? pendingVacCount : v === "krank" ? reportedSickCount : 0) : 0;
+          return (
+            <button key={v} onClick={() => setAbsView(v)}
+              className={`px-3 py-1.5 text-xs flex items-center gap-1.5 ${absView === v ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground"}`}>
+              {l}
+              {badge > 0 && <span className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] h-4 min-w-[16px] px-1">{badge}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {absView === "urlaub" && <AbsencePanel isOwner={isOwner} kind="vacation" />}
+      {absView === "krank" && <AbsencePanel isOwner={isOwner} kind="sick" />}
+
+      {absView === "zeiten" && (<>
       {/* Summen-Chips */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div className="rounded-lg border p-3"><p className="text-[11px] text-muted-foreground">Diese Woche</p><p className="text-lg font-semibold">{fmtMin(totals?.week_min)}</p></div>
@@ -839,6 +867,7 @@ export default function Zeiterfassung() {
           Mitarbeiter melden sich mit ihrer hinterlegten E-Mail unter app.useeasy.ai an (Kachel „Mitarbeiter“).
         </p>
       )}
+      </>)}
     </div>
   );
 }

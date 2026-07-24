@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchBillingSummary, startBillingCheckout, openBillingPortal } from "@/lib/api-client";
 import { listDocuments, scanSentForAr, generateDunning, submitDocumentVerdict, markArPaid, addManualAr, importArXlsx } from "@/lib/api-client";
 import { fetchAiTransparencySummary, fetchAiTransparencyCalls } from "@/lib/api-client";
+import { listAbsences, createAbsence, decideAbsence, acknowledgeAbsence, cancelAbsence, fetchVacationAccount, setVacationAccount } from "@/lib/api-client";
+import type { AbsenceType, AbsenceStatus } from "@/lib/api-client";
 import {
   fetchMe,
   fetchStats,
@@ -1390,6 +1392,61 @@ export function useDeleteTimeProject() {
   return useMutation({
     mutationFn: deleteTimeProject,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["time-projects"] }); },
+  });
+}
+
+// ── v4.140.0 — Urlaub + Krankmeldung (Abwesenheit) ───────────────────────────
+export function useAbsences(params: { type?: AbsenceType; year?: number; status?: AbsenceStatus; member?: string } = {}, enabled = true) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["absences", params],
+    queryFn: () => listAbsences(params),
+    enabled: !!session && enabled,
+    retry: false, // vor Migration liefert die Route eine leere Liste (degradiert) -> kein Retry-Spam
+  });
+}
+export function useVacationAccount(params: { year?: number; member?: string } = {}, enabled = true) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["vacation-account", params],
+    queryFn: () => fetchVacationAccount(params),
+    enabled: !!session && enabled,
+    retry: false,
+  });
+}
+export function useCreateAbsence() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createAbsence,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["absences"] }); qc.invalidateQueries({ queryKey: ["vacation-account"] }); },
+  });
+}
+export function useDecideAbsence() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: decideAbsence,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["absences"] }); qc.invalidateQueries({ queryKey: ["vacation-account"] }); },
+  });
+}
+export function useAcknowledgeAbsence() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => acknowledgeAbsence(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["absences"] }); },
+  });
+}
+export function useCancelAbsence() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => cancelAbsence(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["absences"] }); qc.invalidateQueries({ queryKey: ["vacation-account"] }); },
+  });
+}
+export function useSetVacationAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: setVacationAccount,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["vacation-account"] }); },
   });
 }
 
