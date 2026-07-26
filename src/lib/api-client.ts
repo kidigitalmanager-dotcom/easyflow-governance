@@ -1632,6 +1632,10 @@ export interface LeadListSummary {
   uploaded_by: string | null;
   source: string | null;
   lead_count: number;
+  /** v1.16.0 — leeres Array = zentrale Liste (jeder Vertriebler sieht sie). */
+  assigned_rep_ids?: string[];
+  /** Gesetzt, wenn ein Vertriebler die Liste selbst im Co-Pilot hochgeladen hat. */
+  uploaded_by_rep_id?: string | null;
 }
 
 export interface LeadListsResponse {
@@ -1658,8 +1662,18 @@ export interface LeadUploadResponse {
 
 export const fetchLeadLists = () => apiFetch<LeadListsResponse>("/leads/lists");
 
-export const uploadLeads = (payload: { list_name: string; leads: Record<string, unknown>[] }) =>
-  apiPost<LeadUploadResponse>("/leads/lists", payload);
+export const uploadLeads = (payload: {
+  list_name: string;
+  leads: Record<string, unknown>[];
+  /** Leer = zentrale Liste. Sonst nur diese Vertriebler. */
+  assigned_rep_ids?: string[];
+}) => apiPost<LeadUploadResponse>("/leads/lists", payload);
+
+/** v4.147.0 — Zuweisung nachtraeglich aendern. Leeres Array = wieder zentral. */
+export const assignLeadList = (listId: string, assignedRepIds: string[]) =>
+  apiSend<{ ok: boolean; list_id?: string; assigned_rep_ids?: string[]; central?: boolean; error?: string }>(
+    "PATCH", `/leads/lists/${encodeURIComponent(listId)}/assign`, { assigned_rep_ids: assignedRepIds },
+  );
 
 export const deleteLeadList = (listId: string) =>
   apiDelete<{ ok: boolean; status?: number; list_id?: string; remaining_lists?: number; error?: string }>(

@@ -1678,3 +1678,14 @@ export function useAdminTenantCalls(tenantId: string) {
     staleTime: 30_000,
   });
 }
+
+// ── v4.147.0: Lead-Liste einem/mehreren Vertrieblern zuweisen ──
+import { assignLeadList } from "@/lib/api-client";
+
+export function useAssignLeadList() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ listId, repIds }: { listId: string; repIds: string[] }) => assignLeadList(listId, repIds),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lead-lists"] }),
+  });
+}
