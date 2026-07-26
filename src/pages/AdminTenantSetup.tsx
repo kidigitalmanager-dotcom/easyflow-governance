@@ -12,7 +12,7 @@ import {
   Building2, Mail, ToggleLeft,
 } from "lucide-react";
 import type { TenantSetup, TenantSetupWriteBody } from "@/lib/api-client";
-import VoiceAgentsTab from "@/components/VoiceAgentsTab";
+import AgentTenantAdminTab from "@/components/voice/AgentTenantAdminTab";
 import VoiceLinesTab from "@/components/VoiceLinesTab";
 
 // v4.32.0/v4.33.0 — Super-Admin Tenant-Setup: Voice/Assistenz + Tenant-Verwaltung
@@ -324,7 +324,7 @@ export default function AdminTenantSetup() {
           ))}
         </div>
       )}
-      {selected && tab === "agents" && <VoiceAgentsTab tenantId={selected} />}
+      {selected && tab === "agents" && <AgentTenantAdminTab tenantId={selected} />}
       {selected && tab === "lines" && <VoiceLinesTab tenantId={selected} />}
 
       {tab === "setup" && selected && form && setup && (

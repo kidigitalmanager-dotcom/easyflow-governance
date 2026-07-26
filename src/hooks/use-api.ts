@@ -1537,3 +1537,144 @@ export function useSetApSettings() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["ap-settings"] }); qc.invalidateQueries({ queryKey: ["ap"] }); },
   });
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// KI-Agenten Self-Serve (v4.146.0)
+// ════════════════════════════════════════════════════════════════════════════
+import {
+  fetchAgentCatalog, activateAgent, fetchOwnAgent, publishOwnAgent, saveOwnJana,
+  fetchOwnAgentCalls, fetchAgentAdminOverview, adminRefillPool, adminImportNumber,
+  adminAddPoolNumber,
+} from "@/lib/api-client";
+
+export function useAgentCatalog() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["agent-catalog"],
+    queryFn: fetchAgentCatalog,
+    enabled: !!session,
+    staleTime: 30_000,
+  });
+}
+
+export function useActivateAgent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: activateAgent,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agent-catalog"] });
+      qc.invalidateQueries({ queryKey: ["agent-admin-overview"] });
+    },
+  });
+}
+
+/** Prompt des eigenen Agenten. `enabled` erst setzen, wenn ein Agent existiert. */
+export function useOwnAgent(kind: "inbound" | "jana", enabled: boolean) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["own-agent", kind],
+    queryFn: () => fetchOwnAgent(kind),
+    enabled: !!session && enabled,
+    staleTime: 15_000,
+    retry: false, // 404 = noch kein Agent, kein Retry-Spam
+  });
+}
+
+export function usePublishOwnAgent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: publishOwnAgent,
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["own-agent", vars.kind] });
+      qc.invalidateQueries({ queryKey: ["agent-catalog"] });
+    },
+  });
+}
+
+export function useSaveOwnJana() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: saveOwnJana,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["agent-catalog"] }),
+  });
+}
+
+export function useOwnAgentCalls(enabled: boolean) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["own-agent-calls"],
+    queryFn: fetchOwnAgentCalls,
+    enabled: !!session && enabled,
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
+/** Nur fuer Super-Admins — liefert sonst 403. */
+export function useAgentAdminOverview(enabled: boolean) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["agent-admin-overview"],
+    queryFn: fetchAgentAdminOverview,
+    enabled: !!session && enabled,
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
+export function useAgentAdminPool() {
+  const qc = useQueryClient();
+  const inval = () => qc.invalidateQueries({ queryKey: ["agent-admin-overview"] });
+  return {
+    refill: useMutation({ mutationFn: adminRefillPool, onSuccess: inval }),
+    importNumber: useMutation({ mutationFn: adminImportNumber, onSuccess: inval }),
+    addNumber: useMutation({ mutationFn: adminAddPoolNumber, onSuccess: inval }),
+  };
+}
+
+// ── Super-Admin: fremder Tenant (Tenant-Setup-Seite) ──
+import {
+  fetchAdminTenantAgent, adminProvisionTenant, adminPutTenantAgent,
+  adminPutTenantJana, fetchAdminTenantCalls,
+} from "@/lib/api-client";
+
+export function useAdminTenantAgent(tenantId: string, kind: "inbound" | "jana") {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["admin-tenant-agent", tenantId, kind],
+    queryFn: () => fetchAdminTenantAgent(tenantId, kind),
+    enabled: !!session && !!tenantId,
+    retry: false,
+    staleTime: 15_000,
+  });
+}
+
+export function useAdminTenantAgentMutations(tenantId: string) {
+  const qc = useQueryClient();
+  const inval = () => qc.invalidateQueries({ queryKey: ["admin-tenant-agent", tenantId] });
+  return {
+    provision: useMutation({
+      mutationFn: (p: { vertical: string; janaMode?: string; variables: Record<string, string> }) => adminProvisionTenant(tenantId, p),
+      onSuccess: () => { inval(); qc.invalidateQueries({ queryKey: ["agent-admin-overview"] }); },
+    }),
+    putAgent: useMutation({
+      mutationFn: (p: { kind: "inbound" | "jana"; systemPrompt: string; firstMessage?: string }) => adminPutTenantAgent(tenantId, p),
+      onSuccess: inval,
+    }),
+    putJana: useMutation({
+      mutationFn: (p: { mode: string; slaHours?: number; callWindow?: { days: number[]; from: string; to: string } }) => adminPutTenantJana(tenantId, p),
+      onSuccess: inval,
+    }),
+  };
+}
+
+export function useAdminTenantCalls(tenantId: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["admin-tenant-calls", tenantId],
+    queryFn: () => fetchAdminTenantCalls(tenantId),
+    enabled: !!session && !!tenantId,
+    retry: false,
+    staleTime: 30_000,
+  });
+}

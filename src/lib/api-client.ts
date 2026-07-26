@@ -3442,3 +3442,151 @@ export async function exportApCsvDatev(range?: { from?: string; to?: string }): 
   const a = document.createElement("a"); a.href = url; a.download = "verbindlichkeiten-steuerberater.csv"; a.click();
   URL.revokeObjectURL(url);
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// KI-Agenten Self-Serve (v4.146.0) — Backend: /v1/dashboard/voice/agents/*
+// ----------------------------------------------------------------------------
+// Diese Endpoints ersetzen den direkten Aufruf der Lambda useeasy-vapi-admin
+// aus dem Browser. Deren Auth liess jeden eingeloggten Console-User als Admin
+// durch (Tenant-Isolation-Bruch, gefixt am 26.07.2026). Ab jetzt: Tenant kommt
+// serverseitig aus dem JWT, der Kunde sieht ausschliesslich seinen Agenten.
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface AgentCatalogEntry {
+  slug: string;
+  group: "inbound" | "jana";
+  jana_mode?: string;
+  title: string;
+  tagline: string;
+  purpose: string;
+  does: string[];
+  needs: string[];
+  good_when: string;
+  compliance?: string;
+  active: boolean;
+  requires_inbound: boolean;
+  selectable: boolean;
+}
+
+export interface MyVoiceAgent {
+  tenant_id: string;
+  vertical: string;
+  twilio_number: string | null;
+  jana_mode: string;
+  status: string;
+  prompt_version: number;
+  updated_at: string | null;
+}
+
+export interface AgentCatalogResponse {
+  ok: boolean;
+  catalog: AgentCatalogEntry[];
+  mine: MyVoiceAgent | null;
+  activated: boolean;
+  upstream_ok: boolean;
+  error?: string;
+}
+
+export interface AgentActivateResponse {
+  ok: boolean;
+  tenant_id?: string;
+  vertical?: string;
+  jana_mode?: string;
+  number?: string | null;
+  pool_empty?: boolean;
+  auto_bought?: boolean;
+  error?: string;
+  upstream?: string;
+}
+
+export interface OwnAgentResponse {
+  ok: boolean;
+  kind: "inbound" | "jana";
+  agent: { systemPrompt: string; firstMessage: string } | null;
+  tenant: MyVoiceAgent | null;
+  error?: string;
+}
+
+export interface AgentCallItem {
+  vapi_call_id: string;
+  direction: string | null;
+  started_at: string | null;
+  ended_reason: string | null;
+  summary: string | null;
+  transcript_preview: string | null;
+}
+
+export const fetchAgentCatalog = () => apiFetch<AgentCatalogResponse>("/voice/agents/catalog");
+
+export const activateAgent = (payload: {
+  vertical: string;
+  jana_mode?: string;
+  variables: Record<string, string>;
+}) => apiPost<AgentActivateResponse>("/voice/agents/activate", payload);
+
+export const fetchOwnAgent = (kind: "inbound" | "jana" = "inbound") =>
+  apiFetch<OwnAgentResponse>(`/voice/agents/agent?kind=${kind}`);
+
+export const publishOwnAgent = (payload: {
+  kind: "inbound" | "jana";
+  systemPrompt: string;
+  firstMessage?: string;
+}) => apiSend<{ ok: boolean; kind: string; version: number | null; error?: string }>("PUT", "/voice/agents/agent", payload);
+
+export const saveOwnJana = (payload: {
+  mode: string;
+  slaHours?: number;
+  callWindow?: { days: number[]; from: string; to: string };
+}) => apiSend<{ ok: boolean; mode: string; error?: string }>("PUT", "/voice/agents/jana", payload);
+
+export const fetchOwnAgentCalls = () =>
+  apiFetch<{ ok: boolean; calls: AgentCallItem[] }>("/voice/agents/calls");
+
+// ── Super-Admin (403 wenn die Mail nicht in SUPER_ADMIN_EMAILS steht) ──
+
+export interface AgentAdminOverview {
+  ok: boolean;
+  tenants: MyVoiceAgent[];
+  pool: { number: string; status: string; tenant_id: string | null; assigned_at: string | null }[];
+  twilio_configured: boolean;
+  twilio_numbers: { number: string; friendlyName: string; voice: boolean; sms: boolean; poolStatus: string; tenantId: string | null }[];
+  queue: { tenant_id: string; thread_key: string; target: string; due_at: string; attempts: number; status: string; last_error: string | null }[];
+  templates: { id: string; name: string; firstMessage: string; systemPrompt: string }[];
+  template_map: Record<string, string>;
+  partial: boolean;
+  error?: string;
+}
+
+export const fetchAgentAdminOverview = () =>
+  apiFetch<AgentAdminOverview>("/voice/agents/admin/overview");
+
+export const adminRefillPool = () =>
+  apiPost<{ ok: boolean; free?: number; bought?: string[]; error?: string }>("/voice/agents/admin/numbers/refill", {});
+
+export const adminImportNumber = (number: string) =>
+  apiPost<{ ok: boolean; error?: string }>("/voice/agents/admin/numbers/import", { number });
+
+export const adminAddPoolNumber = (payload: { number: string; accountSid: string; authToken: string }) =>
+  apiPost<{ ok: boolean; error?: string }>("/voice/agents/admin/numbers", payload);
+
+// ── Super-Admin: einen FREMDEN Tenant bedienen (Admin-Konsole / Tenant-Setup) ──
+// Serverseitig ebenfalls hinter isSuperAdmin; ohne Rolle 403.
+
+export const fetchAdminTenantAgent = (tenantId: string, kind: "inbound" | "jana" = "inbound") =>
+  apiFetch<{ ok: boolean; agent?: { systemPrompt: string; firstMessage: string } | null; vertical?: string; twilio_number?: string | null; jana_mode?: string; status?: string; prompt_version?: number; error?: string }>(
+    `/voice/agents/admin/tenants/${encodeURIComponent(tenantId)}?kind=${kind}`,
+  );
+
+export const adminProvisionTenant = (tenantId: string, payload: { vertical: string; janaMode?: string; variables: Record<string, string> }) =>
+  apiPost<{ ok: boolean; number?: string | null; poolEmpty?: boolean; error?: string; upstream?: string }>(
+    `/voice/agents/admin/tenants/${encodeURIComponent(tenantId)}/provision`, payload as unknown as Record<string, unknown>,
+  );
+
+export const adminPutTenantAgent = (tenantId: string, payload: { kind: "inbound" | "jana"; systemPrompt: string; firstMessage?: string }) =>
+  apiSend<{ ok: boolean; version?: number; error?: string }>("PUT", `/voice/agents/admin/tenants/${encodeURIComponent(tenantId)}/agent`, payload);
+
+export const adminPutTenantJana = (tenantId: string, payload: { mode: string; slaHours?: number; callWindow?: { days: number[]; from: string; to: string } }) =>
+  apiSend<{ ok: boolean; error?: string }>("PUT", `/voice/agents/admin/tenants/${encodeURIComponent(tenantId)}/jana`, payload);
+
+export const fetchAdminTenantCalls = (tenantId: string) =>
+  apiFetch<{ ok: boolean; calls: AgentCallItem[] }>(`/voice/agents/admin/tenants/${encodeURIComponent(tenantId)}/calls`);
