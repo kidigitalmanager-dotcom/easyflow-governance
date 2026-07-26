@@ -70,6 +70,13 @@ function RepPicker({
             <span className="block text-xs text-muted-foreground mb-2">
               Mehrfachauswahl möglich. Keine Auswahl = zentrale Liste.
             </span>
+            {!central && (
+              <p className="text-xs text-muted-foreground mb-2 rounded bg-muted/40 px-2 py-1.5">
+                Der Co-Pilot weist sich dafür mit einem eigenen Schlüssel aus. Sieht ein Vertriebler
+                seine Liste nicht, wurde sein Co-Pilot noch nicht neu ausgerollt — im Tab „Vertriebler"
+                einmal neu ausrollen, dann erscheint sie.
+              </p>
+            )}
             {reps.length === 0 ? (
               <p className="text-xs text-muted-foreground">
                 Noch keine Vertriebler angelegt — im Tab „Vertriebler" einladen.
