@@ -9,7 +9,7 @@ import {
   useDisconnectCapitalTicketing,
 } from "@/hooks/use-capital";
 import type { CapitalTicketingSyncResponse, CapitalTicketingConnectInput } from "@/lib/api-client";
-import { LifeBuoy, ShieldCheck, Loader2, CheckCircle2, RefreshCw, Unlink } from "lucide-react";
+import { LifeBuoy, ShieldCheck, Loader2, CheckCircle2, RefreshCw, Unlink, AlertTriangle } from "lucide-react";
 
 // Capital-Layer: „Ticketing verbinden" (HubSpot Service Hub / Zendesk / Freshdesk).
 // Direct-Connect (kein OAuth-Redirect). Speichert/zeigt nur aggregierte 0–100-Indizes —
@@ -55,6 +55,11 @@ export function CapitalTicketingConnect() {
   const [domain, setDomain] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [confirmDisc, setConfirmDisc] = useState(false);
+  // 27.07.2026: der Hinweis aus der Server-Antwort stand bisher nur in einem Toast
+  // und war nach Sekunden weg. Er bleibt jetzt an der Karte stehen — genau dieser
+  // Satz ("HubSpot zuerst im Integrationen-Tab verbinden") war die Antwort auf
+  // Leons Frage, warum die Verbindung fehlschlaegt.
+  const [connectHint, setConnectHint] = useState<string | null>(null);
 
   const st = status.data;
   const busy = connect.isPending || sync.isPending || disconnect.isPending;
@@ -65,17 +70,25 @@ export function CapitalTicketingConnect() {
     const input: CapitalTicketingConnectInput = { provider };
     if (provider === "zendesk") Object.assign(input, { subdomain, email, api_token: apiToken });
     if (provider === "freshdesk") Object.assign(input, { domain, api_key: apiKey });
+    setConnectHint(null);
     connect.mutate(input, {
       onSuccess: (d) => {
         status.refetch();
         if (d.ok && d.status === "connected") {
+          setConnectHint(null);
           toast({ title: "Ticketing verbunden", description: "Support-Kennzahlen werden ausgewertet — nur aggregierte Indizes." });
           if (d.sync) setSyncResult(d.sync);
         } else {
-          toast({ title: "Verbindung fehlgeschlagen", description: d.hint || d.error || "Unbekannt", variant: "destructive" });
+          const msg = d.hint || d.error || "Unbekannt";
+          setConnectHint(msg);
+          toast({ title: "Verbindung fehlgeschlagen", description: msg, variant: "destructive" });
         }
       },
-      onError: (e: any) => toast({ title: "Verbindung fehlgeschlagen", description: e?.message, variant: "destructive" }),
+      onError: (e: unknown) => {
+        const msg = e instanceof Error ? e.message : "Verbindung fehlgeschlagen.";
+        setConnectHint(msg);
+        toast({ title: "Verbindung fehlgeschlagen", description: msg, variant: "destructive" });
+      },
     });
   };
 
@@ -174,6 +187,19 @@ export function CapitalTicketingConnect() {
             <div className="grid gap-2 sm:grid-cols-2">
               <input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="Domain (z. B. acme)" className="h-9 rounded-md border border-border bg-background px-2 text-sm" />
               <input value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="API-Key" type="password" className="h-9 rounded-md border border-border bg-background px-2 text-sm" />
+            </div>
+          )}
+
+          {connectHint && (
+            <div
+              role="status"
+              className="flex items-start gap-2 rounded-lg border border-amber/30 bg-amber-surface/30 p-3"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber" />
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                <span className="font-medium text-foreground">Verbindung nicht möglich.</span>{" "}
+                {connectHint}
+              </p>
             </div>
           )}
 

@@ -33,6 +33,14 @@ import { JanaKnowledgeProposalCard } from "@/components/JanaKnowledgeProposalCar
 import { MorningBriefing } from "@/components/capital/MorningBriefing";
 import { RoiSavingsCard } from "@/components/RoiSavingsCard";
 import { SignalAmpel } from "@/components/ue/SignalAmpel";
+import { useSourceConnections } from "@/hooks/use-source-connections";
+import {
+  deriveSourceState,
+  sourceStateLabel,
+  sourceStateTitle,
+  countsAsConnected,
+  type SourceState,
+} from "@/lib/source-state";
 import { ReturnsInsightsCard } from "@/components/ReturnsInsightsCard";
 import { MorningBriefingDialog } from "@/components/capital/MorningBriefingDialog";
 import { OnboardingCoach } from "@/components/onboarding/OnboardingCoach";
@@ -135,26 +143,47 @@ function readCallbackTarget(): { section: SectionKey; group: string; source: str
   return null;
 }
 
-function StatusChip({ state }: { state: "active" | "idle" | "manual" }) {
-  if (state === "manual")
+/**
+ * Drei Zustaende statt zwei (27.07.2026): "liefert Signale" (verbunden UND
+ * Kennzahlen da), "verbunden" (verbunden, noch keine Kennzahlen) und
+ * "nicht verbunden". Vorher fielen die ersten beiden zusammen — eine frisch
+ * verbundene Quelle stand auf grau, obwohl sie verbunden war. Siehe
+ * src/lib/source-state.ts fuer die Ableitung.
+ */
+function StatusChip({ state }: { state: SourceState }) {
+  const label = sourceStateLabel(state);
+  const title = sourceStateTitle(state);
+  if (state === "manual" || state === "unknown")
     return (
-      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-muted text-muted-foreground border-border">
-        manuell
+      <span
+        title={title}
+        className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-muted text-muted-foreground border-border"
+      >
+        {label}
       </span>
     );
-  const active = state === "active";
+  const full = state === "active";
+  const some = state === "connected";
   return (
     <span
+      title={title}
       className={cn(
         "inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border",
-        active
+        full
           ? "bg-emerald-surface/70 text-emerald-light border-emerald-surface"
-          : "bg-muted text-muted-foreground border-border",
+          : some
+            ? "bg-emerald-surface/30 text-emerald-light/90 border-emerald-surface/60"
+            : "bg-muted text-muted-foreground border-border",
       )}
     >
       {/* Token statt Rohfarbe (Design-Vertrag): bg-emerald-500 kannte das Theme nicht. */}
-      <span className={cn("w-1.5 h-1.5 rounded-full", active ? "bg-primary" : "bg-muted-foreground/40")} />
-      {active ? "aktiv" : "keine Signale"}
+      <span
+        className={cn(
+          "w-1.5 h-1.5 rounded-full",
+          full ? "bg-primary" : some ? "bg-primary/50" : "bg-muted-foreground/40",
+        )}
+      />
+      {label}
     </span>
   );
 }
@@ -259,10 +288,20 @@ export default function Signale() {
     for (const v of dash?.values ?? []) for (const k of (v.provenance?.sources_used ?? []) as string[]) s.add(String(k));
     return s;
   }, [dash]);
-  const isActive = (sd: SourceDef) => sd.sourceKeys.some((k) => usedSources.has(k));
+  // Zweite Wahrheit: ist die Quelle ueberhaupt verbunden? Kommt aus den
+  // Status-Endpunkten der Quellen bzw. /v1/tenant/integrations (HubSpot). Erst beides
+  // zusammen ergibt einen ehrlichen Zustand — siehe src/lib/source-state.ts.
+  const conns = useSourceConnections();
+  const sourceState = (sd: SourceDef): SourceState =>
+    deriveSourceState({
+      manual: sd.manual,
+      connected: sd.sourceKeys.map((k) => conns.byKey[k]).find((v) => v !== undefined),
+      delivering: sd.sourceKeys.some((k) => usedSources.has(k)),
+      metricsKnown: statusKnown,
+    });
   const groupCount = (g: GroupDef) => {
     const conn = g.sources.filter((s) => !s.manual);
-    return { active: conn.filter(isActive).length, total: conn.length };
+    return { active: conn.filter((s) => countsAsConnected(sourceState(s))).length, total: conn.length };
   };
   let overallActive = 0;
   let overallTotal = 0;
@@ -271,7 +310,9 @@ export default function Signale() {
     overallActive += c.active;
     overallTotal += c.total;
   }
-  const anyIdle = statusKnown && GROUPS.some((g) => g.sources.some((s) => !s.manual && !isActive(s)));
+  const listKnown = statusKnown || conns.anyKnown;
+  const anyIdle =
+    listKnown && GROUPS.some((g) => g.sources.some((s) => !s.manual && sourceState(s) === "idle"));
 
   const latestHealth = dash?.health?.length ? dash.health[dash.health.length - 1].health_score : null;
   const title = !account
@@ -374,7 +415,7 @@ export default function Signale() {
               >
                 <s.icon className="w-[18px] h-[18px] shrink-0" />
                 <span className="flex-1 truncate">{s.label}</span>
-                {s.key === "quellen" && statusKnown && overallTotal > 0 && (
+                {s.key === "quellen" && listKnown && overallTotal > 0 && (
                   <span
                     className={cn(
                       "text-[10px] font-semibold px-1.5 py-0.5 rounded-full border tabular-nums",
@@ -495,7 +536,7 @@ export default function Signale() {
                         <GIcon className="w-4 h-4 text-muted-foreground" />
                       </div>
                       <span className="flex-1 text-sm font-medium text-foreground">{g.label}</span>
-                      {statusKnown && (
+                      {listKnown && (
                         <span
                           className={cn(
                             "text-[11px] font-medium px-2 py-0.5 rounded-full border tabular-nums",
@@ -517,7 +558,7 @@ export default function Signale() {
                     <div className={cn("border-t border-border divide-y divide-border", !gOpen && "hidden")}>
                       {g.sources.map((sd) => {
                         const sOpen = openSources.has(sd.key);
-                        const chip: "active" | "idle" | "manual" = sd.manual ? "manual" : isActive(sd) ? "active" : "idle";
+                        const chip = sourceState(sd);
                         return (
                           <div key={sd.key}>
                             <button
@@ -526,7 +567,7 @@ export default function Signale() {
                               className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted/30"
                             >
                               <span className="flex-1 text-sm text-foreground">{sd.label}</span>
-                              {(sd.manual || statusKnown) && <StatusChip state={chip} />}
+                              {(sd.manual || listKnown) && <StatusChip state={chip} />}
                               <ChevronRight
                                 className={cn("w-4 h-4 text-muted-foreground transition-transform shrink-0", sOpen && "rotate-90")}
                               />

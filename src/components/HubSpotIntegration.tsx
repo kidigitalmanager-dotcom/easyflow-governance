@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMe } from "@/hooks/use-api";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,11 @@ async function authHeader() {
 
 export default function HubSpotIntegration() {
   const { data: me } = useMe();
+  const qc = useQueryClient();
+  // 27.07.2026: die Quellen-Liste unter Signale -> Datenquellen liest denselben
+  // Endpunkt ueber useTenantIntegrations. Nach Verbinden/Trennen muss sie
+  // mitziehen, sonst steht HubSpot dort weiter auf grau bzw. faelschlich gruen.
+  const syncSourceList = () => { void qc.invalidateQueries({ queryKey: ["tenant", "integrations"] }); };
   const tenantId = (me?.tenant?.tenant_id as string) || (me?.user?.tenant_id as string) || "";
 
   const [status, setStatus] = useState<HubSpotStatus | null>(null);
@@ -104,6 +110,7 @@ export default function HubSpotIntegration() {
           : "HubSpot erfolgreich verbunden",
       );
       loadStatus();
+      syncSourceList();
     } else if (hs === "error") {
       const reason = params.get("reason") || "unbekannt";
       toast.error(`HubSpot-Verbindung fehlgeschlagen: ${reason}`);
@@ -138,6 +145,7 @@ export default function HubSpotIntegration() {
       if (!res.ok) throw new Error(String(res.status));
       toast.success("HubSpot getrennt");
       setStatus({ connected: false, state: "disconnected" });
+      syncSourceList();
     } catch {
       toast.error("Trennen fehlgeschlagen");
     } finally {

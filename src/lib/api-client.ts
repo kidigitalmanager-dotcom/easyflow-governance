@@ -106,7 +106,9 @@ async function apiGetV1<T>(path: string): Promise<T> {
   const token = await getToken();
   if (!token) throw new ApiError(401, "Nicht authentifiziert");
 
-  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital") || path.startsWith("/v1/memory")
+  // 27.07.2026: /v1/tenant ergaenzt. Ohne den Eintrag baut die else-Zweig-Formel
+  // API_BASE.replace("/dashboard","") = ".../v1" -> URL ".../v1/v1/tenant/..." (404).
+  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital") || path.startsWith("/v1/memory") || path.startsWith("/v1/tenant")
     ? "https://api.useeasy.ai"
     : API_BASE.replace("/dashboard", "");
   const url = path.startsWith("/v1/") ? `${baseUrl}${path}` : `${API_BASE}${path}`;
@@ -1250,6 +1252,31 @@ export const connectCapitalTicketing = (input: CapitalTicketingConnectInput) =>
   apiPost<CapitalTicketingConnectResponse>("/v1/capital/ticketing/connect", input as unknown as Record<string, unknown>);
 export const syncCapitalTicketing = () =>
   apiPost<CapitalTicketingSyncResponse>("/v1/capital/ticketing/sync", {});
+
+// ── Tenant-Integrationen (HubSpot-Verbindungszustand) ────────────────────────
+// 27.07.2026: bisher las das nur HubSpotIntegration.tsx per rohem fetch. Die
+// Quellen-Liste unter Signale → Datenquellen braucht denselben Zustand, sonst
+// steht HubSpot dort grau, obwohl es unter Integrationen verbunden ist.
+// Beide lesen jetzt denselben Endpunkt; der Cache-Schluessel haelt sie synchron.
+export interface TenantHubSpotStatus {
+  connected: boolean;
+  state?: "connected" | "reauth_required" | "disconnected";
+  reauth_reason?: string;
+  portal_id?: string | null;
+  connected_by?: string | null;
+  connected_at?: string | null;
+  expires_at?: string | null;
+  expires_in_seconds?: number | null;
+  has_refresh_token?: boolean;
+}
+export interface TenantIntegrationsResponse {
+  ok?: boolean;
+  hubspot?: TenantHubSpotStatus;
+}
+export const getTenantIntegrations = (tenantId: string) =>
+  apiGetV1<TenantIntegrationsResponse>(
+    `/v1/tenant/integrations?tenant_id=${encodeURIComponent(tenantId)}`,
+  );
 
 export const revertSpreadsheetAction = (bulkId: string) =>
   apiPost<SpreadsheetRevertResponse>("/v1/spreadsheet/revert", { bulk_id: bulkId });

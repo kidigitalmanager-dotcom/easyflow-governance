@@ -8,6 +8,7 @@ import { CapitalStripeConnect } from "@/components/capital/CapitalStripeConnect"
 import { CapitalShopifyConnect } from "@/components/capital/CapitalShopifyConnect";
 import { CapitalMetaAdsConnect } from "@/components/capital/CapitalMetaAdsConnect";
 import { CapitalTicketingConnect } from "@/components/capital/CapitalTicketingConnect";
+import HubSpotIntegration from "@/components/HubSpotIntegration";
 import { PageHeader } from "@/components/ue/primitives";
 
 /**
@@ -52,6 +53,14 @@ export default function Datenquellen() {
           <CapitalMetaAdsConnect />
           <CapitalTicketingConnect />
         </div>
+      </section>
+
+      {/* 27.07.2026: HubSpot fehlte hier komplett, obwohl die Seite "alles, was
+          Signale liefert" verspricht — es war nur unter Einstellungen erreichbar.
+          Die Karte ist self-contained und zeigt ihren Verbindungszustand selbst. */}
+      <section className="space-y-3 animate-fade-up stagger-3">
+        <h2 className="ue-kicker">CRM &amp; Kontakte</h2>
+        <HubSpotIntegration />
       </section>
 
       <section className="space-y-3 animate-fade-up stagger-3">
