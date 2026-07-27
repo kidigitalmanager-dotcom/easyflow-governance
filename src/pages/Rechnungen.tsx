@@ -1,16 +1,22 @@
 // -----------------------------------------------------------------------------
-// Rechnungen.tsx (Phase 2a) - Rechnung aus einem freigegebenen Angebot (oder
-// manuell) per Knopfdruck. Positions-Tisch (Live-Neuberechnung, Server rechnet
-// autoritativ), Empfaenger-Anschrift + Leistungsdatum, Paragraph-14-Gate,
-// Finalisieren (gapless Rechnungsnummer), PDF. KEIN Auto-Send: die PDF laedt und
+// Rechnungen.tsx (Phase 2a) - Rechnung erstellen, §14-Gate, Finalisieren
+// (gapless Rechnungsnummer), PDF/ZUGFeRD. KEIN Auto-Send: die PDF laedt und
 // versendet der Mensch selbst. Verkaeufer-Stammdaten sind Pflicht vor der Finalisierung.
+//
+// Umbau 2026-07-27 (Leon): kein eigener Nav-Punkt mehr, sondern Untertab von
+// Forderungen (RechnungenView, eingebettet). Die Liste zeigt NUR erstellte
+// Rechnungen; die Umwandlung freigegebener Angebote lebt jetzt auf der
+// Angebote-Seite und springt per ?tab=rechnungen&invoice=<id> hierher.
+// Neu ausserdem: Bestaetigungsdialog vor Verwerfen/Stornieren, echte
+// Fehlerzustaende statt falscher Leere.
 // -----------------------------------------------------------------------------
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
-  useInvoices, useApprovedOffers, useInvoice, useGenerateInvoice, useUpdateInvoice,
+  useInvoices, useInvoice, useGenerateInvoice, useUpdateInvoice,
   useFinalizeInvoice, useVoidInvoice, useBillingProfile,
 } from "@/hooks/use-api";
-import type { TenantInvoice, ApprovedOfferItem, InvoiceListItem } from "@/lib/api-client";
+import type { TenantInvoice, InvoiceListItem } from "@/lib/api-client";
 import { downloadZugferdInvoice } from "@/lib/api-client";
 import type { OfferPosition, OfferOpts } from "@/lib/offer-calc";
 import { computeOffer, fmtEUR, fmtDateDe } from "@/lib/offer-calc";
@@ -25,9 +31,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { toast } from "sonner";
 import {
-  ReceiptText, ArrowLeft, Save, CheckCircle2, Loader2, Printer, FileDown, Plus, Trash2, Settings, AlertTriangle, ArrowRightLeft,
+  ReceiptText, ArrowLeft, Save, CheckCircle2, Loader2, Printer, FileDown, Plus, Trash2, Settings, AlertTriangle,
 } from "lucide-react";
 
 const EMPTY_DRAFT: InvoiceDraftState = {
@@ -88,22 +99,36 @@ function clientMissing(draft: InvoiceDraftState, sellerComplete: boolean, incomp
   return m;
 }
 
-export default function Rechnungen() {
+export function RechnungenView() {
   const [view, setView] = useState<"list" | "editor" | "billing">("list");
   const [editId, setEditId] = useState<number | null>(null);
   const [draft, setDraft] = useState<InvoiceDraftState>(EMPTY_DRAFT);
   const [dirty, setDirty] = useState(false);
   const [showPdf, setShowPdf] = useState(false);
   const [zugferdBusy, setZugferdBusy] = useState(false);
+  const [confirmVoid, setConfirmVoid] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const invoices = useInvoices(50);
-  const approved = useApprovedOffers(40);
   const billing = useBillingProfile();
   const genInv = useGenerateInvoice();
   const updInv = useUpdateInvoice();
   const finalize = useFinalizeInvoice();
   const voidInv = useVoidInvoice();
   const invoiceQuery = useInvoice(editId);
+
+  // Deep-Link ?invoice=<id> (z.B. von Angebote nach "In Rechnung umwandeln"):
+  // Editor direkt oeffnen. Der Parameter wird danach entfernt, damit "Zurueck"
+  // nicht wieder in den Editor springt.
+  useEffect(() => {
+    const p = searchParams.get("invoice");
+    const id = p ? parseInt(p, 10) : NaN;
+    if (Number.isFinite(id) && id > 0) {
+      setEditId(id); setDraft(EMPTY_DRAFT); setDirty(false); setView("editor");
+      setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete("invoice"); return n; }, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.get("invoice")]);
 
   const busy = genInv.isPending || updInv.isPending || finalize.isPending || voidInv.isPending;
   const loaded = invoiceQuery.data?.invoice ?? null;
@@ -118,15 +143,6 @@ export default function Rechnungen() {
 
   const onDraftChange = (s: InvoiceDraftState) => { setDraft(s); setDirty(true); };
 
-  async function generateFromOffer(offerId: number) {
-    try {
-      const res = await genInv.mutateAsync({ offer_id: offerId });
-      if (res.skipped) { toast.error("Rechnungen sind noch nicht aktiviert (Feature/Postfach)."); return; }
-      if (!res.ok || !res.document_id) { toast.error("Rechnung konnte nicht erstellt werden."); return; }
-      openInvoice(res.document_id);
-      toast.success("Rechnung aus Angebot erstellt. Bitte Empfänger-Anschrift + Leistungsdatum ergänzen.");
-    } catch { toast.error("Rechnung konnte nicht erstellt werden."); }
-  }
   async function generateManual() {
     try {
       const res = await genInv.mutateAsync({});
@@ -183,11 +199,14 @@ export default function Rechnungen() {
     } catch { toast.error("Finalisierung fehlgeschlagen."); }
   }
 
+  // 2026-07-27: laeuft nur noch ueber den Bestaetigungsdialog (confirmVoid) —
+  // vorher stornierte EIN Klick eine finalisierte, lueckenlos nummerierte Rechnung.
   async function doVoid() {
     if (editId == null) return;
+    setConfirmVoid(false);
     try {
       await voidInv.mutateAsync(editId);
-      toast.success("Rechnung storniert.");
+      toast.success(loaded?.status === "final" ? "Rechnung storniert." : "Entwurf verworfen.");
       backToList();
     } catch { toast.error("Stornieren fehlgeschlagen."); }
   }
@@ -204,7 +223,7 @@ export default function Rechnungen() {
     }
   }
 
-  function backToList() { setEditId(null); setDraft(EMPTY_DRAFT); setDirty(false); setView("list"); invoices.refetch(); approved.refetch(); }
+  function backToList() { setEditId(null); setDraft(EMPTY_DRAFT); setDirty(false); setView("list"); invoices.refetch(); }
 
   // v4.132.0 — Zeiterfassung: nach der Übernahme hat der SERVER neue Positionen
   // + Totals geschrieben → Rechnung neu laden und den lokalen Draft neu befüllen.
@@ -237,6 +256,16 @@ export default function Rechnungen() {
     if (invoiceQuery.isLoading && draft === EMPTY_DRAFT) {
       return <div className="p-6 space-y-3"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
     }
+    // 2026-07-27: Ladefehler ist ein Ladefehler — vorher wurde hier ein leeres,
+    // editierbares Formular gerendert, das wie eine echte Rechnung aussah.
+    if (invoiceQuery.isError && !loaded) {
+      return (
+        <div className="p-4 sm:p-6 space-y-4 max-w-5xl">
+          <Button variant="ghost" size="sm" onClick={backToList}><ArrowLeft className="mr-1 h-4 w-4" /> Zurück</Button>
+          <QueryErrorNotice label="Die Rechnung konnte nicht geladen werden." onRetry={() => invoiceQuery.refetch()} retrying={invoiceQuery.isFetching} />
+        </div>
+      );
+    }
     const docNumber = loaded?.doc_number || null;
     const dueDate = loaded?.due_date || null;
     return (
@@ -255,7 +284,7 @@ export default function Rechnungen() {
                 <Button variant="outline" size="sm" onClick={save} disabled={busy || !dirty}>
                   {updInv.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />} Speichern
                 </Button>
-                <Button variant="ghost" size="sm" onClick={doVoid} disabled={busy}><Trash2 className="mr-1 h-4 w-4" /> Verwerfen</Button>
+                <Button variant="ghost" size="sm" onClick={() => setConfirmVoid(true)} disabled={busy}><Trash2 className="mr-1 h-4 w-4" /> Verwerfen</Button>
                 <Button size="sm" onClick={doFinalize} disabled={busy || !canFinalize}
                   title={dirty ? "Bitte zuerst speichern" : missing.length ? "Es fehlen: " + missing.join(", ") : ""}>
                   {finalize.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />} Finalisieren
@@ -268,7 +297,7 @@ export default function Rechnungen() {
                   title="Rechnung als ZUGFeRD-PDF (PDF/A-3b mit eingebettetem EN-16931-XML) herunterladen">
                   {zugferdBusy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />} ZUGFeRD-PDF
                 </Button>
-                <Button variant="ghost" size="sm" onClick={doVoid} disabled={busy}><Trash2 className="mr-1 h-4 w-4" /> Stornieren</Button>
+                <Button variant="ghost" size="sm" onClick={() => setConfirmVoid(true)} disabled={busy}><Trash2 className="mr-1 h-4 w-4" /> Stornieren</Button>
               </>
             )}
           </div>
@@ -322,6 +351,25 @@ export default function Rechnungen() {
         </Card>
 
         {showPdf && <InvoicePdf state={draft} seller={billing.data?.profile} docNumber={loaded?.doc_number} dueDate={loaded?.due_date} onClose={() => setShowPdf(false)} />}
+
+        <AlertDialog open={confirmVoid} onOpenChange={setConfirmVoid}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{loaded?.status === "final" ? "Rechnung wirklich stornieren?" : "Entwurf wirklich verwerfen?"}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {loaded?.status === "final"
+                  ? `Die Rechnung ${docNumber || ""} wird storniert. Die vergebene Rechnungsnummer bleibt verbraucht; das lässt sich nicht rückgängig machen.`
+                  : "Der Entwurf wird verworfen und lässt sich nicht wiederherstellen."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction onClick={doVoid} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                {loaded?.status === "final" ? "Stornieren" : "Verwerfen"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -347,42 +395,17 @@ export default function Rechnungen() {
         </div>
       )}
 
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base">Freigegebene Angebote</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {approved.isLoading && <><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></>}
-          {!approved.isLoading && (approved.data?.items?.length ?? 0) === 0 && (
-            <p className="text-sm text-muted-foreground py-4">Keine freigegebenen Angebote. Ein Angebot erscheint hier, sobald es im Bereich „Angebote" freigegeben wurde.</p>
-          )}
-          {approved.data?.items?.map((o: ApprovedOfferItem) => (
-            <div key={o.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium truncate">{o.subject || o.counterpart_name || "Angebot #" + o.id}</span>
-                  {o.has_invoice && <Badge variant="secondary" className="text-[10px]">Rechnung vorhanden</Badge>}
-                </div>
-                <p className="text-xs text-muted-foreground truncate">{o.counterpart_name || ""}{o.amount_gross != null ? " · " + fmtEUR(o.amount_gross) : ""}</p>
-              </div>
-              <div className="shrink-0">
-                {o.has_invoice && o.invoice_id != null ? (
-                  <Button variant="outline" size="sm" onClick={() => openInvoice(o.invoice_id as number)}>Rechnung öffnen</Button>
-                ) : (
-                  <Button size="sm" onClick={() => generateFromOffer(o.id)} disabled={genInv.isPending}>
-                    <ArrowRightLeft className="mr-1 h-4 w-4" /> In Rechnung umwandeln
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
+      {/* Umbau 2026-07-27: hier stehen NUR noch erstellte Rechnungen. Die
+          Umwandlung freigegebener Angebote lebt auf der Angebote-Seite. */}
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Rechnungen</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {invoices.isLoading && <><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></>}
-          {!invoices.isLoading && (invoices.data?.items?.length ?? 0) === 0 && (
-            <p className="text-sm text-muted-foreground py-4">Noch keine Rechnungen.</p>
+          {invoices.isError && (
+            <QueryErrorNotice label="Die Rechnungen konnten nicht geladen werden." onRetry={() => invoices.refetch()} retrying={invoices.isFetching} />
+          )}
+          {!invoices.isLoading && !invoices.isError && (invoices.data?.items?.length ?? 0) === 0 && (
+            <p className="text-sm text-muted-foreground py-4">Noch keine Rechnungen. Aus einem freigegebenen Angebot (Bereich „Angebote") oder über „Leere Rechnung" erstellen.</p>
           )}
           {invoices.data?.items?.map((inv: InvoiceListItem) => (
             <div key={inv.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
@@ -409,3 +432,7 @@ export default function Rechnungen() {
     </div>
   );
 }
+
+// Route /rechnungen leitet auf /forderungen?tab=rechnungen um; der Default-Export
+// bleibt fuer Alt-Importe erhalten.
+export default RechnungenView;

@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { storeProviderTokens } from "@/lib/api-client";
 import { OnboardingNudges } from "@/components/onboarding/OnboardingNudges";
+import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { FristenBoard } from "@/components/FristenBoard";
 import { AutopilotReifeWidget } from "@/components/AutopilotReifeWidget";
 import { WochenRueckblick } from "@/components/WochenRueckblick";
@@ -24,7 +25,9 @@ export default function Uebersicht() {
   const { data: improve } = useImproveSuggestion();
   const consent = useConsentImprove();
   const [improveDismissed, setImproveDismissed] = useState(false);
-  const { data: emails, isLoading: emailsLoading } = useRecentEmails();
+  // 2026-07-27: error mit destrukturieren — ein API-Fehler darf nicht wie
+  // "Aktuell nichts zur Freigabe" aussehen.
+  const { data: emails, isLoading: emailsLoading, isError: emailsError, refetch: emailsRefetch, isFetching: emailsFetching } = useRecentEmails();
 
   const kpis = stats
     ? [
@@ -141,6 +144,8 @@ export default function Uebersicht() {
                 <Skeleton key={i} className="h-16 rounded-md" />
               ))}
             </div>
+          ) : emailsError ? (
+            <QueryErrorNotice label="Die Freigabe-Liste konnte nicht geladen werden." onRetry={() => emailsRefetch()} retrying={emailsFetching} />
           ) : pendingEmails.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <Inbox className="w-8 h-8 mb-2" />
@@ -201,6 +206,8 @@ export default function Uebersicht() {
                   <Skeleton key={i} className="h-6 rounded-md" />
                 ))}
               </div>
+            ) : statsError ? (
+              <QueryErrorNotice label="Die Verteilung konnte nicht geladen werden." />
             ) : Object.keys(priorityBreakdown).length === 0 ? (
               <p className="text-sm text-muted-foreground">Noch keine Daten vorhanden.</p>
             ) : (

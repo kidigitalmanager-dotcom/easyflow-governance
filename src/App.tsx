@@ -19,7 +19,7 @@ import AuditTrail from "./pages/AuditTrail";
 import Playbooks from "./pages/Playbooks";
 import Forderungen from "./pages/Forderungen";
 import Angebote from "./pages/Angebote";
-import Rechnungen from "./pages/Rechnungen";
+import Mitarbeiter from "./pages/Mitarbeiter";
 import Verbindlichkeiten from "./pages/Verbindlichkeiten";
 import Buchhaltung from "./pages/Buchhaltung";
 import Einstellungen from "./pages/Einstellungen";
@@ -156,9 +156,12 @@ const App = () => (
                       <Route path="/playbooks" element={<Playbooks />} />
                       <Route path="/forderungen" element={<Forderungen />} />
                       <Route path="/angebote" element={<Angebote />} />
-                      <Route path="/rechnungen" element={<Rechnungen />} />
+                      {/* Umbau 2026-07-27: Rechnungen sind Untertab von Forderungen;
+                          alte Deep-Links bleiben gueltig und leiten um. */}
+                      <Route path="/rechnungen" element={<Navigate to="/forderungen?tab=rechnungen" replace />} />
                       <Route path="/verbindlichkeiten" element={<Verbindlichkeiten />} />
                       <Route path="/buchhaltung" element={<Buchhaltung />} />
+                      <Route path="/mitarbeiter" element={<Mitarbeiter />} />
                       <Route path="/zeiterfassung" element={<Zeiterfassung />} />
                       <Route path="/voice" element={<VoiceCalls />} />
                       <Route path="/einstellungen" element={<Einstellungen />} />

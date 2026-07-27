@@ -20,9 +20,15 @@ const ENTRIES: Entry[] = [
   { label: "Heute", to: "/", group: "Arbeit", keywords: "uebersicht dashboard start briefing" },
   { label: "Freigaben", to: "/review", group: "Arbeit", keywords: "review queue entwurf draft freigeben" },
   { label: "Verlauf", to: "/audit", group: "Arbeit", keywords: "audit trail historie undo entscheidungen" },
-  { label: "Forderungen", to: "/forderungen", group: "Arbeit", keywords: "zahlungserinnerung mahnung dunning" },
-  { label: "Angebote", to: "/angebote", group: "Arbeit", keywords: "offer angebot dokument" },
-  { label: "Rechnungen", to: "/rechnungen", group: "Arbeit", keywords: "invoice zugferd rechnung" },
+  // Umbau 2026-07-27: Buchhaltungs-Gruppe vollstaendig + Mitarbeiter-Gruppe;
+  // Rechnungen sind Untertab von Forderungen.
+  { label: "Buchhaltung · Uebersicht", to: "/buchhaltung", group: "Buchhaltung", keywords: "cash index liquiditaet geld rein raus ampel" },
+  { label: "Forderungen", to: "/forderungen", group: "Buchhaltung", keywords: "zahlungserinnerung mahnung dunning offene posten" },
+  { label: "Rechnungen", to: "/forderungen?tab=rechnungen", group: "Buchhaltung", keywords: "invoice zugferd rechnung finalisieren" },
+  { label: "Verbindlichkeiten", to: "/verbindlichkeiten", group: "Buchhaltung", keywords: "lieferanten eingangsrechnung kreditoren zahlen" },
+  { label: "Angebote", to: "/angebote", group: "Buchhaltung", keywords: "offer angebot dokument" },
+  { label: "Team (Mitarbeiter)", to: "/mitarbeiter", group: "Mitarbeiter", keywords: "team logins rollen stundensatz mitarbeiter" },
+  { label: "Abrechnung (Zeiterfassung)", to: "/zeiterfassung", group: "Mitarbeiter", keywords: "zeiten stunden projekte urlaub krank abrechnung" },
   { label: "Gesundheit (Signale)", to: "/signale", group: "Signale", keywords: "health index score kpi" },
   { label: "Frühwarnung", to: "/fruehwarnung", group: "Signale", keywords: "risk shield compliance radar alerts warnung" },
   { label: "Chancen", to: "/chancen", group: "Signale", keywords: "foerderung foerder-radar zuschuss upsell" },

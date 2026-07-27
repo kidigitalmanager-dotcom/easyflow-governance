@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ListChecks, History, BookOpen, Settings, LogOut, PhoneCall, Shield,
-  Activity, GraduationCap, Receipt, ReceiptText, FileText, AlertTriangle, Sparkles,
-  Database, Clock, Wallet, CreditCard, FileSpreadsheet, type LucideIcon,
+  Activity, GraduationCap, Receipt, FileText, AlertTriangle, Sparkles,
+  Database, Wallet, CreditCard, FileSpreadsheet, Users, ChevronDown, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
@@ -30,20 +31,27 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { to: "/", label: "Heute", icon: LayoutDashboard },
       { to: "/review", label: "Freigaben", icon: ListChecks },
       { to: "/audit", label: "Verlauf", icon: History },
-      { to: "/zeiterfassung", label: "Zeiterfassung", icon: Clock }, // v4.132.0
     ],
   },
   {
-    // v4.142.0 (Lane 2) — Buchhaltung buendelt Cash-Dashboard + Ledger + Belege.
-    // Bestehende Routen (/forderungen, /rechnungen, /angebote) bleiben unveraendert,
-    // nur die Gruppierung/Navigation ist neu.
+    // Umbau 2026-07-27 (Leon): Buchhaltung als ausklappbare Gruppe.
+    // Rechnungen sind KEIN eigener Nav-Punkt mehr, sondern Untertab von
+    // Forderungen (/forderungen?tab=rechnungen — alte Route /rechnungen leitet um).
+    // Zeiterfassung/Abrechnung ist zu "Mitarbeiter" gezogen.
     label: "Buchhaltung",
     items: [
       { to: "/buchhaltung", label: "Uebersicht", icon: Wallet },
-      { to: "/forderungen", label: "Forderungen", icon: Receipt },
+      { to: "/forderungen", label: "Forderungen & Rechnungen", icon: Receipt },
       { to: "/verbindlichkeiten", label: "Verbindlichkeiten", icon: CreditCard },
-      { to: "/rechnungen", label: "Rechnungen", icon: ReceiptText },
       { to: "/angebote", label: "Angebote", icon: FileText },
+    ],
+  },
+  {
+    // Umbau 2026-07-27 (Leon): Mitarbeiter raus aus den Einstellungen in die
+    // Seitenleiste; die Abrechnung (Zeiterfassung) haengt hier drunter.
+    label: "Mitarbeiter",
+    items: [
+      { to: "/mitarbeiter", label: "Team", icon: Users },
       { to: "/zeiterfassung", label: "Abrechnung", icon: FileSpreadsheet },
     ],
   },
@@ -77,6 +85,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { data: me } = useMe();
+  // Umbau 2026-07-27: alle Nav-Gruppen sind ein-/ausklappbar. Standard: offen.
+  // Die Gruppe mit der aktiven Route laesst sich nicht "verlieren" — beim
+  // Navigieren in eine eingeklappte Gruppe klappt sie automatisch auf.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const toggleGroup = (label: string) =>
+    setCollapsed((c) => ({ ...c, [label]: !c[label] }));
 
   const tenant = me?.tenant;
   const setup = me?.setup;
@@ -125,31 +139,45 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-2 overflow-y-auto">
-          {NAV_GROUPS.map((group) => (
-            <div key={group.label}>
-              <p className="px-3 pt-3.5 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground/60">
-                {group.label}
-              </p>
-              <div className="space-y-0.5">
-                {group.items.map((item) => {
-                  const isActive = location.pathname === item.to;
-                  return (
-                    <NavLink key={item.to} to={item.to} className={navLinkClass(isActive)}>
-                      <item.icon className="w-4 h-4" />
-                      {item.label}
-                    </NavLink>
-                  );
-                })}
-                {/* v4.23.0 (3B-0): Admin nur fuer Super-Admins — Kunden sehen den Eintrag nie */}
-                {group.label === "System" && me?.user?.is_super_admin && (
-                  <NavLink to="/admin" className={navLinkClass(location.pathname.startsWith("/admin"))}>
-                    <Shield className="w-4 h-4" />
-                    Admin
-                  </NavLink>
+          {NAV_GROUPS.map((group) => {
+            const groupActive = group.items.some((i) => location.pathname === i.to)
+              || (group.label === "System" && location.pathname.startsWith("/admin"));
+            // Aktive Gruppe bleibt sichtbar, auch wenn sie eingeklappt wurde.
+            const isCollapsed = !!collapsed[group.label] && !groupActive;
+            return (
+              <div key={group.label}>
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.label)}
+                  className="w-full flex items-center justify-between px-3 pt-3.5 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  aria-expanded={!isCollapsed}
+                >
+                  {group.label}
+                  <ChevronDown className={`w-3 h-3 transition-transform ${isCollapsed ? "-rotate-90" : ""}`} />
+                </button>
+                {!isCollapsed && (
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => {
+                      const isActive = location.pathname === item.to;
+                      return (
+                        <NavLink key={item.to} to={item.to} className={navLinkClass(isActive)}>
+                          <item.icon className="w-4 h-4" />
+                          {item.label}
+                        </NavLink>
+                      );
+                    })}
+                    {/* v4.23.0 (3B-0): Admin nur fuer Super-Admins — Kunden sehen den Eintrag nie */}
+                    {group.label === "System" && me?.user?.is_super_admin && (
+                      <NavLink to="/admin" className={navLinkClass(location.pathname.startsWith("/admin"))}>
+                        <Shield className="w-4 h-4" />
+                        Admin
+                      </NavLink>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
         {/* Footer */}

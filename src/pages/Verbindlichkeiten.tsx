@@ -22,6 +22,7 @@ import {
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { toast } from "sonner";
 import {
   CreditCard, Download, Plus, CheckCircle2, Loader2, AlertTriangle,
@@ -143,6 +144,8 @@ export default function Verbindlichkeiten() {
         <CardContent>
           {open.isLoading ? (
             <div className="space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+          ) : open.isError ? (
+            <QueryErrorNotice label="Die offenen Verbindlichkeiten konnten nicht geladen werden." onRetry={() => open.refetch()} retrying={open.isFetching} />
           ) : rows.length === 0 ? (
             <div className="text-sm text-muted-foreground py-6 text-center">
               Noch keine offenen Verbindlichkeiten. Sobald eine Lieferanten-Rechnung im Postfach
@@ -197,7 +200,9 @@ export default function Verbindlichkeiten() {
                       )}
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap">
-                      <Button size="sm" variant="ghost" onClick={() => markPaid.mutate({ apId: r.id })} title="Als bezahlt markieren">
+                      <Button size="sm" variant="ghost"
+                        onClick={() => markPaid.mutate({ apId: r.id }, { onError: () => toast.error("Konnte die Verbindlichkeit nicht als bezahlt markieren.") })}
+                        title="Als bezahlt markieren">
                         <CheckCircle2 className="h-4 w-4" /> bezahlt
                       </Button>
                     </TableCell>
@@ -209,6 +214,9 @@ export default function Verbindlichkeiten() {
         </CardContent>
       </Card>
 
+      {paid.isError && (
+        <QueryErrorNotice label="Die bezahlten Verbindlichkeiten konnten nicht geladen werden." onRetry={() => paid.refetch()} retrying={paid.isFetching} />
+      )}
       {paidRows.length > 0 && (
         <Card>
           <CardHeader><CardTitle className="text-base text-muted-foreground">Bezahlt ({paidRows.length})</CardTitle></CardHeader>
@@ -218,10 +226,14 @@ export default function Verbindlichkeiten() {
                 <div key={r.id} className="flex justify-between">
                   <span>{r.counterpart_name || r.counterpart_email} {r.invoice_ref ? `· ${r.invoice_ref}` : ""}</span>
                   <span className="flex items-center gap-2">{r.amount_display}
-                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => markPaid.mutate({ apId: r.id, paid: false })}>rueckgaengig</Button>
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs"
+                      onClick={() => markPaid.mutate({ apId: r.id, paid: false }, { onError: () => toast.error("Konnte den Bezahlt-Status nicht zuruecknehmen.") })}>rueckgaengig</Button>
                   </span>
                 </div>
               ))}
+              {paidRows.length > 10 && (
+                <div className="pt-1 text-xs">… und {paidRows.length - 10} weitere (vollstaendig im Excel-Export).</div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -259,8 +271,8 @@ export default function Verbindlichkeiten() {
               <div><Label className="text-xs">Betrag (z.B. 1.234,00)</Label><Input value={manual.amount_gross} onChange={(e) => setManual({ ...manual, amount_gross: e.target.value })} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Rechnungsdatum</Label><Input value={manual.issue_date} onChange={(e) => setManual({ ...manual, issue_date: e.target.value })} placeholder="20.07.2026" /></div>
-              <div><Label className="text-xs">Faellig (TT.MM.JJJJ)</Label><Input value={manual.due_date} onChange={(e) => setManual({ ...manual, due_date: e.target.value })} placeholder="15.08.2026" /></div>
+              <div><Label className="text-xs">Rechnungsdatum</Label><Input value={manual.issue_date} onChange={(e) => setManual({ ...manual, issue_date: e.target.value })} placeholder="TT.MM.JJJJ" /></div>
+              <div><Label className="text-xs">Faellig (TT.MM.JJJJ)</Label><Input value={manual.due_date} onChange={(e) => setManual({ ...manual, due_date: e.target.value })} placeholder="TT.MM.JJJJ" /></div>
             </div>
           </div>
           <DialogFooter>

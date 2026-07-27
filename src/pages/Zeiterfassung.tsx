@@ -586,7 +586,9 @@ export default function Zeiterfassung() {
       if ((res.entries_without_rate || 0) > 0) {
         toast.message("Einträge ohne Stundensatz dabei", { description: "Preis im Rechnungs-Editor bitte eintragen (Positionen sind offen)." });
       }
-      navigate("/rechnungen");
+      // Umbau 2026-07-27: Rechnungen leben als Untertab von Forderungen; direkt
+      // in den Editor des frisch erzeugten Entwurfs springen.
+      navigate(inv.document_id ? `/forderungen?tab=rechnungen&invoice=${inv.document_id}` : "/forderungen?tab=rechnungen");
     } catch { toast.error("Rechnung aus Zeiten fehlgeschlagen."); }
     finally { setBillingBusy(null); }
   }

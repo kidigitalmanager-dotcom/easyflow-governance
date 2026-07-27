@@ -6,11 +6,12 @@
 // → PDF. Kein Auto-Send; die Freigabe legt optional das Anschreiben ins Postfach.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   useRequests, useOffer, useGenerateOffer, useUpdateOffer, useOfferVerdict, useBillingProfile,
+  useApprovedOffers, useGenerateInvoice,
 } from "@/hooks/use-api";
-import type { RequestItem, TenantOffer, GenerateOfferBody } from "@/lib/api-client";
+import type { RequestItem, TenantOffer, GenerateOfferBody, ApprovedOfferItem } from "@/lib/api-client";
 import type { OfferPosition, OfferOpts } from "@/lib/offer-calc";
 import { computeOffer } from "@/lib/offer-calc";
 import { OfferPositionsTable, type OfferDraftState } from "@/components/documents/OfferPositionsTable";
@@ -23,9 +24,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { toast } from "sonner";
+import { fmtEUR } from "@/lib/offer-calc";
 import {
   FileText, Sparkles, RefreshCw, ArrowLeft, Save, CheckCircle2, Loader2, Printer, Plus, Trash2, Mail,
+  ArrowRightLeft,
 } from "lucide-react";
 
 const EMPTY_DRAFT: OfferDraftState = {
@@ -69,8 +73,24 @@ export default function Angebote() {
   const updOffer = useUpdateOffer();
   const verdict = useOfferVerdict();
   const offerQuery = useOffer(editId);
+  // Umbau 2026-07-27: die Umwandlung freigegebener Angebote in Rechnungen lebt
+  // jetzt HIER (vorher auf der Rechnungen-Seite) — auch Angebote ohne
+  // Anfrage-Thread ("Leeres Angebot") tauchen in dieser Karte wieder auf.
+  const approved = useApprovedOffers(40);
+  const genInv = useGenerateInvoice();
+  const navigate = useNavigate();
 
   const busy = genOffer.isPending || updOffer.isPending || verdict.isPending;
+
+  async function convertToInvoice(offerId: number) {
+    try {
+      const res = await genInv.mutateAsync({ offer_id: offerId });
+      if (res.skipped) { toast.error("Rechnungen sind noch nicht aktiviert (Feature/Postfach)."); return; }
+      if (!res.ok || !res.document_id) { toast.error("Rechnung konnte nicht erstellt werden."); return; }
+      toast.success("Rechnung aus Angebot erstellt.");
+      navigate(`/forderungen?tab=rechnungen&invoice=${res.document_id}`);
+    } catch { toast.error("Rechnung konnte nicht erstellt werden."); }
+  }
 
   // Draft aus geladenem Bestandsangebot ziehen (nur beim Öffnen)
   const loadedId = offerQuery.data?.offer?.id ?? null;
@@ -232,6 +252,15 @@ export default function Angebote() {
     if (offerQuery.isLoading && draft === EMPTY_DRAFT) {
       return <div className="p-6 space-y-3"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
     }
+    // 2026-07-27: Ladefehler nicht als leeres, editierbares Angebot maskieren.
+    if (offerQuery.isError && !offerQuery.data?.offer && draft === EMPTY_DRAFT) {
+      return (
+        <div className="p-4 sm:p-6 space-y-4 max-w-5xl">
+          <Button variant="ghost" size="sm" onClick={backToList}><ArrowLeft className="mr-1 h-4 w-4" /> Zurück</Button>
+          <QueryErrorNotice label="Das Angebot konnte nicht geladen werden." onRetry={() => offerQuery.refetch()} retrying={offerQuery.isFetching} />
+        </div>
+      );
+    }
     return (
       <div className="p-4 sm:p-6 space-y-4 max-w-5xl">
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -359,7 +388,10 @@ export default function Angebote() {
         </CardHeader>
         <CardContent className="space-y-2">
           {requests.isLoading && <><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></>}
-          {!requests.isLoading && (requests.data?.items?.length ?? 0) === 0 && (
+          {requests.isError && (
+            <QueryErrorNotice label="Die Anfragen konnten nicht geladen werden." onRetry={() => requests.refetch()} retrying={requests.isFetching} />
+          )}
+          {!requests.isLoading && !requests.isError && (requests.data?.items?.length ?? 0) === 0 && (
             <p className="text-sm text-muted-foreground py-4">Keine offenen Anfragen gefunden. Anfragen erscheinen hier, sobald E-Mails als „Anfrage &amp; Auftrag" eingeordnet wurden.</p>
           )}
           {requests.data?.items
@@ -407,6 +439,44 @@ export default function Angebote() {
               {listFilter === "freigabe" ? "Kein Angebot wartet gerade auf Freigabe." : "Alle Anfragen haben bereits ein Angebot."}
             </p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Umbau 2026-07-27: freigegebene Angebote (auch ohne Anfrage-Thread) —
+          hier werden sie zur Rechnung. Vorher lag diese Karte auf der
+          Rechnungen-Seite; ausserdem waren "Leere Angebote" nach dem Verlassen
+          des Editors nirgends mehr auffindbar. */}
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Freigegebene Angebote</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {approved.isLoading && <Skeleton className="h-14 w-full" />}
+          {approved.isError && (
+            <QueryErrorNotice label="Die freigegebenen Angebote konnten nicht geladen werden." onRetry={() => approved.refetch()} retrying={approved.isFetching} />
+          )}
+          {!approved.isLoading && !approved.isError && (approved.data?.items?.length ?? 0) === 0 && (
+            <p className="text-sm text-muted-foreground py-4">Noch keine freigegebenen Angebote. Ein Angebot erscheint hier nach der Freigabe — bereit zur Umwandlung in eine Rechnung.</p>
+          )}
+          {approved.data?.items?.map((o: ApprovedOfferItem) => (
+            <div key={o.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium truncate">{o.subject || o.counterpart_name || "Angebot #" + o.id}</span>
+                  {o.has_invoice && <Badge variant="secondary" className="text-[10px]">Rechnung vorhanden</Badge>}
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{o.counterpart_name || ""}{o.amount_gross != null ? " · " + fmtEUR(o.amount_gross) : ""}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="ghost" size="sm" onClick={() => openExistingOffer(o.id)}>Öffnen</Button>
+                {o.has_invoice && o.invoice_id != null ? (
+                  <Button variant="outline" size="sm" onClick={() => navigate(`/forderungen?tab=rechnungen&invoice=${o.invoice_id}`)}>Rechnung öffnen</Button>
+                ) : (
+                  <Button size="sm" onClick={() => convertToInvoice(o.id)} disabled={genInv.isPending}>
+                    {genInv.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ArrowRightLeft className="mr-1 h-4 w-4" />} In Rechnung umwandeln
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
     </div>

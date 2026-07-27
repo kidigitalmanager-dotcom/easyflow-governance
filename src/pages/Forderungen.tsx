@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   useDocuments,
   useScanSentForAr,
@@ -29,9 +30,12 @@ import {
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { QueryErrorNotice } from "@/components/QueryErrorNotice";
+import { RechnungenView } from "@/pages/Rechnungen";
 import { toast } from "sonner";
 import {
-  Receipt, RefreshCw, Download, Upload, Plus, Mail, CheckCircle2, Loader2, AlertTriangle,
+  Receipt, ReceiptText, RefreshCw, Download, Upload, Plus, Mail, CheckCircle2, Loader2, AlertTriangle,
   Send, FileSpreadsheet, FileText, ChevronDown, PlayCircle,
 } from "lucide-react";
 
@@ -71,7 +75,38 @@ function fmtDate(d: string | null | undefined): string {
   return d ? new Date(d).toLocaleDateString("de-DE") : "";
 }
 
-export default function Forderungen() {
+// Umbau 2026-07-27 (Leon): Forderungen und Rechnungen sind EINE Seite mit zwei
+// Untertabs — die Rechnung ist die Quelle, die offene Forderung ihr Zustand.
+// (Backend v4.148.0: Finalisieren einer Rechnung legt die Forderung automatisch an.)
+export default function ForderungenPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") === "rechnungen" ? "rechnungen" : "forderungen";
+  const setTab = (v: string) =>
+    setSearchParams((prev) => {
+      const n = new URLSearchParams(prev);
+      if (v === "forderungen") n.delete("tab"); else n.set("tab", v);
+      return n;
+    }, { replace: true });
+
+  return (
+    <div className="space-y-4 p-4 md:p-6 max-w-6xl mx-auto">
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="forderungen" className="gap-1.5"><Receipt className="h-4 w-4" /> Forderungen</TabsTrigger>
+          <TabsTrigger value="rechnungen" className="gap-1.5"><ReceiptText className="h-4 w-4" /> Rechnungen</TabsTrigger>
+        </TabsList>
+        <TabsContent value="forderungen" className="mt-2">
+          <ForderungenView />
+        </TabsContent>
+        <TabsContent value="rechnungen" className="mt-2">
+          <RechnungenView />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function ForderungenView() {
   const open = useDocuments("ar_invoice", "open");
   const paid = useDocuments("ar_invoice", "paid");
   const dunningQueue = useDocuments("dunning", "draft");
@@ -160,8 +195,12 @@ export default function Forderungen() {
   async function handleRunReal() {
     try {
       const r = await runDun.mutateAsync(false);
-      const n = previewItems(preview).length;
-      toast.success(`${n} Erinnerungs-Entwuerfe erzeugt. Sie liegen unten zur Freigabe bereit.`);
+      // 2026-07-27: Es zaehlt, was der SERVER erzeugt hat — nicht die Vorschau.
+      // (Zwischen Vorschau und Lauf koennen Cooldown/Cap/Fehler die Menge aendern.)
+      const generated = r.generated ?? (r.results ?? []).reduce((a, x) => a + (x.generated ?? 0), 0);
+      const errors = (r.results ?? []).reduce((a, x) => a + (typeof x.errors === "number" ? x.errors : 0), 0);
+      if (errors > 0) toast.warning(`${generated} Erinnerungs-Entwuerfe erzeugt, ${errors} fehlgeschlagen.`);
+      else toast.success(`${generated} Erinnerungs-Entwuerfe erzeugt. Sie liegen unten zur Freigabe bereit.`);
       setPreview(null);
       open.refetch(); dunningQueue.refetch();
     } catch (e) { toast.error("Erzeugen fehlgeschlagen."); }
@@ -200,7 +239,7 @@ export default function Forderungen() {
   const previewCount = previewItems(preview).length;
 
   return (
-    <div className="space-y-6 p-4 md:p-6 max-w-6xl mx-auto">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2"><Receipt className="h-6 w-6" /> Forderungen &amp; Erinnerungen</h1>
@@ -245,6 +284,11 @@ export default function Forderungen() {
         <Label htmlFor="llm" className="text-muted-foreground">Erinnerungen im Jana-Ton formulieren (sonst neutrale Vorlage)</Label>
       </div>
 
+      {/* 2026-07-27: Ladefehler duerfen nicht wie "alles erledigt" aussehen. */}
+      {dunningQueue.isError && (
+        <QueryErrorNotice label="Die Entwurfs-Warteschlange konnte nicht geladen werden." onRetry={() => dunningQueue.refetch()} retrying={dunningQueue.isFetching} />
+      )}
+
       {/* v4.134.0 — Entwurfs-Warteschlange: vom Zyklus erzeugte Erinnerungen zur Freigabe */}
       {queue.length > 0 && (
         <Card className="border-primary/40">
@@ -284,6 +328,8 @@ export default function Forderungen() {
         <CardContent>
           {open.isLoading ? (
             <div className="space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+          ) : open.isError ? (
+            <QueryErrorNotice label="Die offenen Forderungen konnten nicht geladen werden." onRetry={() => open.refetch()} retrying={open.isFetching} />
           ) : rows.length === 0 ? (
             <div className="text-sm text-muted-foreground py-6 text-center">
               Noch keine offenen Forderungen. Klicke auf „Jetzt scannen", um deinen Gesendet-Ordner
@@ -344,7 +390,9 @@ export default function Forderungen() {
                       ) : (
                         <span className="text-xs text-muted-foreground">noch nicht faellig</span>
                       )}
-                      <Button size="sm" variant="ghost" className="ml-1" onClick={() => markPaid.mutate({ arInvoiceId: r.id })} title="Als bezahlt markieren">
+                      <Button size="sm" variant="ghost" className="ml-1"
+                        onClick={() => markPaid.mutate({ arInvoiceId: r.id }, { onError: () => toast.error("Konnte die Forderung nicht als bezahlt markieren.") })}
+                        title="Als bezahlt markieren">
                         <CheckCircle2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -356,6 +404,9 @@ export default function Forderungen() {
         </CardContent>
       </Card>
 
+      {paid.isError && (
+        <QueryErrorNotice label="Die bezahlten Forderungen konnten nicht geladen werden." onRetry={() => paid.refetch()} retrying={paid.isFetching} />
+      )}
       {paidRows.length > 0 && (
         <Card>
           <CardHeader><CardTitle className="text-base text-muted-foreground">Bezahlt ({paidRows.length})</CardTitle></CardHeader>
@@ -365,10 +416,14 @@ export default function Forderungen() {
                 <div key={r.id} className="flex justify-between">
                   <span>{r.counterpart_name || r.counterpart_email} {r.invoice_ref ? `· ${r.invoice_ref}` : ""}</span>
                   <span className="flex items-center gap-2">{r.amount_display}
-                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => markPaid.mutate({ arInvoiceId: r.id, undo: true })}>rueckgaengig</Button>
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs"
+                      onClick={() => markPaid.mutate({ arInvoiceId: r.id, undo: true }, { onError: () => toast.error("Konnte den Bezahlt-Status nicht zuruecknehmen.") })}>rueckgaengig</Button>
                   </span>
                 </div>
               ))}
+              {paidRows.length > 10 && (
+                <div className="pt-1 text-xs">… und {paidRows.length - 10} weitere (vollstaendig im Excel-Export).</div>
+              )}
             </div>
           </CardContent>
         </Card>

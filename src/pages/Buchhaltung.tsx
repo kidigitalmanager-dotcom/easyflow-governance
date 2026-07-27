@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCashIndex, useApSettings, useSetApSettings } from "@/hooks/use-api";
-import { exportApXlsx, exportApCsvDatev } from "@/lib/api-client";
+import { exportApXlsx, exportApCsvDatev, exportArXlsx } from "@/lib/api-client";
+import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,7 +23,7 @@ import {
 
 const HORIZONS = [7, 14, 30, 60];
 const AMPEL: Record<string, { dot: string; text: string; label: string }> = {
-  gruen: { dot: "bg-emerald-500", text: "text-emerald-600", label: "gruen" },
+  gruen: { dot: "bg-emerald-500", text: "text-emerald-600", label: "grün" },
   gelb: { dot: "bg-amber-500", text: "text-amber-600", label: "gelb" },
   rot: { dot: "bg-red-500", text: "text-red-600", label: "rot" },
 };
@@ -40,9 +41,28 @@ export default function Buchhaltung() {
   const setSettings = useSetApSettings();
 
   const d = ci.data;
-  const ampel = d ? (AMPEL[d.ampel] ?? AMPEL.gelb) : AMPEL.gelb;
+  // 2026-07-27: KEINE Ampel-Aussage ohne Daten. Vorher stand waehrend des
+  // Ladens (und bei Fehlern) hart "Liquiditaet gelb" — eine erfundene Zahl.
+  const ampel = d ? (AMPEL[d.ampel] ?? null) : null;
   const featureOn = settings.data?.feature_on ?? false;
   const s = settings.data?.settings;
+
+  // 2026-07-27: gespeicherten Horizont (cash_horizon_days) beim Laden uebernehmen
+  // und Aenderungen zurueckschreiben — vorher war die Server-Einstellung tot.
+  const horizonSynced = useRef(false);
+  useEffect(() => {
+    const saved = s?.cash_horizon_days;
+    if (!horizonSynced.current && typeof saved === "number" && HORIZONS.includes(saved)) {
+      horizonSynced.current = true;
+      setHorizon(saved);
+    }
+  }, [s?.cash_horizon_days]);
+  function pickHorizon(h: number) {
+    setHorizon(h);
+    horizonSynced.current = true;
+    // Best-effort persistieren; die Anzeige rechnet unabhaengig davon mit h.
+    if (featureOn) setSettings.mutate({ cash_horizon_days: h });
+  }
 
   async function toggleAutoIngest(v: boolean) {
     try { await setSettings.mutateAsync({ auto_ingest: v }); toast.success(v ? "Auto-Erfassung an." : "Auto-Erfassung aus."); }
@@ -62,7 +82,7 @@ export default function Buchhaltung() {
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-md border overflow-hidden">
             {HORIZONS.map((h) => (
-              <button key={h} onClick={() => setHorizon(h)}
+              <button key={h} onClick={() => pickHorizon(h)}
                 className={`px-3 py-1.5 text-sm ${horizon === h ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}>
                 {h} Tage
               </button>
@@ -73,6 +93,10 @@ export default function Buchhaltung() {
               <Button variant="outline" size="sm"><Download className="h-4 w-4" /> Export <ChevronDown className="h-3 w-3 opacity-60" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Forderungen exportieren</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => exportArXlsx().catch(() => toast.error("Export fehlgeschlagen."))}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel (Betrieb)
+              </DropdownMenuItem>
               <DropdownMenuLabel>Verbindlichkeiten exportieren</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => exportApXlsx().catch(() => toast.error("Export fehlgeschlagen."))}>
                 <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel (Betrieb)
@@ -89,16 +113,20 @@ export default function Buchhaltung() {
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Cash-Index ({horizon} Tage)</CardTitle></CardHeader>
         <CardContent>
-          {ci.isLoading ? <Skeleton className="h-16 w-full" /> : (
+          {ci.isLoading ? <Skeleton className="h-16 w-full" /> : ci.isError ? (
+            <QueryErrorNotice label="Der Cash-Index konnte nicht berechnet werden." onRetry={() => ci.refetch()} retrying={ci.isFetching} />
+          ) : (
             <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
               <div>
                 <div className={`text-3xl font-semibold ${d && d.cash_index < 0 ? "text-red-600" : "text-emerald-600"}`}>{eur(d?.cash_index)}</div>
                 <div className="text-xs text-muted-foreground">erwartete Zufluesse minus Abfluesse im Horizont</div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className={`inline-block h-3 w-3 rounded-full ${ampel.dot}`} />
-                <span className={`text-sm font-medium ${ampel.text}`}>Liquiditaet {ampel.label}</span>
-              </div>
+              {ampel && (
+                <div className="flex items-center gap-2">
+                  <span className={`inline-block h-3 w-3 rounded-full ${ampel.dot}`} />
+                  <span className={`text-sm font-medium ${ampel.text}`}>Liquiditaet {ampel.label}</span>
+                </div>
+              )}
               <div>
                 <div className="text-lg font-medium">{d?.coverage_ratio != null ? `${(d.coverage_ratio * 100).toFixed(0)} %` : "—"}</div>
                 <div className="text-xs text-muted-foreground">Deckung (Forderungen / Verbindlichkeiten)</div>
@@ -117,7 +145,9 @@ export default function Buchhaltung() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            {ci.isLoading ? <Skeleton className="h-16 w-full" /> : (
+            {ci.isLoading ? <Skeleton className="h-16 w-full" /> : ci.isError ? (
+              <QueryErrorNotice label="Forderungs-Summen nicht ladbar." />
+            ) : (
               <>
                 <Row label="Offen gesamt" value={eur(d?.receivables.total)} />
                 <Row label={`Faellig in ${horizon} Tagen`} value={eur(d?.receivables.due_horizon)} strong />
@@ -134,7 +164,9 @@ export default function Buchhaltung() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            {ci.isLoading ? <Skeleton className="h-16 w-full" /> : (
+            {ci.isLoading ? <Skeleton className="h-16 w-full" /> : ci.isError ? (
+              <QueryErrorNotice label="Verbindlichkeits-Summen nicht ladbar." />
+            ) : (
               <>
                 <Row label="Offen gesamt" value={eur(d?.payables.total)} />
                 <Row label={`Faellig in ${horizon} Tagen`} value={eur(d?.payables.due_horizon)} strong />
@@ -150,7 +182,12 @@ export default function Buchhaltung() {
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-base">Rechnungseingang</CardTitle></CardHeader>
         <CardContent>
-          {!featureOn ? (
+          {settings.isLoading ? (
+            /* 2026-07-27: waehrend des Ladens NICHT "nicht freigeschaltet" behaupten. */
+            <Skeleton className="h-6 w-2/3" />
+          ) : settings.isError ? (
+            <QueryErrorNotice label="Die Einstellung konnte nicht geladen werden." onRetry={() => settings.refetch()} retrying={settings.isFetching} />
+          ) : !featureOn ? (
             <div className="text-sm text-muted-foreground">
               Die automatische Erfassung eingehender Rechnungen ist fuer deinen Betrieb noch nicht
               freigeschaltet. Du kannst Verbindlichkeiten jederzeit manuell anlegen.
