@@ -12,8 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { toast } from "sonner";
-import { Users, Plus, Loader2, UserX, UserCheck, Info } from "lucide-react";
+import { Users, Plus, Loader2, UserX, UserCheck } from "lucide-react";
 
 function centsToEuroStr(cents: number | null): string {
   return cents == null ? "" : (cents / 100).toFixed(2).replace(".", ",");
@@ -40,7 +41,11 @@ export function TeamTab() {
   const [defaultCost, setDefaultCost] = useState<string | null>(null);
 
   const members = team.data?.members || [];
-  const backendMissing = team.isError; // 403/404 vor Deploy/Migration
+  // 2026-07-27: hier stand eine feste Meldung "Deploy v4.132.0 + Migration
+  // ausstehend". Live laeuft laengst v4.148.0 - die Meldung zeigte also auf die
+  // falsche Ursache und liess einen echten Ladefehler wie eine Bauhinweis-Notiz
+  // aussehen. Jetzt der einheitliche Fehlerzustand mit Erneut-Knopf.
+  const loadFailed = team.isError;
   const effDefaultRate = defaultRate != null ? defaultRate : centsToEuroStr(team.data?.settings?.default_hourly_rate_cents ?? null);
   const effDefaultCost = defaultCost != null ? defaultCost : centsToEuroStr(team.data?.settings?.default_cost_rate_cents ?? null);
 
@@ -118,11 +123,12 @@ export function TeamTab() {
           Hinweis: Deine <b>Vertriebler</b> (Telefonie/Co-Pilot) sind davon getrennt und werden unter Voice &amp; Co-Pilot verwaltet.
         </p>
 
-        {backendMissing && (
-          <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-400/10 p-3 text-sm text-amber-500">
-            <Info className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>Team-Verwaltung ist auf dem Server noch nicht aktiv (Deploy v4.132.0 + Migration ausstehend).</span>
-          </div>
+        {loadFailed && (
+          <QueryErrorNotice
+            label="Die Mitarbeiter-Liste konnte nicht geladen werden."
+            onRetry={() => team.refetch()}
+            retrying={team.isFetching}
+          />
         )}
 
         {/* Anlegen */}
@@ -146,8 +152,11 @@ export function TeamTab() {
         {/* Liste */}
         <div className="space-y-2">
           {team.isLoading && <><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></>}
-          {!team.isLoading && !backendMissing && members.length === 0 && (
-            <p className="text-sm text-muted-foreground py-2">Noch keine Mitarbeiter angelegt.</p>
+          {!team.isLoading && !loadFailed && members.length === 0 && (
+            <p className="py-2 text-sm text-muted-foreground">
+              Noch keine Mitarbeiter angelegt. Lege oben den ersten an; er kann sich
+              danach mit derselben E-Mail unter app.useeasy.ai registrieren.
+            </p>
           )}
           {members.map((m) => (
             <div key={m.id} className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${m.active ? "" : "opacity-60"}`}>

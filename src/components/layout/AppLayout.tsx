@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import {
-  AlignLeft, Banknote, Activity, Settings, Users, LogOut, ChevronLeft,
-  LayoutDashboard, ListChecks, History, BookOpen, PhoneCall, Shield,
-  GraduationCap, Receipt, FileText, AlertTriangle, Sparkles,
-  Database, Wallet, CreditCard, FileSpreadsheet, type LucideIcon,
-} from "lucide-react";
+import { LogOut, ChevronLeft, Shield } from "lucide-react";
+import { AREAS, COLLAPSE_KEY, areaForPath, isNavActive, type Area } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
 import { MailboxHealthBanner } from "@/components/MailboxHealthBanner";
@@ -41,96 +37,6 @@ import { useAuth } from "@/contexts/AuthContext";
  * eigenen Bereich gemacht; das bleibt hier erhalten (fuenftes Symbol). Falls das
  * doch unter System soll, ist es ein Eintrag weniger in AREAS.
  */
-
-type NavItem = { to: string; label: string; icon: LucideIcon };
-type Area = { key: string; label: string; icon: LucideIcon; items: NavItem[] };
-
-const AREAS: Area[] = [
-  {
-    key: "arbeit",
-    label: "Arbeit",
-    icon: AlignLeft,
-    items: [
-      { to: "/", label: "Heute", icon: LayoutDashboard },
-      { to: "/review", label: "Freigaben", icon: ListChecks },
-      { to: "/audit", label: "Verlauf", icon: History },
-    ],
-  },
-  {
-    // Umbau 2026-07-27: Rechnungen sind KEIN eigener Punkt mehr, sondern
-    // Untertab von Forderungen (/forderungen?tab=rechnungen).
-    key: "geld",
-    label: "Geld",
-    icon: Banknote,
-    items: [
-      { to: "/buchhaltung", label: "Übersicht", icon: Wallet },
-      { to: "/forderungen", label: "Forderungen & Rechnungen", icon: Receipt },
-      { to: "/verbindlichkeiten", label: "Verbindlichkeiten", icon: CreditCard },
-      { to: "/angebote", label: "Angebote", icon: FileText },
-    ],
-  },
-  {
-    key: "mitarbeiter",
-    label: "Mitarbeiter",
-    icon: Users,
-    items: [
-      { to: "/mitarbeiter", label: "Team", icon: Users },
-      { to: "/zeiterfassung", label: "Abrechnung", icon: FileSpreadsheet },
-    ],
-  },
-  {
-    // Gesundheit und Fruehwarnung liegen auf EINER Seite, unterschieden per ?sec=.
-    key: "signale",
-    label: "Signale",
-    icon: Activity,
-    items: [
-      { to: "/signale?sec=signale", label: "Gesundheit", icon: Activity },
-      { to: "/signale?sec=risk_shield", label: "Frühwarnung", icon: AlertTriangle },
-      { to: "/chancen", label: "Chancen", icon: Sparkles },
-    ],
-  },
-  {
-    key: "system",
-    label: "System",
-    icon: Settings,
-    items: [
-      { to: "/playbooks", label: "Playbooks", icon: BookOpen },
-      { to: "/datenquellen", label: "Datenquellen", icon: Database },
-      { to: "/voice", label: "Voice & Co-Pilot", icon: PhoneCall },
-      { to: "/einstellungen", label: "Einstellungen", icon: Settings },
-      { to: "/onboarding", label: "Onboarding", icon: GraduationCap },
-    ],
-  },
-];
-
-const COLLAPSE_KEY = "ue_sidebar_collapsed";
-
-/**
- * Aktiv-Erkennung. Nav-Ziele duerfen eine Query tragen (z.B.
- * /signale?sec=risk_shield) — dann muss auch die Query passen, sonst waeren
- * "Gesundheit" und "Fruehwarnung" gleichzeitig aktiv.
- */
-export function isNavActive(to: string, pathname: string, search: string): boolean {
-  const [toPath, toQuery] = to.split("?");
-  if (toPath !== pathname) return false;
-  if (!toQuery) return true;
-  const want = new URLSearchParams(toQuery);
-  const have = new URLSearchParams(search);
-  for (const [k, v] of want) if (have.get(k) !== v) return false;
-  return true;
-}
-
-/** Welcher Bereich gehoert zur aktuellen Route? Fallback: Arbeit. */
-export function areaForPath(pathname: string): string {
-  if (pathname.startsWith("/admin")) return "system";
-  for (const a of AREAS) {
-    for (const i of a.items) {
-      const base = i.to.split("?")[0];
-      if (base === "/" ? pathname === "/" : pathname.startsWith(base)) return a.key;
-    }
-  }
-  return "arbeit";
-}
 
 function initials(s: string): string {
   const parts = s.replace(/[@._-]+/g, " ").trim().split(/\s+/).filter(Boolean);

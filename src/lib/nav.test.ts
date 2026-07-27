@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isNavActive, areaForPath } from "./AppLayout";
+import { isNavActive, areaForPath } from "./nav";
 
 describe("isNavActive", () => {
   it("matcht einfache Pfade", () => {

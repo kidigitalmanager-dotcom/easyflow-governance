@@ -58,6 +58,23 @@ Verbindlich für alle Seiten. Quelle: Leons Entwurf `UseEasy Console.html`
 | `EmptyState` | Leer-Zustand mit Icon, Titel, Beschreibung |
 | `ProgressRing` | SVG-Ring, animiert per `stroke-dashoffset` (1.2 s) |
 
+Zusammengesetzte Bausteine (jeweils mit reiner, getesteter Logik daneben):
+
+| Komponente | Logik | Zweck |
+|---|---|---|
+| `FristenStrip` | `lib/fristen-strip.ts` | 14 Tageskacheln, Farbe aus echten Feldern (`open_commitments === 0` = erledigt, nie geraten) |
+| `UmsatzChart` | `lib/ar-metrics.ts` (`monthlyRevenue`) | Umsatz je Monat, 12 Monate, bezahlt und offen gestapelt |
+| `SignalAmpel` | `lib/signal-table.ts` | EINE Ampel (Bestätigt · Beobachtung · Stabil) plus Tabelle Signal / Auslöser / Erkannt / Vorschlag |
+
+Navigation: `lib/nav.ts` haelt `AREAS`, `areaForPath` und `isNavActive`. Die
+Seitenleiste ist zweistufig (Bereichs-Leiste + Panel des aktiven Bereichs);
+neue Seiten kommen in genau einen Bereich, damit nie wieder Punkte unsichtbar
+unter die Fensterkante rutschen.
+
+Uebersprungene Server-Antworten (`skipped`) laufen IMMER durch
+`lib/scan-result.ts`. Rohe Enums wie `tenant_disabled` gehoeren nicht in die
+Oberflaeche, und eine ZAHL in `skipped` ist ein Zaehler, kein Fehler.
+
 `@/components/ue/motion`: `useCountUp`, `usePrefersReducedMotion`.
 
 ## Animations-Utilities (`src/index.css`)

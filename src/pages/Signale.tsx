@@ -32,6 +32,7 @@ import { UpsellSuggestionCard } from "@/components/capital/UpsellSuggestionCard"
 import { JanaKnowledgeProposalCard } from "@/components/JanaKnowledgeProposalCard";
 import { MorningBriefing } from "@/components/capital/MorningBriefing";
 import { RoiSavingsCard } from "@/components/RoiSavingsCard";
+import { SignalAmpel } from "@/components/ue/SignalAmpel";
 import { ReturnsInsightsCard } from "@/components/ReturnsInsightsCard";
 import { MorningBriefingDialog } from "@/components/capital/MorningBriefingDialog";
 import { OnboardingCoach } from "@/components/onboarding/OnboardingCoach";
@@ -443,6 +444,11 @@ export default function Signale() {
                 Compliance-Lage. Eine Ampel-Sprache: Bestätigt · Beobachtung · Stabil.
               </p>
             </div>
+            {/* 27.07.2026: die EINE Ampel + die Signal-Tabelle aus dem Entwurf.
+                Beides fehlte; die Seite war bis dahin nur eine Komposition der
+                alten Karten. Die Einordnung bestaetigt/beobachtung ist die
+                bestehende, aus zwei Backtests kalibrierte Regel. */}
+            <SignalAmpel alerts={dash?.alerts} loading={mine.isLoading} />
             <RiskShieldCard />
             <ComplianceRadarCard />
             <p className="text-xs text-tx-weak leading-relaxed">
