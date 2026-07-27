@@ -105,7 +105,7 @@ function RepPicker({
 }
 
 export default function LeadUploadTab() {
-  const { data, isLoading, error } = useLeadLists();
+  const { data, isLoading, error, refetch: refetchLists } = useLeadLists();
   const repsQ = useVoiceReps();
   const uploadMut = useLeadUpload();
   const deleteMut = useLeadListDelete();
@@ -181,9 +181,21 @@ export default function LeadUploadTab() {
     }
   };
 
+  // 2026-07-27: Listen werden auch aus anderen Fenstern/Sessions geloescht und
+  // neu hochgeladen (dann mit NEUER list_id). Eine offene Ansicht kann also
+  // veraltete IDs zeigen — der Server antwortet dann 404 list_not_found. Das ist
+  // kein Fehlerfall fuer den Nutzer: Ansicht aktualisieren statt kryptischem Code.
+  const staleGone = (e: unknown) => /list_not_found|invalid_list_id/.test(errText(e));
   const removeList = async (listId: string, name: string) => {
     try { await deleteMut.mutateAsync(listId); toast.success(`„${name}" gelöscht`); }
-    catch (e) { toast.error(errText(e)); }
+    catch (e) {
+      if (staleGone(e)) {
+        toast.info(`„${name}" existiert nicht mehr — die Ansicht war veraltet und wurde aktualisiert.`);
+      } else {
+        toast.error(`Löschen fehlgeschlagen: ${errText(e)}`);
+      }
+      refetchLists();
+    }
   };
 
   const openEdit = (l: LeadListSummary) => { setEditList(l); setEditSel(l.assigned_rep_ids ?? []); };
@@ -199,7 +211,15 @@ export default function LeadUploadTab() {
           : `„${editList.list_name}" → ${editSel.map(repName).join(", ")}`,
       );
       setEditList(null);
-    } catch (e) { toast.error(errText(e)); }
+    } catch (e) {
+      if (staleGone(e)) {
+        toast.info(`„${editList.list_name}" existiert nicht mehr — die Ansicht war veraltet und wurde aktualisiert.`);
+        setEditList(null);
+        refetchLists();
+      } else {
+        toast.error(`Zuweisung fehlgeschlagen: ${errText(e)}`);
+      }
+    }
   };
 
   const ListRow = ({ l }: { l: LeadListSummary }) => {

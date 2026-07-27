@@ -492,6 +492,10 @@ export function useLeadLists() {
     queryFn: fetchLeadLists,
     enabled: !!session,
     staleTime: 30_000,
+    // 2026-07-27: Listen aendern sich auch aus anderen Fenstern/Sessions —
+    // ohne Auto-Refresh sammelt eine offene Ansicht veraltete list_ids
+    // (Loeschen zeigt dann list_not_found, obwohl alles in Ordnung ist).
+    refetchInterval: 45_000,
   });
 }
 
