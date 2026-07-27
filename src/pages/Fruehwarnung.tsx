@@ -1,35 +1,16 @@
-import { AlertTriangle } from "lucide-react";
-import { RiskShieldCard } from "@/components/capital/RiskShieldCard";
-import { ComplianceRadarCard } from "@/components/capital/ComplianceRadarCard";
+import { Navigate } from "react-router-dom";
 
 /**
- * Redesign 07.07.2026: Alles, was warnt, an einem Ort.
- * Reine Komposition bestehender, self-contained Karten (Risk Shield + Compliance-Radar).
- * Die Karten leben zusaetzlich weiter auf /signale (nichts faellt weg).
+ * Frühwarnung — Redesign 27.07.2026.
+ *
+ * Leons Entwurf kennt nur EINEN Ort für "was warnt": Signale & Gesundheit.
+ * Die Seite ist deshalb mit /signale zusammengeführt und leitet dorthin —
+ * in genau den Bereich, der vorher hier stand (Risk Shield + Compliance-Radar).
+ *
+ * Die Route bleibt bestehen, damit gespeicherte Links, die Cmd-K-Suche und der
+ * Sidebar-Punkt weiter funktionieren. Es geht nichts verloren, es liegt nur
+ * nicht mehr an zwei Stellen.
  */
 export default function Fruehwarnung() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-p1" />
-          Frühwarnung
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Alles, was warnt, an einem Ort: Partner-Watchlist und eigene Rechts- und Compliance-Lage.
-          Eine Ampel-Sprache: Bestätigt · Beobachtung · Stabil.
-        </p>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2 items-start">
-        <RiskShieldCard />
-        <ComplianceRadarCard />
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        Bewertung nur aus öffentlichen Signalen bzw. dem eigenen Postfach. Keine Rechtsberatung.
-        Investoren sehen ausschließlich aggregierte Indizes, nie Einzel-Signale.
-      </p>
-    </div>
-  );
+  return <Navigate to="/signale?sec=risk_shield" replace />;
 }

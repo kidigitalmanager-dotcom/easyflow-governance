@@ -202,9 +202,9 @@ export default function Buchhaltung() {
             <QueryErrorNotice label="Forderungs-Summen nicht ladbar." />
           ) : (
             <div className="space-y-1">
-              <Row label="Offen gesamt" value={eur(d?.receivables.total)} />
-              <Row label={`Fällig in ${horizon} Tagen`} value={eur(d?.receivables.due_horizon)} strong />
-              <Row label="davon überfällig" value={eur(d?.receivables.overdue)} muted />
+              <Row label="Offen gesamt" value={eur(d?.receivables?.total)} />
+              <Row label={`Fällig in ${horizon} Tagen`} value={eur(d?.receivables?.due_horizon)} strong />
+              <Row label="davon überfällig" value={eur(d?.receivables?.overdue)} muted />
               <Link
                 to="/forderungen"
                 className="inline-flex items-center gap-1 pt-1 text-xs text-primary hover:underline"
@@ -228,9 +228,9 @@ export default function Buchhaltung() {
             <QueryErrorNotice label="Verbindlichkeits-Summen nicht ladbar." />
           ) : (
             <div className="space-y-1">
-              <Row label="Offen gesamt" value={eur(d?.payables.total)} />
-              <Row label={`Fällig in ${horizon} Tagen`} value={eur(d?.payables.due_horizon)} strong />
-              <Row label="davon überfällig (im Verzug)" value={eur(d?.payables.overdue)} muted />
+              <Row label="Offen gesamt" value={eur(d?.payables?.total)} />
+              <Row label={`Fällig in ${horizon} Tagen`} value={eur(d?.payables?.due_horizon)} strong />
+              <Row label="davon überfällig (im Verzug)" value={eur(d?.payables?.overdue)} muted />
               <Link
                 to="/verbindlichkeiten"
                 className="inline-flex items-center gap-1 pt-1 text-xs text-primary hover:underline"

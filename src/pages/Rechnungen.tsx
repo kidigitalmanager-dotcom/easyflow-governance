@@ -9,6 +9,12 @@
 // Angebote-Seite und springt per ?tab=rechnungen&invoice=<id> hierher.
 // Neu ausserdem: Bestaetigungsdialog vor Verwerfen/Stornieren, echte
 // Fehlerzustaende statt falscher Leere.
+//
+// Redesign 27.07.2026: PageHeader/SectionCard statt handgebautem <h1> + shadcn-Card.
+// WICHTIG fuer die Einbettung: Forderungen.tsx rendert oberhalb nur die Untertab-Chips
+// und verlaesst sich darauf, dass diese View ihren eigenen Kopf mitbringt — der
+// PageHeader bleibt deshalb hier. Ausserdem KEIN eigenes max-w/p-* mehr: Breite und
+// Polsterung macht AppLayout. Die Druckansichten (InvoicePdf) bleiben bewusst hell.
 // -----------------------------------------------------------------------------
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -25,8 +31,6 @@ import { InvoicePdf } from "@/components/documents/InvoicePdf";
 import { BillingProfileForm } from "@/components/documents/BillingProfileForm";
 import { TimeApplyButton } from "@/components/documents/TimeApplyDialog"; // v4.132.0 — Zeiterfassung
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +40,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
+import { PageHeader, SectionCard, EmptyState, Dot, type DotTone } from "@/components/ue/primitives";
 import { toast } from "sonner";
 import {
   ReceiptText, ArrowLeft, Save, CheckCircle2, Loader2, Printer, FileDown, Plus, Trash2, Settings, AlertTriangle,
@@ -48,13 +53,24 @@ const EMPTY_DRAFT: InvoiceDraftState = {
   buyer_vat_id: "", service_date: "", issue_date: "",
 };
 
+/* Server-Status englisch -> deutscher Klartext + Statuspunkt. */
+const INVOICE_STATUS: Record<string, { label: string; tone: DotTone }> = {
+  final: { label: "finalisiert", tone: "emerald" },
+  void: { label: "storniert", tone: "danger" },
+  draft: { label: "Entwurf", tone: "amber" },
+};
+function invoiceStatus(raw: string | null | undefined): { label: string; tone: DotTone } {
+  return INVOICE_STATUS[raw ?? ""] ?? INVOICE_STATUS.draft;
+}
+
 function isoToDe(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
   return m ? `${m[3]}.${m[2]}.${m[1]}` : (iso || "");
 }
 function deToIso(v: string): string {
   const s = (v || "").trim();
-  const m = /^(\d{1,2})[.\/](\d{1,2})[.\/](\d{2,4})$/.exec(s);
+  // Trennzeichen Punkt ODER Schraegstrich — beides in der Zeichenklasse, kein Escape noetig.
+  const m = /^(\d{1,2})[./](\d{1,2})[./](\d{2,4})$/.exec(s);
   if (m) {
     const y = m[3].length === 2 ? 2000 + parseInt(m[3], 10) : parseInt(m[3], 10);
     return `${y}-${String(m[2]).padStart(2, "0")}-${String(m[1]).padStart(2, "0")}`;
@@ -107,6 +123,10 @@ export function RechnungenView() {
   const [showPdf, setShowPdf] = useState(false);
   const [zugferdBusy, setZugferdBusy] = useState(false);
   const [confirmVoid, setConfirmVoid] = useState(false);
+  // 2026-07-27: auch das Finalisieren bekommt eine Rueckfrage. Es vergibt die
+  // lueckenlose Rechnungsnummer und sperrt das Dokument — beides laesst sich
+  // nur noch per Storno "korrigieren", und die Nummer bleibt dann verbraucht.
+  const [confirmFinalize, setConfirmFinalize] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const invoices = useInvoices(50);
@@ -187,6 +207,7 @@ export function RechnungenView() {
   async function doFinalize() {
     if (editId == null) return;
     if (dirty) { toast.error("Bitte zuerst speichern."); return; }
+    setConfirmFinalize(false);
     try {
       const res = await finalize.mutateAsync(editId);
       if (!res.ok || res.status !== "final") {
@@ -240,13 +261,20 @@ export function RechnungenView() {
   // ── STAMMDATEN-Ansicht ──────────────────────────────────────────────────────
   if (view === "billing") {
     return (
-      <div className="p-4 sm:p-6 space-y-4 max-w-3xl">
-        <Button variant="ghost" size="sm" onClick={() => setView("list")}><ArrowLeft className="mr-1 h-4 w-4" /> Zurück</Button>
-        <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2"><Settings className="h-5 w-5" /> Rechnungs-Stammdaten</h1>
-          <p className="text-sm text-muted-foreground">Ihre Firmenangaben erscheinen auf jeder Rechnung und sind für die Finalisierung Pflicht (§14 UStG).</p>
-        </div>
-        <BillingProfileForm onSaved={() => billing.refetch()} />
+      <div className="space-y-6">
+        <PageHeader
+          kicker="Buchhaltung"
+          title="Rechnungs-Stammdaten"
+          subtitle="Deine Firmenangaben erscheinen auf jeder Rechnung und sind für die Finalisierung Pflicht (§14 UStG)."
+          actions={
+            <Button variant="ghost" size="sm" onClick={() => setView("list")}>
+              <ArrowLeft className="mr-1 h-4 w-4" /> Zurück
+            </Button>
+          }
+        />
+        <SectionCard title="Verkäufer-Angaben" subtitle="Firma, Anschrift, Steuernummer und Bankverbindung">
+          <BillingProfileForm onSaved={() => billing.refetch()} />
+        </SectionCard>
       </div>
     );
   }
@@ -254,26 +282,48 @@ export function RechnungenView() {
   // ── EDITOR-Ansicht ──────────────────────────────────────────────────────────
   if (view === "editor" && editId != null) {
     if (invoiceQuery.isLoading && draft === EMPTY_DRAFT) {
-      return <div className="p-6 space-y-3"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
+      return (
+        <div className="space-y-6">
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="h-64 w-full rounded-[var(--radius)]" />
+        </div>
+      );
     }
     // 2026-07-27: Ladefehler ist ein Ladefehler — vorher wurde hier ein leeres,
     // editierbares Formular gerendert, das wie eine echte Rechnung aussah.
     if (invoiceQuery.isError && !loaded) {
       return (
-        <div className="p-4 sm:p-6 space-y-4 max-w-5xl">
-          <Button variant="ghost" size="sm" onClick={backToList}><ArrowLeft className="mr-1 h-4 w-4" /> Zurück</Button>
+        <div className="space-y-6">
+          <PageHeader
+            kicker="Buchhaltung"
+            title="Rechnung"
+            actions={<Button variant="ghost" size="sm" onClick={backToList}><ArrowLeft className="mr-1 h-4 w-4" /> Zurück</Button>}
+          />
           <QueryErrorNotice label="Die Rechnung konnte nicht geladen werden." onRetry={() => invoiceQuery.refetch()} retrying={invoiceQuery.isFetching} />
         </div>
       );
     }
     const docNumber = loaded?.doc_number || null;
-    const dueDate = loaded?.due_date || null;
+    const st = invoiceStatus(loaded?.status);
     return (
-      <div className="p-4 sm:p-6 space-y-4 max-w-5xl">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <Button variant="ghost" size="sm" onClick={backToList}><ArrowLeft className="mr-1 h-4 w-4" /> Zurück</Button>
-          <div className="flex items-center gap-2 flex-wrap">
-            {docNumber && <Badge variant="secondary">Rechnung {docNumber}</Badge>}
+      <div className="space-y-6">
+        <PageHeader
+          kicker="Buchhaltung"
+          title={docNumber ? `Rechnung ${docNumber}` : "Rechnungs-Entwurf"}
+          subtitle={
+            isDraft
+              ? "Der PDF-Download verschickt nichts — das machst du selbst. Finalisieren vergibt die lückenlose Rechnungsnummer."
+              : `Diese Rechnung ist ${st.label} und kann nicht mehr bearbeitet werden.`
+          }
+          actions={<Button variant="ghost" size="sm" onClick={backToList}><ArrowLeft className="mr-1 h-4 w-4" /> Zurück</Button>}
+        />
+
+        {/* Aktionsleiste: alles, was mit diesem Dokument passieren kann. */}
+        <div className="glass-card flex flex-wrap items-center gap-2 px-4 py-3">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
+            <Dot tone={st.tone} /> {st.label}
+          </span>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setShowPdf(true)}><Printer className="mr-1 h-4 w-4" /> Als PDF</Button>
             {isDraft && (
               <>
@@ -285,7 +335,7 @@ export function RechnungenView() {
                   {updInv.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />} Speichern
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setConfirmVoid(true)} disabled={busy}><Trash2 className="mr-1 h-4 w-4" /> Verwerfen</Button>
-                <Button size="sm" onClick={doFinalize} disabled={busy || !canFinalize}
+                <Button size="sm" onClick={() => setConfirmFinalize(true)} disabled={busy || !canFinalize}
                   title={dirty ? "Bitte zuerst speichern" : missing.length ? "Es fehlen: " + missing.join(", ") : ""}>
                   {finalize.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />} Finalisieren
                 </Button>
@@ -301,23 +351,32 @@ export function RechnungenView() {
               </>
             )}
           </div>
+          {dirty && (
+            <p className="w-full text-[11.5px] text-amber">Ungespeicherte Änderungen — vor der Finalisierung speichern.</p>
+          )}
         </div>
-        {dirty && <p className="text-xs text-amber-600">Ungespeicherte Änderungen - vor der Finalisierung speichern.</p>}
-        {!isDraft && <p className="text-xs text-muted-foreground">Diese Rechnung ist {loaded?.status === "final" ? "finalisiert" : "storniert"} und kann nicht mehr bearbeitet werden.</p>}
 
-        {/* §14-Vollstaendigkeit */}
-        {isDraft && missing.length > 0 && (
-          <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+        {/* §14-Vollstaendigkeit. 2026-07-27: ein Ladefehler der Stammdaten darf hier
+            NICHT als "Verkäufer-Stammdaten fehlen" erscheinen — das waere eine
+            falsche Tatsachenbehauptung ueber gepflegte Daten. */}
+        {isDraft && billing.isError && (
+          <QueryErrorNotice
+            label="Die Rechnungs-Stammdaten konnten nicht geladen werden."
+            onRetry={() => billing.refetch()}
+            retrying={billing.isFetching}
+          />
+        )}
+        {isDraft && !billing.isError && missing.length > 0 && (
+          <div className="flex items-start gap-2 rounded-[var(--radius)] border border-amber/40 bg-amber-surface px-3 py-2.5 text-sm text-amber">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>Für die Finalisierung fehlen noch: {missing.join(", ")}.
-              {!sellerComplete && <> <button className="underline" onClick={() => setView("billing")}>Stammdaten ausfüllen</button>.</>}
+              {!sellerComplete && <> <button className="underline underline-offset-2" onClick={() => setView("billing")}>Stammdaten ausfüllen</button>.</>}
             </span>
           </div>
         )}
 
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Empfänger & Leistung</CardTitle></CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
+        <SectionCard title="Empfänger & Leistung" subtitle="Pflichtangaben nach §14 UStG sind mit * markiert">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div><Label className="text-xs">Kunde / Empfänger *</Label>
               <Input value={draft.counterpart_name} disabled={!isDraft} onChange={(e) => onDraftChange({ ...draft, counterpart_name: e.target.value })} className="h-8" /></div>
             <div><Label className="text-xs">E-Mail</Label>
@@ -340,17 +399,32 @@ export function RechnungenView() {
               <Input value={draft.subject} disabled={!isDraft} onChange={(e) => onDraftChange({ ...draft, subject: e.target.value })} className="h-8" /></div>
             <div className="sm:col-span-2"><Label className="text-xs">Anschreiben (optional)</Label>
               <Textarea value={draft.cover_text} disabled={!isDraft} onChange={(e) => onDraftChange({ ...draft, cover_text: e.target.value })} rows={3} /></div>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
 
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Positionen</CardTitle></CardHeader>
-          <CardContent>
-            <InvoicePositionsTable state={draft} onChange={onDraftChange} readOnly={!isDraft} />
-          </CardContent>
-        </Card>
+        <SectionCard title="Positionen" subtitle="Summen rechnet die Console live mit; verbindlich ist der Server beim Speichern.">
+          <InvoicePositionsTable state={draft} onChange={onDraftChange} readOnly={!isDraft} />
+        </SectionCard>
 
+        {/* Druckansicht: bleibt bewusst HELL (Papier-Look, @media print in index.css). */}
         {showPdf && <InvoicePdf state={draft} seller={billing.data?.profile} docNumber={loaded?.doc_number} dueDate={loaded?.due_date} onClose={() => setShowPdf(false)} />}
+
+        <AlertDialog open={confirmFinalize} onOpenChange={setConfirmFinalize}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Rechnung jetzt finalisieren?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Die Rechnung bekommt ihre lückenlose Rechnungsnummer und lässt sich danach nicht mehr
+                bearbeiten. Korrigieren geht dann nur noch über eine Stornierung — die Nummer bleibt
+                dabei verbraucht. Versendet wird nichts; die PDF lädst du selbst herunter.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction onClick={doFinalize}>Finalisieren</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <AlertDialog open={confirmVoid} onOpenChange={setConfirmVoid}>
           <AlertDialogContent>
@@ -376,59 +450,85 @@ export function RechnungenView() {
 
   // ── LISTEN-Ansicht ──────────────────────────────────────────────────────────
   return (
-    <div className="p-4 sm:p-6 space-y-4 max-w-4xl">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2"><ReceiptText className="h-5 w-5" /> Rechnungen</h1>
-          <p className="text-sm text-muted-foreground">Erstellen Sie eine Rechnung aus einem freigegebenen Angebot - oder manuell. Der PDF-Download versendet nichts; das machen Sie selbst.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setView("billing")}><Settings className="mr-1 h-4 w-4" /> Stammdaten</Button>
-          <Button size="sm" onClick={generateManual} disabled={genInv.isPending}><Plus className="mr-1 h-4 w-4" /> Leere Rechnung</Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        kicker="Buchhaltung"
+        title="Rechnungen"
+        subtitle="Aus einem freigegebenen Angebot — oder manuell. Der PDF-Download verschickt nichts; das machst du selbst."
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => setView("billing")}><Settings className="mr-1 h-4 w-4" /> Stammdaten</Button>
+            <Button size="sm" onClick={generateManual} disabled={genInv.isPending}><Plus className="mr-1 h-4 w-4" /> Leere Rechnung</Button>
+          </>
+        }
+      />
 
-      {!sellerComplete && !billing.isLoading && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+      {/* 2026-07-27: Fehler beim Laden der Stammdaten NICHT als "unvollständig"
+          ausgeben — sonst schickt ein Verbindungsproblem den Betrieb ins Formular. */}
+      {billing.isError ? (
+        <QueryErrorNotice
+          label="Die Rechnungs-Stammdaten konnten nicht geladen werden."
+          onRetry={() => billing.refetch()}
+          retrying={billing.isFetching}
+        />
+      ) : !sellerComplete && !billing.isLoading ? (
+        <div className="flex items-start gap-2 rounded-[var(--radius)] border border-amber/40 bg-amber-surface px-3 py-2.5 text-sm text-amber">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>Ihre Rechnungs-Stammdaten sind noch unvollständig. <button className="underline" onClick={() => setView("billing")}>Jetzt ausfüllen</button> - vorher lassen sich keine Rechnungen finalisieren.</span>
+          <span>
+            Deine Rechnungs-Stammdaten sind noch unvollständig.{" "}
+            <button className="underline underline-offset-2" onClick={() => setView("billing")}>Jetzt ausfüllen</button> — vorher
+            lassen sich keine Rechnungen finalisieren.
+          </span>
         </div>
-      )}
+      ) : null}
 
       {/* Umbau 2026-07-27: hier stehen NUR noch erstellte Rechnungen. Die
           Umwandlung freigegebener Angebote lebt auf der Angebote-Seite. */}
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base">Rechnungen</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {invoices.isLoading && <><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></>}
-          {invoices.isError && (
+      <SectionCard title="Rechnungen" subtitle="Entwürfe, finalisierte und stornierte Belege" bodyClassName="p-0">
+        {invoices.isLoading ? (
+          <div className="space-y-2 p-4">
+            <Skeleton className="h-14 w-full rounded-lg" />
+            <Skeleton className="h-14 w-full rounded-lg" />
+          </div>
+        ) : invoices.isError ? (
+          <div className="p-4">
             <QueryErrorNotice label="Die Rechnungen konnten nicht geladen werden." onRetry={() => invoices.refetch()} retrying={invoices.isFetching} />
-          )}
-          {!invoices.isLoading && !invoices.isError && (invoices.data?.items?.length ?? 0) === 0 && (
-            <p className="text-sm text-muted-foreground py-4">Noch keine Rechnungen. Aus einem freigegebenen Angebot (Bereich „Angebote") oder über „Leere Rechnung" erstellen.</p>
-          )}
-          {invoices.data?.items?.map((inv: InvoiceListItem) => (
-            <div key={inv.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium truncate">{inv.doc_number || "Entwurf"}</span>
-                  <Badge variant={inv.status === "final" ? "default" : inv.status === "void" ? "destructive" : "secondary"} className="text-[10px]">
-                    {inv.status === "final" ? "finalisiert" : inv.status === "void" ? "storniert" : "Entwurf"}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground truncate">
-                  {inv.counterpart_name || inv.subject || ""}{inv.amount_gross != null ? " · " + fmtEUR(inv.amount_gross) : ""}
-                  {inv.created_at ? " · erstellt " + fmtDateDe(inv.created_at) : ""}
-                  {inv.issue_date ? " · Rechnungsdatum " + fmtDateDe(inv.issue_date) : ""}
-                </p>
-              </div>
-              <div className="shrink-0">
-                <Button variant="outline" size="sm" onClick={() => openInvoice(inv.id)}>Öffnen</Button>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+          </div>
+        ) : (invoices.data?.items?.length ?? 0) === 0 ? (
+          <EmptyState
+            icon={<ReceiptText className="h-7 w-7" />}
+            title="Noch keine Rechnungen."
+            description="Aus einem freigegebenen Angebot (Bereich „Angebote“) oder über „Leere Rechnung“ erstellen."
+          />
+        ) : (
+          <ul className="divide-y divide-line-soft">
+            {invoices.data?.items?.map((inv: InvoiceListItem) => {
+              const st = invoiceStatus(inv.status);
+              return (
+                <li key={inv.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate text-[13px] font-medium text-foreground">{inv.doc_number || "Entwurf"}</span>
+                      <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <Dot tone={st.tone} className="!h-1.5 !w-1.5" /> {st.label}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      {inv.counterpart_name || inv.subject || "–"}
+                      {inv.amount_gross != null ? <> · <span className="tabular">{fmtEUR(inv.amount_gross)}</span></> : null}
+                      {inv.created_at ? <> · erstellt <span className="tabular">{fmtDateDe(inv.created_at)}</span></> : null}
+                      {inv.issue_date ? <> · Rechnungsdatum <span className="tabular">{fmtDateDe(inv.issue_date)}</span></> : null}
+                    </p>
+                  </div>
+                  <div className="shrink-0">
+                    <Button variant="outline" size="sm" onClick={() => openInvoice(inv.id)}>Öffnen</Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </SectionCard>
     </div>
   );
 }

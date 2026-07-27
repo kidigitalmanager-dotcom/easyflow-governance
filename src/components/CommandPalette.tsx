@@ -30,7 +30,7 @@ const ENTRIES: Entry[] = [
   { label: "Team (Mitarbeiter)", to: "/mitarbeiter", group: "Mitarbeiter", keywords: "team logins rollen stundensatz mitarbeiter" },
   { label: "Abrechnung (Zeiterfassung)", to: "/zeiterfassung", group: "Mitarbeiter", keywords: "zeiten stunden projekte urlaub krank abrechnung" },
   { label: "Gesundheit (Signale)", to: "/signale", group: "Signale", keywords: "health index score kpi" },
-  { label: "Frühwarnung", to: "/fruehwarnung", group: "Signale", keywords: "risk shield compliance radar alerts warnung" },
+  { label: "Frühwarnung", to: "/signale?sec=risk_shield", group: "Signale", keywords: "risk shield compliance radar alerts warnung fruehwarnung" },
   { label: "Chancen", to: "/chancen", group: "Signale", keywords: "foerderung foerder-radar zuschuss upsell" },
   { label: "Jana fragen", to: "/signale?sec=jana", group: "Signale", keywords: "chat assistent erklaeren warum" },
   { label: "Förder-Radar", to: "/signale?sec=foerder", group: "Signale", keywords: "foerderung zuschuss programme" },

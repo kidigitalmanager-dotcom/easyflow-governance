@@ -12,6 +12,7 @@ import { OnboardingRunnerProvider } from "@/components/onboarding/OnboardingRunn
 import { CommandPalette } from "@/components/CommandPalette";
 import { JanaFab } from "@/components/JanaFab";
 import { BootSequence } from "@/components/BootSequence";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import logo from "@/assets/useeasy-logo.jpg";
 import { useMe } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,8 +60,11 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Signale",
     items: [
-      { to: "/signale", label: "Gesundheit", icon: Activity },
-      { to: "/fruehwarnung", label: "Frühwarnung", icon: AlertTriangle },
+      // Redesign 27.07.2026: Gesundheit und Fruehwarnung liegen jetzt auf EINER
+      // Seite (Leons Entwurf fuehrt beide zusammen). Beide Punkte bleiben in der
+      // Navigation, zeigen aber auf denselben Bereich mit unterschiedlichem ?sec=.
+      { to: "/signale?sec=signale", label: "Gesundheit", icon: Activity },
+      { to: "/signale?sec=risk_shield", label: "Frühwarnung", icon: AlertTriangle },
       { to: "/chancen", label: "Chancen", icon: Sparkles },
     ],
   },
@@ -75,6 +79,21 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
 ];
+
+/**
+ * Aktiv-Erkennung. Nav-Ziele duerfen eine Query tragen (z.B.
+ * /signale?sec=risk_shield) — dann muss auch die Query passen, sonst waeren
+ * "Gesundheit" und "Fruehwarnung" gleichzeitig aktiv.
+ */
+function isNavActive(to: string, pathname: string, search: string): boolean {
+  const [toPath, toQuery] = to.split("?");
+  if (toPath !== pathname) return false;
+  if (!toQuery) return true;
+  const want = new URLSearchParams(toQuery);
+  const have = new URLSearchParams(search);
+  for (const [k, v] of want) if (have.get(k) !== v) return false;
+  return true;
+}
 
 function initials(s: string): string {
   const parts = s.replace(/[@._-]+/g, " ").trim().split(/\s+/).filter(Boolean);
@@ -147,7 +166,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Navigation */}
         <nav className="flex-1 px-3 py-2 overflow-y-auto">
           {NAV_GROUPS.map((group) => {
-            const groupActive = group.items.some((i) => location.pathname === i.to)
+            const groupActive = group.items.some((i) => isNavActive(i.to, location.pathname, location.search))
               || (group.label === "System" && location.pathname.startsWith("/admin"));
             // Aktive Gruppe bleibt sichtbar, auch wenn sie eingeklappt wurde.
             const isCollapsed = !!collapsed[group.label] && !groupActive;
@@ -165,7 +184,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 {!isCollapsed && (
                   <div className="space-y-0.5">
                     {group.items.map((item) => {
-                      const isActive = location.pathname === item.to;
+                      const isActive = isNavActive(item.to, location.pathname, location.search);
                       return (
                         <NavLink key={item.to} to={item.to} className={navLinkClass(isActive)}>
                           <item.icon className="w-4 h-4" />
@@ -213,7 +232,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="max-w-6xl mx-auto px-8 py-8">
             {/* Globaler Onboarding-Runner: EIN Tour-Overlay über alle Routen hinweg. */}
             <OnboardingRunnerProvider>
-              {children}
+              {/* Auffangnetz: ein Render-Fehler auf EINER Seite darf nicht die
+                  ganze Console weiss machen. Sidebar und Topbar bleiben stehen. */}
+              <RouteErrorBoundary resetKey={location.pathname + location.search}>
+                {children}
+              </RouteErrorBoundary>
             </OnboardingRunnerProvider>
           </div>
         </main>

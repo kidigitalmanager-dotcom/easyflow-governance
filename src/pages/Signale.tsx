@@ -49,7 +49,7 @@ const isSectionKey = (v: string | null): v is SectionKey => !!v && (SECTION_KEYS
 const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon }[] = [
   { key: "signale", label: "Signale & Gesundheit", icon: Activity },
   { key: "jana", label: "Jana fragen", icon: Sparkles },
-  { key: "risk_shield", label: "Risk Shield", icon: ShieldAlert },
+  { key: "risk_shield", label: "Frühwarnung", icon: ShieldAlert },
   { key: "foerder", label: "Förder-Radar", icon: Landmark },
   { key: "quellen", label: "Datenquellen", icon: Plug },
   { key: "freigabe", label: "Datenfreigabe", icon: ShieldCheck },
@@ -147,7 +147,7 @@ function StatusChip({ state }: { state: "active" | "idle" | "manual" }) {
       className={cn(
         "inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border",
         active
-          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/25"
+          ? "bg-emerald-surface/70 text-emerald-light border-emerald-surface"
           : "bg-muted text-muted-foreground border-border",
       )}
     >
@@ -284,7 +284,12 @@ export default function Signale() {
       {
         onSuccess: () =>
           toast({ title: "Datenfreigabe gespeichert", description: "Dein Profil ist jetzt für die Investorenseite freigegeben." }),
-        onError: (e: any) => toast({ title: "Fehler", description: e.message, variant: "destructive" }),
+        onError: (e: unknown) =>
+          toast({
+            title: "Fehler",
+            description: e instanceof Error ? e.message : String(e),
+            variant: "destructive",
+          }),
       },
     );
   };
@@ -318,7 +323,7 @@ export default function Signale() {
               <Activity className="w-4 h-4 text-primary" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground leading-none">Signale · Frühwarn-Profil</p>
+              <p className="ue-kicker leading-none">Signale · Gesundheit &amp; Frühwarnung</p>
               <h1 className="text-base font-semibold tracking-tight text-foreground truncate leading-tight mt-0.5">{title}</h1>
             </div>
           </div>
@@ -340,7 +345,7 @@ export default function Signale() {
               className={cn(
                 "inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full border",
                 consented
-                  ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/25"
+                  ? "bg-emerald-surface/70 text-emerald-light border-emerald-surface"
                   : "bg-muted text-muted-foreground border-border",
               )}
             >
@@ -362,7 +367,7 @@ export default function Signale() {
                 aria-current={activeSec ? "page" : undefined}
                 className={cn(
                   "group flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap lg:w-full text-left",
-                  activeSec ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                  activeSec ? "bg-emerald-surface/60 text-emerald-light border border-emerald-surface" : "border border-transparent text-muted-foreground hover:text-foreground hover:bg-surface-hover",
                 )}
               >
                 <s.icon className="w-[18px] h-[18px] shrink-0" />
@@ -372,7 +377,7 @@ export default function Signale() {
                     className={cn(
                       "text-[10px] font-semibold px-1.5 py-0.5 rounded-full border tabular-nums",
                       overallActive > 0
-                        ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/25"
+                        ? "bg-emerald-surface/70 text-emerald-light border-emerald-surface"
                         : "bg-muted text-muted-foreground border-border",
                     )}
                   >
@@ -380,7 +385,7 @@ export default function Signale() {
                   </span>
                 )}
                 {s.key === "freigabe" && (
-                  <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", consented ? "bg-emerald-500" : "bg-muted-foreground/40")} />
+                  <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", consented ? "bg-primary" : "bg-tx-weak")} />
                 )}
               </button>
             );
@@ -423,12 +428,27 @@ export default function Signale() {
             )}
           </section>
 
-          {/* ══ Bereich 1b: Risk Shield (Partner-Fruehwarnung) ══ */}
-          <section className={cn(section !== "risk_shield" && "hidden")}>
-            <RiskShieldCard />
-            <div className="mt-6">
-              <ComplianceRadarCard />
+          {/* ══ Bereich 1b: Fruehwarnung ══
+              Redesign 27.07.2026: /signale und /fruehwarnung sind zusammengefuehrt —
+              der Entwurf kennt nur EINEN Ort fuer "was warnt". /fruehwarnung leitet
+              hierher; der Sidebar-Punkt bleibt bestehen und zeigt auf ?sec=risk_shield.
+              Es faellt nichts weg: Risk Shield und Compliance-Radar sind dieselben
+              Karten, die vorher auf /fruehwarnung standen. */}
+          <section className={cn("space-y-4", section !== "risk_shield" && "hidden")}>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Frühwarnung</h2>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Alles, was warnt, an einem Ort: Partner-Watchlist und eigene Rechts- und
+                Compliance-Lage. Eine Ampel-Sprache: Bestätigt · Beobachtung · Stabil.
+              </p>
             </div>
+            <RiskShieldCard />
+            <ComplianceRadarCard />
+            <p className="text-xs text-tx-weak leading-relaxed">
+              Bewertung nur aus öffentlichen Signalen bzw. dem eigenen Postfach. Keine
+              Rechtsberatung. Investoren sehen ausschließlich aggregierte Indizes, nie
+              Einzel-Signale.
+            </p>
           </section>
 
           {/* ══ Bereich 1c: Jana fragen (read-only Chat ueber die eigenen Signale) ══ */}

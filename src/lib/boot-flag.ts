@@ -8,6 +8,27 @@
  */
 export const BOOT_FLAG = "ue_boot_pending";
 
+/**
+ * Kam dieser Seitenaufruf von einem OAuth-Rücksprung (Google/Microsoft)?
+ *
+ * Wird EINMAL beim Laden des Moduls ausgewertet — supabase-js räumt Hash und
+ * Query beim Initialisieren auf, danach wäre die Information weg. Eine
+ * wiederhergestellte Sitzung hat diese Parameter nie, ein frischer OAuth-Login
+ * immer. Genau daran unterscheiden wir die beiden Fälle.
+ */
+const OAUTH_RETURN = (() => {
+  if (typeof window === "undefined") return false;
+  try {
+    return /[#&?](access_token|code)=/.test(window.location.hash + window.location.search);
+  } catch {
+    return false;
+  }
+})();
+
+export function isOAuthReturn(): boolean {
+  return OAUTH_RETURN;
+}
+
 /** Setzt das Flag (Login erfolgreich). Storage-Fehler sind egal. */
 export function armBootSequence(): void {
   try {

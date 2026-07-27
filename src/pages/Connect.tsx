@@ -1,14 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -18,6 +9,9 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Helmet } from "react-helmet-async";
+import { AlertTriangle, Check, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Dot, type DotTone } from "@/components/ue/primitives";
 import logo from "@/assets/useeasy-logo.jpg";
 
 
@@ -37,6 +31,18 @@ import logo from "@/assets/useeasy-logo.jpg";
  * der Tenant-Domain ableitbar ist (z.B. HV-Bundle → real_estate); sonst bleibt das
  * Feld leer und die "Postfach verbinden"-Buttons sind inaktiv, bis der Kunde bewusst
  * eine Branche wählt — verhindert die stille ecom-Default-Fehlklassifikation.
+ *
+ * Redesign 27.07.2026: Die Seite läuft AUSSERHALB des AppLayout und behält deshalb
+ * ihren eigenen zentrierten Rahmen — gestaltet in der Sprache des neuen Login
+ * (dunkler Grund, .glass-card, Emerald-CTA). Die vier Backend-Schritte oben sind
+ * für den Kunden als DREI sichtbare Schritte zusammengefasst (Speichern passiert
+ * beim Verbinden automatisch), jeder mit Statuspunkt: erledigt = emerald,
+ * offen = muted, Problem = danger.
+ *
+ * ⚠ Der Entwurf zeigt zusätzlich einen DNS-Check je Domain. Einen solchen Endpoint
+ * gibt es nicht (weder hier noch sonst im Client) — er wird deshalb NICHT
+ * vorgetäuscht. Die einzige echte Vorab-Prüfung ist die Gmail-Verfügbarkeit
+ * (503-Probe unten); sie steht sichtbar an Schritt 3.
  */
 
 const API_BASE = "https://api.useeasy.ai";
@@ -60,6 +66,10 @@ type Pack = {
 };
 
 type Stage = "loading" | "ready" | "error";
+
+/** Statuspunkt je Schritt: erledigt = emerald, offen = muted, Problem = danger. */
+type StepState = "done" | "problem" | "open";
+const STEP_TONE: Record<StepState, DotTone> = { done: "emerald", problem: "danger", open: "muted" };
 
 export default function Connect() {
   const [params] = useSearchParams();
@@ -114,7 +124,7 @@ export default function Connect() {
         );
         setSelectedPack(byDomain?.pack_key || "");
         setStage("ready");
-      } catch (e: unknown) {
+      } catch {
         if (cancelled) return;
         setErrReason("network_error");
         setStage("error");
@@ -142,7 +152,11 @@ export default function Connect() {
   }, [errReason]);
 
   async function persistPackSelection(pack: string) {
-    if (!pack || pack === tenant?.domain) return;
+    // 2026-07-27 (Bugfix): Der Fall "nichts zu speichern" ist ein ERFOLG, kein
+    // Abbruch. Vorher lieferte dieser Zweig undefined; hiess das vorbelegte Pack
+    // genauso wie tenant.domain, blieb `ok` falsy und der Kunde konnte sein
+    // Postfach NIE verbinden — der Klick verpuffte kommentarlos.
+    if (!pack || pack === tenant?.domain) return true;
     setSaving(true);
     try {
       const res = await fetch(`${API_BASE}/v1/onboarding/connect/set-domain`, {
@@ -196,8 +210,32 @@ export default function Connect() {
     window.location.href = url;
   }
 
+  /* Drei sichtbare Schritte. Der Status ist abgeleitet, nichts wird geraten:
+     Schritt 1 haengt am Validate-Ergebnis, Schritt 2 an der Auswahl,
+     Schritt 3 bleibt offen, bis der Kunde den Redirect ausloest. */
+  const steps: Array<{ title: string; hint: string; state: StepState }> = [
+    {
+      title: "Link geprüft",
+      hint:
+        stage === "loading" ? "wird geprüft …"
+          : stage === "error" ? "nicht gültig"
+            : "gültig",
+      state: stage === "error" ? "problem" : stage === "ready" ? "done" : "open",
+    },
+    {
+      title: "Branche wählen",
+      hint: selectedPack ? "gewählt" : "noch offen",
+      state: stage === "ready" && selectedPack ? "done" : "open",
+    },
+    {
+      title: "Postfach verbinden",
+      hint: gmailAvailable ? "Gmail oder Outlook" : "derzeit nur Outlook",
+      state: "open",
+    },
+  ];
+
   return (
-    <main className="min-h-screen bg-background flex items-center justify-center px-4 py-8">
+    <main className="min-h-screen bg-background px-4 py-10 sm:py-14">
       <Helmet>
         <title>Postfach verbinden — UseEasy</title>
         <meta name="description" content="Verbinde dein Gmail- oder Outlook-Postfach per OAuth mit UseEasy. Sichere Verbindung, keine Passwörter, jederzeit widerrufbar." />
@@ -206,102 +244,161 @@ export default function Connect() {
         <meta property="og:title" content="Postfach verbinden — UseEasy" />
         <meta property="og:description" content="Verbinde dein Gmail- oder Outlook-Postfach per OAuth mit UseEasy." />
       </Helmet>
-      <Card className="w-full max-w-lg">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <img src={logo} alt="UseEasy Logo" className="h-12 w-12 rounded" />
+
+      <div className="mx-auto w-full max-w-lg">
+        {/* Markenzeile wie im Login */}
+        <div className="flex items-center justify-center gap-2.5 animate-fade-up">
+          <img src={logo} alt="UseEasy Logo" className="h-[30px] w-[30px] rounded-lg" />
+          <span className="text-[15px] font-semibold tracking-tight">
+            Use<span className="text-primary">Easy</span>
+          </span>
+          <span className="rounded-md border border-border px-1.5 py-0.5 text-[11px] uppercase tracking-[0.06em] text-tx-weak">
+            Console
+          </span>
+        </div>
+
+        <div className="glass-card mt-8 p-6 sm:p-7">
+          <header>
+            <p className="ue-kicker">Ersteinrichtung</p>
+            <h1 className="mt-2 text-[26px] font-semibold leading-[1.12] tracking-[-0.02em] text-foreground">
+              Postfach verbinden
+            </h1>
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted-foreground">
+              <Clock className="h-3.5 w-3.5" />
+              <span>ca. <span className="tabular">4</span> Minuten</span>
+              {stage === "ready" && tenant?.company_name && (
+                <>
+                  <span className="text-tx-faint">·</span>
+                  <span>für <span className="font-medium text-foreground">{tenant.company_name}</span></span>
+                </>
+              )}
+            </p>
+          </header>
+
+          {/* ── Die drei Schritte ──────────────────────────────────────── */}
+          <ol className="mt-6 space-y-2">
+            {steps.map((s, i) => (
+              <li
+                key={s.title}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl border px-3.5 py-2.5",
+                  s.state === "done"
+                    ? "border-emerald-surface bg-emerald-surface/40"
+                    : s.state === "problem"
+                      ? "border-danger/40 bg-danger/5"
+                      : "border-line-soft bg-surface",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11.5px] font-semibold tabular",
+                    s.state === "done"
+                      ? "border-emerald-surface text-emerald-light"
+                      : s.state === "problem"
+                        ? "border-danger/40 text-danger"
+                        : "border-border text-muted-foreground",
+                  )}
+                >
+                  {s.state === "done" ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                </span>
+                <span className="min-w-0 flex-1 text-[13px] font-medium text-foreground">{s.title}</span>
+                <span className="flex shrink-0 items-center gap-1.5 text-[11.5px] text-muted-foreground">
+                  <Dot tone={STEP_TONE[s.state]} pulse={s.state === "problem"} />
+                  {s.hint}
+                </span>
+              </li>
+            ))}
+          </ol>
+
+          {/* ── Inhalt je Stage ────────────────────────────────────────── */}
+          <div className="mt-6">
+            {stage === "loading" && (
+              <p className="py-6 text-center text-[13px] text-muted-foreground">Link wird geprüft …</p>
+            )}
+
+            {stage === "error" && (
+              <div className="flex items-start gap-3 rounded-xl border border-danger/40 bg-danger/5 px-3.5 py-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-danger">Verbindung nicht möglich</p>
+                  <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{reasonMessage}</p>
+                </div>
+              </div>
+            )}
+
+            {stage === "ready" && (
+              <div className="space-y-6">
+                <div>
+                  <label className="mb-2 block text-[12px] text-muted-foreground">
+                    Branche <span className="text-danger">*</span>
+                  </label>
+                  <Select
+                    value={selectedPack}
+                    onValueChange={(v) => setSelectedPack(v)}
+                    disabled={saving}
+                  >
+                    <SelectTrigger className="h-[42px] rounded-[10px] border-border bg-muted text-[14px] text-foreground focus:border-primary focus:ring-0 focus:ring-offset-0">
+                      <SelectValue placeholder="Branche wählen …" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {packs.map((p) => (
+                        <SelectItem key={p.pack_key} value={p.pack_key}>
+                          {p.display_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
+                    Steuert, wie UseEasy Ihre E-Mails kategorisiert. Später jederzeit änderbar.
+                  </p>
+                </div>
+
+                <div className="space-y-2.5">
+                  <p className="text-[12px] text-muted-foreground">Postfach per 1-Klick-Anmeldung verbinden:</p>
+                  <button
+                    type="button"
+                    onClick={() => connectMailbox("google")}
+                    disabled={saving || !selectedPack || !gmailAvailable}
+                    className="w-full rounded-[10px] bg-primary px-4 py-[11px] text-[14px] font-semibold text-primary-foreground transition-all duration-200 hover:-translate-y-px hover:shadow-[0_14px_30px_-14px_hsl(var(--emerald)/0.8)] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                  >
+                    {gmailAvailable ? "Gmail / Google Workspace verbinden" : "Gmail folgt in Kürze"}
+                  </button>
+                  {!gmailAvailable && (
+                    <p className="text-center text-[11.5px] leading-relaxed text-amber">
+                      Gmail ist vorübergehend nicht verfügbar. Bitte verbinden Sie Ihr Outlook / Microsoft 365
+                      Postfach; Gmail wird in Kürze freigeschaltet.
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => connectMailbox("outlook")}
+                    disabled={saving || !selectedPack}
+                    className="w-full rounded-[10px] border border-border bg-muted px-4 py-[11px] text-[13.5px] font-medium text-tx-secondary transition-colors hover:border-primary/40 hover:text-foreground disabled:opacity-60"
+                  >
+                    Outlook / Microsoft 365 verbinden
+                  </button>
+                  {!selectedPack && (
+                    <p className="text-center text-[11.5px] text-muted-foreground">
+                      Bitte wählen Sie zuerst Ihre Branche, um fortzufahren.
+                    </p>
+                  )}
+                  <p className="pt-1 text-center text-[11.5px] leading-relaxed text-tx-weak">
+                    Sichere OAuth 2.0-Verbindung. Keine Passwörter — Sie können den Zugriff jederzeit widerrufen.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-          <h1 className="text-2xl font-semibold leading-none tracking-tight">Postfach verbinden</h1>
+        </div>
 
-          {stage === "ready" && tenant?.company_name && (
-            <CardDescription>
-              für <span className="font-medium text-foreground">{tenant.company_name}</span>
-            </CardDescription>
-          )}
-        </CardHeader>
-
-
-        <CardContent className="space-y-6">
-          {stage === "loading" && (
-            <p className="text-center text-muted-foreground py-8">Link wird geprüft …</p>
-          )}
-
-          {stage === "error" && (
-            <div className="space-y-3">
-              <p className="text-destructive font-medium">Verbindung nicht möglich</p>
-              <p className="text-sm text-muted-foreground">{reasonMessage}</p>
-            </div>
-          )}
-
-          {stage === "ready" && (
-            <>
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Branche <span className="text-destructive">*</span>
-                </label>
-                <Select
-                  value={selectedPack}
-                  onValueChange={(v) => setSelectedPack(v)}
-                  disabled={saving}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Branche wählen …" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {packs.map((p) => (
-                      <SelectItem key={p.pack_key} value={p.pack_key}>
-                        {p.display_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Steuert, wie UseEasy Ihre E-Mails kategorisiert. Später jederzeit änderbar.
-                </p>
-              </div>
-
-              <div className="space-y-3 pt-2">
-                <p className="text-sm font-medium">Postfach per 1-Klick-Anmeldung verbinden:</p>
-                <Button
-                  onClick={() => connectMailbox("google")}
-                  className="w-full"
-                  disabled={saving || !selectedPack || !gmailAvailable}
-                  size="lg"
-                >
-                  {gmailAvailable ? "Gmail / Google Workspace verbinden" : "Gmail folgt in Kürze"}
-                </Button>
-                {!gmailAvailable && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    Gmail ist vorübergehend nicht verfügbar. Bitte verbinden Sie Ihr Outlook / Microsoft 365 Postfach; Gmail wird in Kürze freigeschaltet.
-                  </p>
-                )}
-                <Button
-                  onClick={() => connectMailbox("outlook")}
-                  variant="outline"
-                  className="w-full"
-                  disabled={saving || !selectedPack}
-                  size="lg"
-                >
-                  Outlook / Microsoft 365 verbinden
-                </Button>
-                {!selectedPack && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    Bitte wählen Sie zuerst Ihre Branche, um fortzufahren.
-                  </p>
-                )}
-                <p className="text-xs text-muted-foreground text-center pt-2">
-                  Sichere OAuth 2.0-Verbindung. Keine Passwörter — Sie können den Zugriff jederzeit widerrufen.
-                </p>
-              </div>
-            </>
-          )}
-        </CardContent>
-
-        <CardFooter className="flex justify-center text-xs text-muted-foreground">
+        <p className="mt-6 text-center text-[11.5px] leading-relaxed text-tx-faint">
+          UseEasy erstellt ausschließlich Entwürfe. Es wird nichts versendet, gebucht oder gemeldet,
+          bevor Sie freigeben.
+        </p>
+        <p className="mt-2 text-center text-[11.5px] text-tx-faint">
           Bei Fragen: support@useeasy.ai · Verarbeitung in Frankfurt (eu-central-1)
-        </CardFooter>
-      </Card>
+        </p>
+      </div>
     </main>
-
   );
 }

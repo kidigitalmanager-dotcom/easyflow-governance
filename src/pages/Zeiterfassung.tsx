@@ -5,6 +5,13 @@
 // Owner: Team-Tabelle (Filter Mitarbeiter/Kunde/Zeitraum, Summen, CSV-Export),
 // Nacherfassung, billed-Einträge zurücksetzen. Übernahme in Angebot/Rechnung
 // läuft über den Dialog in Rechnungen.tsx/Angebote.tsx (TimeApplyDialog).
+//
+// Redesign 27.07.2026: PageHeader/SectionCard/StatCard/Chip statt handgebautem
+// <h1>, shadcn-Card und selbstgebauten Segment-Schaltern. Breite und Polsterung
+// macht das Layout (AppLayout bzw. EmployeeLayout) — die Seite bringt nur noch
+// `space-y-6` mit, in beiden Rollen dieselbe Wurzel. Ausserdem: fehlgeschlagene
+// Queries zeigen jetzt QueryErrorNotice statt "Keine Einträge" (ein Serverfehler
+// ist keine leere Woche), und fehlende Summen stehen als "–" statt als "0:00 h".
 // -----------------------------------------------------------------------------
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
@@ -17,9 +24,9 @@ import {
 import type { TimeEntry, TimeEntryInput, TimeProject } from "@/lib/api-client";
 import { MitarbeiterAbrechnungPdf } from "@/components/documents/MitarbeiterAbrechnungPdf";
 import { AbsencePanel } from "@/components/absence/AbsencePanel";
+import { QueryErrorNotice } from "@/components/QueryErrorNotice";
+import { PageHeader, SectionCard, StatCard, Chip, Dot, EmptyState } from "@/components/ue/primitives";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,6 +54,10 @@ function fmtCents(cents: number | null | undefined): string {
   if (cents == null) return "—";
   return (cents / 100).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
+/* Die grosse Kennzahl laeuft dezimal hoch (StatCard zaehlt Zahlen, keine
+   Zeitstempel); Std:Min steht als Zusatz darunter — so bleibt "8:30 h" lesbar. */
+function hoursOf(min: number | null | undefined): number | null { return min == null ? null : min / 60; }
+function minHint(min: number | null | undefined): string | undefined { return min == null ? undefined : `${fmtMin(min)} (Std:Min)`; }
 
 const DUR_CHIPS = [30, 60, 90, 120, 240, 480];
 
@@ -57,6 +68,10 @@ type FormState = {
   note: string; billable: boolean; memberEmail: string;
 };
 const EMPTY_FORM: FormState = { projectId: "", customer: "", date: todayIso(), mode: "vonbis", from: "", to: "", durationMin: "60", note: "", billable: true, memberEmail: "" };
+
+/* Select im Konsolen-Look — die Seite hat mehrere davon, und ein nacktes
+   <select> faellt auf dunklem Grund optisch heraus. */
+const SELECT_CLASS = "w-full h-10 rounded-[10px] border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary";
 
 // ── Erfassungs-Formular (Mitarbeiter + Owner-Nacherfassung) ──────────────────
 function EntryForm({ customers, projects, isOwner, isEmployee, memberOptions, editEntry, onDone }: {
@@ -199,99 +214,102 @@ function EntryForm({ customers, projects, isOwner, isEmployee, memberOptions, ed
   }
 
   return (
-    <Card onBlur={onCardBlur}>
-      <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2">
-        <Plus className="h-4 w-4" /> {editEntry ? "Eintrag bearbeiten" : "Zeit erfassen"}
-      </CardTitle></CardHeader>
-      <CardContent className="space-y-3">
-        {isOwner && !editEntry && memberOptions.length > 0 && (
-          <div>
-            <Label className="text-xs">Mitarbeiter (Nacherfassung)</Label>
-            <select className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" value={f.memberEmail}
-              onChange={(e) => setF({ ...f, memberEmail: e.target.value })}>
-              <option value="">— bitte wählen —</option>
-              {memberOptions.map((m) => <option key={m.email} value={m.email}>{m.name}</option>)}
-            </select>
-          </div>
-        )}
-        {projects.length > 0 && (
-          <div>
-            <Label className="text-xs">Projekt</Label>
-            <select className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" value={f.projectId}
-              onChange={(e) => setF({ ...f, projectId: e.target.value })}>
-              <option value="">— anderer Ort (Freitext) —</option>
-              {projects.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
-            </select>
-          </div>
-        )}
-        {!f.projectId && (
-          <div>
-            <Label className="text-xs">{projects.length > 0 ? "Kunde / Ort (Freitext)" : "Kunde"}</Label>
-            <Input list="ue-time-customers" value={f.customer} placeholder="z. B. Familie Müller"
-              onChange={(e) => setF({ ...f, customer: e.target.value })} className="h-10" />
-            <datalist id="ue-time-customers">
-              {customers.map((c) => <option key={c} value={c} />)}
-            </datalist>
-          </div>
-        )}
-        <div>
-          <Label className="text-xs">Datum</Label>
-          <Input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} className="h-10" />
-        </div>
-        <div className="flex gap-2">
-          <Button type="button" size="sm" variant={f.mode === "vonbis" ? "default" : "outline"} className="flex-1" onClick={() => setF({ ...f, mode: "vonbis" })}>Von – Bis</Button>
-          <Button type="button" size="sm" variant={f.mode === "dauer" ? "default" : "outline"} className="flex-1" onClick={() => setF({ ...f, mode: "dauer" })}>Nur Dauer</Button>
-        </div>
-        {f.mode === "vonbis" ? (
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Von</Label><Input type="time" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} className="h-10" /></div>
-            <div><Label className="text-xs">Bis</Label><Input type="time" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} className="h-10" /></div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <Label className="text-xs">Dauer (Minuten)</Label>
-            <Input type="number" min={1} max={1440} value={f.durationMin} onChange={(e) => setF({ ...f, durationMin: e.target.value })} className="h-10" />
-            <div className="flex flex-wrap gap-1.5">
-              {DUR_CHIPS.map((m) => (
-                <button key={m} type="button" onClick={() => setF({ ...f, durationMin: String(m) })}
-                  className={`px-2.5 py-1.5 rounded-full border text-xs ${f.durationMin === String(m) ? "bg-primary/10 border-primary/40 text-primary" : "border-border text-muted-foreground"}`}>
-                  {fmtMin(m)}
-                </button>
-              ))}
+    // onBlur bleibt auf einem Wrapper: SectionCard reicht keine DOM-Events durch,
+    // Blur blubbert aber aus den Feldern hoch — der letzte Flush ist damit sicher.
+    <div onBlur={onCardBlur}>
+      <SectionCard
+        title={<span className="flex items-center gap-2"><Plus className="h-4 w-4" /> {editEntry ? "Eintrag bearbeiten" : "Zeit erfassen"}</span>}
+        subtitle={editEntry ? "Änderungen werden automatisch gespeichert." : "Wo warst du, wie lange, und was war zu tun?"}
+      >
+        <div className="space-y-3">
+          {isOwner && !editEntry && memberOptions.length > 0 && (
+            <div>
+              <Label className="text-xs">Mitarbeiter (Nacherfassung)</Label>
+              <select className={SELECT_CLASS} value={f.memberEmail}
+                onChange={(e) => setF({ ...f, memberEmail: e.target.value })}>
+                <option value="">— bitte wählen —</option>
+                {memberOptions.map((m) => <option key={m.email} value={m.email}>{m.name}</option>)}
+              </select>
             </div>
+          )}
+          {projects.length > 0 && (
+            <div>
+              <Label className="text-xs">Projekt</Label>
+              <select className={SELECT_CLASS} value={f.projectId}
+                onChange={(e) => setF({ ...f, projectId: e.target.value })}>
+                <option value="">— anderer Ort (Freitext) —</option>
+                {projects.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+              </select>
+            </div>
+          )}
+          {!f.projectId && (
+            <div>
+              <Label className="text-xs">{projects.length > 0 ? "Kunde / Ort (Freitext)" : "Kunde"}</Label>
+              <Input list="ue-time-customers" value={f.customer} placeholder="z. B. Familie Müller"
+                onChange={(e) => setF({ ...f, customer: e.target.value })} className="h-10" />
+              <datalist id="ue-time-customers">
+                {customers.map((c) => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+          )}
+          <div>
+            <Label className="text-xs">Datum</Label>
+            <Input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} className="h-10" />
           </div>
-        )}
-        <div>
-          <Label className="text-xs">Notiz (was wurde gemacht?)</Label>
-          <Textarea value={f.note} rows={2} placeholder="z. B. Eckventil getauscht, Silikonfugen"
-            onChange={(e) => setF({ ...f, note: e.target.value })} />
-        </div>
-        <div className="flex items-center justify-between rounded-lg border p-3">
-          <span className="text-sm">An Kunden abrechenbar</span>
-          <Switch checked={f.billable} onCheckedChange={(v) => setF({ ...f, billable: v })} />
-        </div>
-        {autoSaveEnabled && (
-          <div className="flex items-center gap-2 text-xs min-h-[20px]">
-            {saveState.status === "saving" && <span className="text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Speichert…</span>}
-            {saveState.status === "saved" && <span className="text-emerald-600 flex items-center gap-1"><Check className="h-3.5 w-3.5" /> Gespeichert {saveState.at}</span>}
-            {saveState.status === "error" && (
-              <span className="text-destructive flex items-center gap-1.5">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {saveState.msg}
-                <button type="button" className="underline font-medium" onClick={() => flush()}>Erneut speichern</button>
-              </span>
-            )}
-            {saveState.status === "idle" && <span className="text-muted-foreground">Wird beim Ausfüllen automatisch gespeichert.</span>}
+          <div className="flex gap-2">
+            <Button type="button" size="sm" variant={f.mode === "vonbis" ? "default" : "outline"} className="h-10 flex-1" onClick={() => setF({ ...f, mode: "vonbis" })}>Von – Bis</Button>
+            <Button type="button" size="sm" variant={f.mode === "dauer" ? "default" : "outline"} className="h-10 flex-1" onClick={() => setF({ ...f, mode: "dauer" })}>Nur Dauer</Button>
           </div>
-        )}
-        <div className="flex gap-2">
-          {editEntry && <Button variant="outline" className="flex-1 h-11" onClick={onDone}>Schließen</Button>}
-          <Button className="flex-1 h-11 text-base" onClick={submitButton} disabled={busy}>
-            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
-            {editEntry ? "Speichern & schließen" : "Zeit speichern"}
-          </Button>
+          {f.mode === "vonbis" ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Von</Label><Input type="time" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} className="h-10" /></div>
+              <div><Label className="text-xs">Bis</Label><Input type="time" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} className="h-10" /></div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label className="text-xs">Dauer (Minuten)</Label>
+              <Input type="number" min={1} max={1440} value={f.durationMin} onChange={(e) => setF({ ...f, durationMin: e.target.value })} className="h-10" />
+              <div className="flex flex-wrap gap-1.5">
+                {DUR_CHIPS.map((m) => (
+                  <Chip key={m} active={f.durationMin === String(m)} onClick={() => setF({ ...f, durationMin: String(m) })}>
+                    {fmtMin(m)}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          )}
+          <div>
+            <Label className="text-xs">Notiz (was wurde gemacht?)</Label>
+            <Textarea value={f.note} rows={2} placeholder="z. B. Eckventil getauscht, Silikonfugen"
+              onChange={(e) => setF({ ...f, note: e.target.value })} />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-[10px] border border-border bg-muted px-3 py-2.5">
+            <span className="text-sm text-tx-secondary">An Kunden abrechenbar</span>
+            <Switch checked={f.billable} onCheckedChange={(v) => setF({ ...f, billable: v })} />
+          </div>
+          {autoSaveEnabled && (
+            <div className="flex min-h-[20px] items-center gap-2 text-xs">
+              {saveState.status === "saving" && <span className="flex items-center gap-1 text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Speichert…</span>}
+              {saveState.status === "saved" && <span className="flex items-center gap-1 text-primary"><Check className="h-3.5 w-3.5" /> Gespeichert {saveState.at}</span>}
+              {saveState.status === "error" && (
+                <span className="flex items-center gap-1.5 text-danger">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {saveState.msg}
+                  <button type="button" className="font-medium underline underline-offset-2" onClick={() => flush()}>Erneut speichern</button>
+                </span>
+              )}
+              {saveState.status === "idle" && <span className="text-muted-foreground">Wird beim Ausfüllen automatisch gespeichert.</span>}
+            </div>
+          )}
+          <div className="flex gap-2">
+            {editEntry && <Button variant="outline" className="h-11 flex-1" onClick={onDone}>Schließen</Button>}
+            <Button className="h-11 flex-1 text-base" onClick={submitButton} disabled={busy}>
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
+              {editEntry ? "Speichern & schließen" : "Zeit speichern"}
+            </Button>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </SectionCard>
+    </div>
   );
 }
 
@@ -302,28 +320,32 @@ function EntryRow({ e, isOwner, memberName, onEdit, onDelete, onUnbill }: {
 }) {
   const billed = e.status === "billed";
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+    <li className="flex items-center justify-between gap-3 px-4 py-3">
       <div className="min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-sm truncate">{e.customer_name || "(ohne Kunde)"}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="truncate text-[13px] font-medium text-foreground">{e.customer_name || "(ohne Kunde)"}</span>
           {billed ? (
-            <Badge variant="secondary" className="text-[10px] gap-1"><Lock className="h-3 w-3" /> abgerechnet</Badge>
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[10.5px] text-muted-foreground">
+              <Lock className="h-3 w-3" /> abgerechnet
+            </span>
           ) : !e.billable ? (
-            <Badge variant="outline" className="text-[10px]">nicht abrechenbar</Badge>
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Dot tone="muted" className="!h-1.5 !w-1.5" /> nicht abrechenbar
+            </span>
           ) : null}
         </div>
-        <p className="text-xs text-muted-foreground truncate">
-          {fmtDay(e.started_at)} · {fmtMin(e.duration_min)}
+        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+          <span className="tabular">{fmtDay(e.started_at)}</span> · <span className="tabular">{fmtMin(e.duration_min)}</span>
           {isOwner && memberName ? " · " + memberName : ""}
           {isOwner && e.hourly_rate_cents != null ? " · " + fmtCents(e.hourly_rate_cents) + "/Std" : isOwner ? " · Satz offen" : ""}
           {e.description ? " · " + e.description : ""}
         </p>
       </div>
-      <div className="shrink-0 flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         {!billed && (
           <>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => onEdit(e)} title="Bearbeiten"><Pencil className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={() => onDelete(e)} title="Löschen"><Trash2 className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-danger" onClick={() => onDelete(e)} title="Löschen"><Trash2 className="h-4 w-4" /></Button>
           </>
         )}
         {billed && isOwner && onUnbill && (
@@ -332,7 +354,7 @@ function EntryRow({ e, isOwner, memberName, onEdit, onDelete, onUnbill }: {
           </Button>
         )}
       </div>
-    </div>
+    </li>
   );
 }
 
@@ -394,11 +416,11 @@ function ProjekteVerwaltung() {
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2">
-        <FolderKanban className="h-4 w-4" /> Projekte — für den Ein-Klick-Dropdown deiner Mitarbeiter
-      </CardTitle></CardHeader>
-      <CardContent className="space-y-3">
+    <SectionCard
+      title={<span className="flex items-center gap-2"><FolderKanban className="h-4 w-4" /> Projekte</span>}
+      subtitle="für den Ein-Klick-Dropdown deiner Mitarbeiter"
+    >
+      <div className="space-y-3">
         <div className="flex gap-2">
           <Input value={newName} placeholder="Neues Projekt, z. B. Familie Müller / Baustelle Hauptstraße"
             onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addProject(); }} className="h-10" />
@@ -407,15 +429,24 @@ function ProjekteVerwaltung() {
           </Button>
         </div>
 
-        {projectsQ.isLoading && <Skeleton className="h-12 w-full" />}
-        {!projectsQ.isLoading && items.length === 0 && (
-          <p className="text-sm text-muted-foreground py-1">Noch keine Projekte. Leg oben das erste an — deine Mitarbeiter wählen es dann per Klick statt frei zu tippen.</p>
+        {projectsQ.isLoading && <Skeleton className="h-12 w-full rounded-lg" />}
+        {/* 2026-07-27: Fehler ist nicht "noch keine Projekte" — sonst legt der
+            Betrieb bei einem Serverfehler alles doppelt an. */}
+        {projectsQ.isError && (
+          <QueryErrorNotice
+            label="Die Projekte konnten nicht geladen werden."
+            onRetry={() => projectsQ.refetch()}
+            retrying={projectsQ.isFetching}
+          />
+        )}
+        {!projectsQ.isLoading && !projectsQ.isError && items.length === 0 && (
+          <p className="py-1 text-sm text-muted-foreground">Noch keine Projekte. Leg oben das erste an — deine Mitarbeiter wählen es dann per Klick statt frei zu tippen.</p>
         )}
 
         {active.map((p, idx) => (
-          <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg border p-2.5">
+          <div key={p.id} className="flex items-center justify-between gap-2 rounded-[10px] border border-border bg-surface p-2.5">
             {editId === p.id ? (
-              <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 <Input value={editName} autoFocus onChange={(e) => setEditName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") rename(p.id); if (e.key === "Escape") setEditId(null); }} className="h-9" />
                 <Button size="sm" className="h-9 shrink-0" onClick={() => rename(p.id)} disabled={updateP.isPending}>Speichern</Button>
@@ -423,8 +454,8 @@ function ProjekteVerwaltung() {
               </div>
             ) : (
               <>
-                <span className="font-medium text-sm truncate">{p.name}</span>
-                <div className="shrink-0 flex items-center gap-0.5">
+                <span className="truncate text-sm font-medium text-foreground">{p.name}</span>
+                <div className="flex shrink-0 items-center gap-0.5">
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Nach oben" disabled={idx === 0 || updateP.isPending} onClick={() => move(idx, -1)}><ArrowUp className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Nach unten" disabled={idx === active.length - 1 || updateP.isPending} onClick={() => move(idx, 1)}><ArrowDown className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Umbenennen" onClick={() => { setEditId(p.id); setEditName(p.name); }}><Pencil className="h-4 w-4" /></Button>
@@ -437,22 +468,22 @@ function ProjekteVerwaltung() {
 
         {archived.length > 0 && (
           <div className="pt-1">
-            <p className="text-[11px] text-muted-foreground mb-1">Archiviert ({archived.length}) — aus dem Dropdown ausgeblendet:</p>
+            <p className="mb-1 text-[11px] text-muted-foreground">Archiviert ({archived.length}) — aus dem Dropdown ausgeblendet:</p>
             <div className="space-y-1.5">
               {archived.map((p) => (
-                <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg border border-dashed p-2 opacity-70">
-                  <span className="text-sm truncate flex items-center gap-1.5"><Archive className="h-3.5 w-3.5" /> {p.name}</span>
-                  <Button variant="ghost" size="sm" className="h-8 px-2 shrink-0" onClick={() => reactivate(p)} title="Wieder aktiv schalten"><RotateCcw className="mr-1 h-3.5 w-3.5" /> Reaktivieren</Button>
+                <div key={p.id} className="flex items-center justify-between gap-2 rounded-[10px] border border-dashed border-border p-2 opacity-70">
+                  <span className="flex items-center gap-1.5 truncate text-sm text-tx-secondary"><Archive className="h-3.5 w-3.5" /> {p.name}</span>
+                  <Button variant="ghost" size="sm" className="h-8 shrink-0 px-2" onClick={() => reactivate(p)} title="Wieder aktiv schalten"><RotateCcw className="mr-1 h-3.5 w-3.5" /> Reaktivieren</Button>
                 </div>
               ))}
             </div>
           </div>
         )}
-        <p className="text-[11px] text-muted-foreground pt-1">
+        <p className="pt-1 text-[11px] text-muted-foreground">
           Umbenennen oder Archivieren ändert bereits erfasste Zeiten nicht (der Projektname wird beim Eintrag gespeichert). So bleiben alte Abrechnungen stabil.
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </SectionCard>
   );
 }
 
@@ -468,8 +499,10 @@ export default function Zeiterfassung() {
   const [absView, setAbsView] = useState<"zeiten" | "urlaub" | "krank">("zeiten");
   const absVacList = useAbsences({ type: "vacation" }, isOwner && !me.isLoading);
   const absSickList = useAbsences({ type: "sick" }, isOwner && !me.isLoading);
-  const pendingVacCount = (absVacList.data?.items || []).filter((a) => a.status === "pending").length;
-  const reportedSickCount = (absSickList.data?.items || []).filter((a) => a.status === "reported").length;
+  // 2026-07-27: Zaehler nur bei erfolgreicher Query — ein Fehler darf nicht wie
+  // "nichts offen" aussehen (dann fehlt kein Badge, sondern die Wahrheit).
+  const pendingVacCount = absVacList.isSuccess ? (absVacList.data?.items || []).filter((a) => a.status === "pending").length : undefined;
+  const reportedSickCount = absSickList.isSuccess ? (absSickList.data?.items || []).filter((a) => a.status === "reported").length : undefined;
 
   const [range, setRange] = useState<"week" | "month" | "all">("week");
   const [fltMember, setFltMember] = useState("");
@@ -600,7 +633,7 @@ export default function Zeiterfassung() {
     return map;
   }, [team.data]);
 
-  const items = entries.data?.items || [];
+  const items = useMemo(() => entries.data?.items ?? [], [entries.data]);
   const totals = entries.data?.totals;
   const knownAmountCents = useMemo(() => items.reduce((s, e) => s + (e.hourly_rate_cents != null ? Math.round(e.duration_min * e.hourly_rate_cents / 60) : 0), 0), [items]);
 
@@ -636,37 +669,41 @@ export default function Zeiterfassung() {
   }
 
   if (me.isLoading) {
-    return <div className="p-4 space-y-3"><Skeleton className="h-8 w-48" /><Skeleton className="h-40 w-full" /></div>;
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-40 w-full rounded-[var(--radius)]" />
+      </div>
+    );
   }
 
   return (
-    <div className={isEmployee ? "space-y-4" : "p-4 sm:p-6 space-y-4 max-w-5xl"}>
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2"><Clock className="h-5 w-5" /> Zeiterfassung</h1>
-          <p className="text-sm text-muted-foreground">
-            {isEmployee
-              ? "Trag ein, wo du warst und wie lange — dein Chef übernimmt die Zeiten in die Abrechnung."
-              : "Wer war wann wo — und mit einem Klick als Rechnung abgerechnet."}
-          </p>
-        </div>
-        {isOwner && (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={exportCsv} disabled={!items.length}><Download className="mr-1 h-4 w-4" /> CSV</Button>
-          </div>
-        )}
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        kicker={isEmployee ? "Meine Zeiten" : "Abrechnung"}
+        title="Zeiterfassung"
+        subtitle={
+          isEmployee
+            ? "Trag ein, wo du warst und wie lange — dein Chef übernimmt die Zeiten in die Abrechnung."
+            : "Wer war wann wo — und mit einem Klick als Rechnung abgerechnet."
+        }
+        actions={
+          isOwner ? (
+            <Button variant="outline" size="sm" onClick={exportCsv} disabled={!items.length}>
+              <Download className="mr-1 h-4 w-4" /> CSV
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* v4.140.0 — Umschalter Zeiten / Urlaub / Krank (Mitarbeiter + Owner) */}
-      <div className="flex rounded-lg border overflow-hidden w-fit">
+      <div className="flex flex-wrap gap-1.5">
         {([["zeiten", "Zeiten"], ["urlaub", "Urlaub"], ["krank", "Krank"]] as const).map(([v, l]) => {
-          const badge = isOwner ? (v === "urlaub" ? pendingVacCount : v === "krank" ? reportedSickCount : 0) : 0;
+          const badge = isOwner ? (v === "urlaub" ? pendingVacCount : v === "krank" ? reportedSickCount : undefined) : undefined;
           return (
-            <button key={v} onClick={() => setAbsView(v)}
-              className={`px-3 py-1.5 text-xs flex items-center gap-1.5 ${absView === v ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground"}`}>
+            <Chip key={v} active={absView === v} count={badge && badge > 0 ? badge : undefined} onClick={() => setAbsView(v)}>
               {l}
-              {badge > 0 && <span className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] h-4 min-w-[16px] px-1">{badge}</span>}
-            </button>
+            </Chip>
           );
         })}
       </div>
@@ -675,67 +712,99 @@ export default function Zeiterfassung() {
       {absView === "krank" && <AbsencePanel isOwner={isOwner} kind="sick" />}
 
       {absView === "zeiten" && (<>
-      {/* Summen-Chips */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <div className="rounded-lg border p-3"><p className="text-[11px] text-muted-foreground">Diese Woche</p><p className="text-lg font-semibold">{fmtMin(totals?.week_min)}</p></div>
-        <div className="rounded-lg border p-3"><p className="text-[11px] text-muted-foreground">Dieser Monat</p><p className="text-lg font-semibold">{fmtMin(totals?.month_min)}</p></div>
-        <div className="rounded-lg border p-3"><p className="text-[11px] text-muted-foreground">Offen abrechenbar</p><p className="text-lg font-semibold">{fmtMin(totals?.open_billable_min)}</p></div>
+      {/* Summen. Fehlt der Server-Wert, steht "–" — kein erfundenes 0:00 h. */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard
+          label="Diese Woche" value={hoursOf(totals?.week_min)} decimals={2} suffix="h"
+          hint={minHint(totals?.week_min)} glow className="stagger-1 animate-fade-up"
+        />
+        <StatCard
+          label="Dieser Monat" value={hoursOf(totals?.month_min)} decimals={2} suffix="h"
+          hint={minHint(totals?.month_min)} className="stagger-2 animate-fade-up"
+        />
+        <StatCard
+          label="Offen abrechenbar" value={hoursOf(totals?.open_billable_min)} decimals={2} suffix="h"
+          hint={minHint(totals?.open_billable_min)} tone="amber" className="stagger-3 animate-fade-up"
+        />
         {isOwner ? (
-          <div className="rounded-lg border p-3"><p className="text-[11px] text-muted-foreground">Wert (bekannte Sätze)</p><p className="text-lg font-semibold">{fmtCents(knownAmountCents)}</p></div>
+          <StatCard
+            label="Wert (bekannte Sätze)" value={items.length ? knownAmountCents / 100 : null} decimals={2} suffix="€"
+            hint="im gewählten Zeitraum" className="stagger-4 animate-fade-up"
+          />
         ) : (
-          <div className="rounded-lg border p-3"><p className="text-[11px] text-muted-foreground">Im Zeitraum</p><p className="text-lg font-semibold">{fmtMin(totals?.scope_min)}</p></div>
+          <StatCard
+            label="Im Zeitraum" value={hoursOf(totals?.scope_min)} decimals={2} suffix="h"
+            hint={minHint(totals?.scope_min)} className="stagger-4 animate-fade-up"
+          />
         )}
       </div>
 
       {/* v4.132.0 Owner-Umbau: Abrechnung zuerst — offene Zeiten je Kunde mit
           Ein-Klick "Rechnung aus Zeiten" (erstellt Entwurf + übernimmt Einträge). */}
       {isOwner && (
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2">
-            <ReceiptText className="h-4 w-4" /> Offene Zeiten je Kunde — bereit zur Abrechnung
-          </CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {openEntries.isLoading && <Skeleton className="h-12 w-full" />}
-            {!openEntries.isLoading && byCustomer.length === 0 && (
-              <p className="text-sm text-muted-foreground py-2">
-                Keine offenen, abrechenbaren Zeiten. Sobald dein Team Zeiten erfasst, kannst du sie hier pro Kunde abrechnen.
-              </p>
-            )}
-            {byCustomer.map(([kunde, g]) => (
-              <div key={kunde} className="flex items-center justify-between gap-3 rounded-lg border p-3">
-                <div className="min-w-0">
-                  <span className="font-medium text-sm truncate">{kunde}</span>
-                  <p className="text-xs text-muted-foreground">
-                    {g.count} Einsatz/Einsätze · {fmtMin(g.minutes)}{g.valueCents > 0 ? " · " + fmtCents(g.valueCents) + " netto" : ""}
-                    {g.noRate > 0 ? ` · ${g.noRate}× Satz offen` : ""}
-                  </p>
-                </div>
-                <Button size="sm" className="shrink-0" disabled={billingBusy != null}
-                  onClick={() => billCustomer(kunde, g.ids)}
-                  title="Erstellt einen Rechnungsentwurf und übernimmt alle offenen Zeiten dieses Kunden (Stunden × Satz)">
-                  {billingBusy === kunde ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ReceiptText className="mr-1 h-4 w-4" />}
-                  Rechnung aus Zeiten
-                </Button>
-              </div>
-            ))}
-            <p className="text-[11px] text-muted-foreground pt-1">
+        <SectionCard
+          title={<span className="flex items-center gap-2"><ReceiptText className="h-4 w-4" /> Offene Zeiten je Kunde</span>}
+          subtitle="bereit zur Abrechnung"
+          bodyClassName="p-0"
+        >
+          {openEntries.isLoading ? (
+            <div className="p-4"><Skeleton className="h-12 w-full rounded-lg" /></div>
+          ) : openEntries.isError ? (
+            <div className="p-4">
+              <QueryErrorNotice
+                label="Die offenen Zeiten konnten nicht geladen werden."
+                onRetry={() => openEntries.refetch()}
+                retrying={openEntries.isFetching}
+              />
+            </div>
+          ) : byCustomer.length === 0 ? (
+            <EmptyState
+              icon={<Clock className="h-7 w-7" />}
+              title="Keine offenen, abrechenbaren Zeiten."
+              description="Sobald dein Team Zeiten erfasst, kannst du sie hier pro Kunde abrechnen."
+            />
+          ) : (
+            <ul className="divide-y divide-line-soft">
+              {byCustomer.map(([kunde, g]) => (
+                  <li key={kunde} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <span className="truncate text-[13px] font-medium text-foreground">{kunde}</span>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        <span className="tabular">{g.count}</span> Einsatz/Einsätze · <span className="tabular">{fmtMin(g.minutes)}</span>
+                        {g.valueCents > 0 ? <> · <span className="tabular">{fmtCents(g.valueCents)}</span> netto</> : null}
+                        {g.noRate > 0 ? <> · <span className="text-amber"><span className="tabular">{g.noRate}</span>× Satz offen</span></> : null}
+                      </p>
+                    </div>
+                    <Button size="sm" className="shrink-0" disabled={billingBusy != null}
+                      onClick={() => billCustomer(kunde, g.ids)}
+                      title="Erstellt einen Rechnungsentwurf und übernimmt alle offenen Zeiten dieses Kunden (Stunden × Satz)">
+                      {billingBusy === kunde ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ReceiptText className="mr-1 h-4 w-4" />}
+                      Rechnung aus Zeiten
+                    </Button>
+                  </li>
+                ))}
+            </ul>
+          )}
+          {/* Hinweis steht auch ohne offene Zeiten — er erklaert den zweiten Weg. */}
+          {!openEntries.isLoading && !openEntries.isError && (
+            <p className="border-t border-line-soft px-4 py-2.5 text-[11px] text-muted-foreground">
               Alternativ in einem bestehenden Angebots-/Rechnungs-Entwurf: „Offene Zeiten übernehmen“ (mit Auswahl &amp; Gruppierung).
             </p>
-          </CardContent>
-        </Card>
+          )}
+        </SectionCard>
       )}
 
       {/* v4.133.0 — Mitarbeiter-Abrechnung (Lohnsatz): pro Mitarbeiter, als PDF/CSV */}
       {isOwner && (
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2">
-            <Wallet className="h-4 w-4" /> Mitarbeiter-Abrechnung — was du dem Mitarbeiter zahlst
-          </CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-end gap-2 flex-wrap">
+        <SectionCard
+          title={<span className="flex items-center gap-2"><Wallet className="h-4 w-4" /> Mitarbeiter-Abrechnung</span>}
+          subtitle="was du dem Mitarbeiter zahlst"
+        >
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-end gap-3">
               <div>
                 <Label className="text-xs">Mitarbeiter</Label>
-                <select className="h-9 rounded-md border border-input bg-background px-3 text-sm min-w-[200px]" value={settlMember}
+                <select className={SELECT_CLASS + " h-9 min-w-[200px]"} value={settlMember}
                   onChange={(e) => setSettlMember(e.target.value)}>
                   <option value="">— bitte wählen —</option>
                   {(team.data?.members || []).filter((m) => m.active).map((m) => (
@@ -743,34 +812,49 @@ export default function Zeiterfassung() {
                   ))}
                 </select>
               </div>
-              <div className="flex rounded-lg border overflow-hidden h-9">
+              <div className="flex flex-wrap gap-1.5">
                 {(["month", "week", "all"] as const).map((r) => (
-                  <button key={r} onClick={() => setSettlRange(r)}
-                    className={`px-3 text-xs ${settlRange === r ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground"}`}>
+                  <Chip key={r} active={settlRange === r} onClick={() => setSettlRange(r)}>
                     {r === "month" ? "31 Tage" : r === "week" ? "7 Tage" : "Alle"}
-                  </button>
+                  </Chip>
                 ))}
               </div>
             </div>
 
-            {!settlMember && (
-              <p className="text-sm text-muted-foreground py-2">Wähle einen Mitarbeiter, um seine Stunden als Lohn-Abrechnung (PDF/CSV) zu erstellen.</p>
+            {/* Fehlt der Team-Abruf, ist die Auswahl leer — das ist ein Fehler, keine Aussage. */}
+            {team.isError && (
+              <QueryErrorNotice
+                label="Die Mitarbeiterliste konnte nicht geladen werden."
+                onRetry={() => team.refetch()}
+                retrying={team.isFetching}
+              />
             )}
-            {settlMember && settlEntriesQ.isLoading && <Skeleton className="h-12 w-full" />}
-            {settlMember && !settlEntriesQ.isLoading && (
+
+            {!settlMember && (
+              <p className="py-2 text-sm text-muted-foreground">Wähle einen Mitarbeiter, um seine Stunden als Lohn-Abrechnung (PDF/CSV) zu erstellen.</p>
+            )}
+            {settlMember && settlEntriesQ.isLoading && <Skeleton className="h-12 w-full rounded-lg" />}
+            {settlMember && settlEntriesQ.isError && (
+              <QueryErrorNotice
+                label="Die Zeiten dieses Mitarbeiters konnten nicht geladen werden."
+                onRetry={() => settlEntriesQ.refetch()}
+                retrying={settlEntriesQ.isFetching}
+              />
+            )}
+            {settlMember && !settlEntriesQ.isLoading && !settlEntriesQ.isError && (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  <div className="rounded-lg border p-3"><p className="text-[11px] text-muted-foreground">Einsätze</p><p className="text-lg font-semibold">{settlEntries.length}</p></div>
-                  <div className="rounded-lg border p-3"><p className="text-[11px] text-muted-foreground">Stunden</p><p className="text-lg font-semibold">{fmtMin(settlMin)}</p></div>
-                  <div className="rounded-lg border p-3"><p className="text-[11px] text-muted-foreground">Lohnsumme</p><p className="text-lg font-semibold">{fmtCents(settlCents)}</p></div>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                  <StatCard label="Einsätze" value={settlEntries.length} />
+                  <StatCard label="Stunden" value={hoursOf(settlMin)} decimals={2} suffix="h" hint={minHint(settlMin)} />
+                  <StatCard label="Lohnsumme" value={settlCents / 100} decimals={2} suffix="€" hint={settlRangeLabel} />
                 </div>
                 {settlNoRate > 0 && (
-                  <p className="text-xs text-amber-600 flex items-start gap-1.5">
+                  <p className="flex items-start gap-1.5 text-xs text-amber">
                     <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    {settlNoRate}× ohne Lohnsatz — nicht in der Summe. Lohnsatz unter Einstellungen → Mitarbeiter pflegen (gilt für neue Einträge).
+                    <span><span className="tabular">{settlNoRate}</span>× ohne Lohnsatz — nicht in der Summe. Lohnsatz unter Einstellungen → Mitarbeiter pflegen (gilt für neue Einträge).</span>
                   </p>
                 )}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button size="sm" onClick={() => setShowSettlPdf(true)} disabled={settlEntries.length === 0}>
                     <FileText className="mr-1 h-4 w-4" /> Als PDF
                   </Button>
@@ -786,10 +870,11 @@ export default function Zeiterfassung() {
                 </p>
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
       )}
 
+      {/* Druckansicht: bleibt bewusst HELL (Papier-Look, @media print in index.css). */}
       {showSettlPdf && settlMember && (
         <MitarbeiterAbrechnungPdf
           memberName={settlName}
@@ -819,52 +904,68 @@ export default function Zeiterfassung() {
           onDone={() => { setEditEntry(null); setFormKey((k) => k + 1); setShowCapture(false); }} />
       )}
 
-      {/* Filter */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex rounded-lg border overflow-hidden">
+      {/* Liste + Filter */}
+      <SectionCard
+        title={isEmployee ? "Meine Zeiten" : "Team-Zeiten"}
+        subtitle="Zeitraum, Status und (als Chef) Mitarbeiter oder Kunde einschränken"
+        bodyClassName="p-0"
+      >
+        {/* Filterleiste im Karten-Kopfbereich: sechs Chips passen nicht neben den
+            Titel, ohne ihn auf Mobil zu zerquetschen. */}
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-line-soft px-4 py-3">
           {(["week", "month", "all"] as const).map((r) => (
-            <button key={r} onClick={() => setRange(r)}
-              className={`px-3 py-1.5 text-xs ${range === r ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground"}`}>
+            <Chip key={r} active={range === r} onClick={() => setRange(r)}>
               {r === "week" ? "7 Tage" : r === "month" ? "31 Tage" : "Alle"}
-            </button>
+            </Chip>
           ))}
-        </div>
-        <div className="flex rounded-lg border overflow-hidden">
+          <span className="mx-1 h-4 w-px bg-border" aria-hidden />
           {([["", "Alle"], ["open", "Offen"], ["billed", "Abgerechnet"]] as const).map(([v, l]) => (
-            <button key={v} onClick={() => setFltStatus(v as "" | "open" | "billed")}
-              className={`px-3 py-1.5 text-xs ${fltStatus === v ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground"}`}>{l}</button>
+            <Chip key={v} active={fltStatus === v} onClick={() => setFltStatus(v as "" | "open" | "billed")}>{l}</Chip>
           ))}
-        </div>
-        {isOwner && (
-          <>
-            <select className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={fltMember} onChange={(e) => setFltMember(e.target.value)}>
-              <option value="">Alle Mitarbeiter</option>
-              {memberOptions.map((m) => <option key={m.email} value={m.email}>{m.name}</option>)}
-            </select>
-            <Input value={fltCustomer} onChange={(e) => setFltCustomer(e.target.value)} placeholder="Kunde filtern…" className="h-8 w-40 text-xs" />
-          </>
-        )}
-      </div>
-
-      {/* Liste */}
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base">{isEmployee ? "Meine Zeiten" : "Team-Zeiten"}</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {entries.isLoading && <><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></>}
-          {!entries.isLoading && items.length === 0 && (
-            <p className="text-sm text-muted-foreground py-4">
-              {isEmployee ? "Noch keine Einträge im Zeitraum. Leg oben mit dem ersten los!" : "Keine Einträge im gewählten Zeitraum/Filter."}
-            </p>
+          {isOwner && (
+            <>
+              <span className="mx-1 h-4 w-px bg-border" aria-hidden />
+              <select className={SELECT_CLASS + " h-8 w-auto text-xs"} value={fltMember} onChange={(e) => setFltMember(e.target.value)}>
+                <option value="">Alle Mitarbeiter</option>
+                {memberOptions.map((m) => <option key={m.email} value={m.email}>{m.name}</option>)}
+              </select>
+              <Input value={fltCustomer} onChange={(e) => setFltCustomer(e.target.value)} placeholder="Kunde filtern…" className="h-8 w-40 text-xs" />
+            </>
           )}
-          {items.map((e) => (
-            <EntryRow key={e.id} e={e} isOwner={isOwner} memberName={nameByEmail[e.member_email]}
-              onEdit={setEditEntry} onDelete={handleDelete} onUnbill={isOwner ? handleUnbill : undefined} />
-          ))}
-        </CardContent>
-      </Card>
+        </div>
+        {entries.isLoading ? (
+          <div className="space-y-2 p-4">
+            <Skeleton className="h-14 w-full rounded-lg" />
+            <Skeleton className="h-14 w-full rounded-lg" />
+          </div>
+        ) : entries.isError ? (
+          /* 2026-07-27: vorher stand hier "Keine Einträge im gewählten Zeitraum" —
+             eine falsche Entwarnung, wenn in Wahrheit der Abruf gescheitert ist. */
+          <div className="p-4">
+            <QueryErrorNotice
+              label="Die Zeiteinträge konnten nicht geladen werden."
+              onRetry={() => entries.refetch()}
+              retrying={entries.isFetching}
+            />
+          </div>
+        ) : items.length === 0 ? (
+          <EmptyState
+            icon={<Clock className="h-7 w-7" />}
+            title={isEmployee ? "Noch keine Einträge im Zeitraum." : "Keine Einträge im gewählten Zeitraum/Filter."}
+            description={isEmployee ? "Leg oben mit dem ersten los!" : "Anderer Zeitraum oder anderer Filter zeigt womöglich mehr."}
+          />
+        ) : (
+          <ul className="divide-y divide-line-soft">
+            {items.map((e) => (
+              <EntryRow key={e.id} e={e} isOwner={isOwner} memberName={nameByEmail[e.member_email]}
+                onEdit={setEditEntry} onDelete={handleDelete} onUnbill={isOwner ? handleUnbill : undefined} />
+            ))}
+          </ul>
+        )}
+      </SectionCard>
 
       {isOwner && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Users className="h-3.5 w-3.5" /> Mitarbeiter anlegen &amp; Stundensätze pflegen: Einstellungen → Mitarbeiter.
           Mitarbeiter melden sich mit ihrer hinterlegten E-Mail unter app.useeasy.ai an (Kachel „Mitarbeiter“).
         </p>

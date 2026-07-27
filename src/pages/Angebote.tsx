@@ -4,6 +4,11 @@
 // schlägt Positionen + Anschreiben vor (Preise aus der Preisliste, individuelle
 // Positionen offen) → editierbarer Positions-Tisch (Live-Neuberechnung) → Freigabe
 // → PDF. Kein Auto-Send; die Freigabe legt optional das Anschreiben ins Postfach.
+//
+// Redesign 27.07.2026: PageHeader/SectionCard/Chip statt handgebautem <h1> und
+// shadcn-Card. Breite und Polsterung macht AppLayout, die Seite bringt nur noch
+// `space-y-6` mit. Fachlogik (Deep-Link, Freigabe, Umwandlung) ist unveraendert;
+// die Druckansicht (OfferPdf) bleibt bewusst hell — siehe @media print.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -18,24 +23,34 @@ import { OfferPositionsTable, type OfferDraftState } from "@/components/document
 import { OfferPdf } from "@/components/documents/OfferPdf";
 import { TimeApplyButton } from "@/components/documents/TimeApplyDialog"; // v4.132.0 — Zeiterfassung
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
+import { PageHeader, SectionCard, Chip, Dot, EmptyState, type DotTone } from "@/components/ue/primitives";
 import { toast } from "sonner";
 import { fmtEUR } from "@/lib/offer-calc";
 import {
-  FileText, Sparkles, RefreshCw, ArrowLeft, Save, CheckCircle2, Loader2, Printer, Plus, Trash2, Mail,
-  ArrowRightLeft,
+  Inbox, Sparkles, RefreshCw, ArrowLeft, Save, CheckCircle2, Loader2, Printer, Plus, Trash2, Mail,
+  ArrowRightLeft, FileCheck2,
 } from "lucide-react";
 
 const EMPTY_DRAFT: OfferDraftState = {
   positions: [], opts: {}, subject: "", cover_text: "", valid_until: "", doc_number: "",
   counterpart_name: "", counterpart_email: "",
 };
+
+/* Der Server liefert den Angebots-Status englisch (draft/approved/rejected).
+   In der Console steht deutscher Klartext + Statuspunkt — kein Rohwert. */
+const OFFER_STATUS: Record<string, { label: string; tone: DotTone }> = {
+  draft: { label: "Entwurf", tone: "amber" },
+  approved: { label: "freigegeben", tone: "emerald" },
+  rejected: { label: "verworfen", tone: "muted" },
+};
+function offerStatus(raw: string | null): { label: string; tone: DotTone } {
+  return OFFER_STATUS[raw ?? ""] ?? { label: raw || "–", tone: "muted" };
+}
 
 function offerToDraft(o: TenantOffer): OfferDraftState {
   const t = o.totals || null;
@@ -250,30 +265,47 @@ export default function Angebote() {
   // ── EDITOR-Ansicht ──────────────────────────────────────────────────────────
   if (editId != null) {
     if (offerQuery.isLoading && draft === EMPTY_DRAFT) {
-      return <div className="p-6 space-y-3"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
+      return (
+        <div className="space-y-6">
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="h-64 w-full rounded-[var(--radius)]" />
+        </div>
+      );
     }
     // 2026-07-27: Ladefehler nicht als leeres, editierbares Angebot maskieren.
     if (offerQuery.isError && !offerQuery.data?.offer && draft === EMPTY_DRAFT) {
       return (
-        <div className="p-4 sm:p-6 space-y-4 max-w-5xl">
-          <Button variant="ghost" size="sm" onClick={backToList}><ArrowLeft className="mr-1 h-4 w-4" /> Zurück</Button>
+        <div className="space-y-6">
+          <PageHeader
+            kicker="Angebote"
+            title="Angebot"
+            actions={<Button variant="ghost" size="sm" onClick={backToList}><ArrowLeft className="mr-1 h-4 w-4" /> Zurück</Button>}
+          />
           <QueryErrorNotice label="Das Angebot konnte nicht geladen werden." onRetry={() => offerQuery.refetch()} retrying={offerQuery.isFetching} />
         </div>
       );
     }
+    const isDraftOffer = (offerQuery.data?.offer?.status ?? "draft") === "draft";
     return (
-      <div className="p-4 sm:p-6 space-y-4 max-w-5xl">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={backToList}><ArrowLeft className="mr-1 h-4 w-4" /> Zurück</Button>
-            {offerQuery.data?.offer?.detected_from === "auto_scan" && (
-              <Badge variant="secondary" className="text-[10px] gap-1"><Sparkles className="h-3 w-3" /> Automatisch aus E-Mail erstellt</Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+      <div className="space-y-6">
+        <PageHeader
+          kicker="Angebote"
+          title={draft.subject.trim() || "Angebot bearbeiten"}
+          subtitle="Positionen und Preise prüfen, dann freigeben. Die Freigabe verschickt nichts — sie legt das Anschreiben höchstens als Entwurf ins Postfach."
+          actions={<Button variant="ghost" size="sm" onClick={backToList}><ArrowLeft className="mr-1 h-4 w-4" /> Zurück</Button>}
+        />
+
+        {/* Aktionsleiste: alles, was mit diesem Dokument passieren kann. */}
+        <div className="glass-card flex flex-wrap items-center gap-2 px-4 py-3">
+          {offerQuery.data?.offer?.detected_from === "auto_scan" && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-surface bg-emerald-surface/70 px-2.5 py-1 text-[11.5px] font-medium text-emerald-light">
+              <Sparkles className="h-3 w-3" /> Automatisch aus E-Mail erstellt
+            </span>
+          )}
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setShowPdf(true)}><Printer className="mr-1 h-4 w-4" /> Als PDF</Button>
             {/* v4.132.0 — offene Zeiteinträge als Positionen übernehmen (nur Entwurf; Server rechnet neu) */}
-            {(offerQuery.data?.offer?.status ?? "draft") === "draft" && (
+            {isDraftOffer && (
               <span title={dirty ? "Bitte zuerst speichern — die Übernahme lädt das Dokument neu." : ""}>
                 <TimeApplyButton documentId={editId} docType="offer" customer={draft.counterpart_name} disabled={busy || dirty} onApplied={onTimesApplied} />
               </span>
@@ -290,12 +322,13 @@ export default function Angebote() {
               <Mail className="mr-1 h-4 w-4" /> Freigeben + Anschreiben
             </Button>
           </div>
+          {dirty && (
+            <p className="w-full text-[11.5px] text-amber">Ungespeicherte Änderungen — vor der Freigabe speichern.</p>
+          )}
         </div>
-        {dirty && <p className="text-xs text-amber-600">Ungespeicherte Änderungen — vor der Freigabe speichern.</p>}
 
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Kopf & Empfänger</CardTitle></CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
+        <SectionCard title="Kopf & Empfänger" subtitle="steht so auf dem Angebot">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div><Label className="text-xs">Betreff</Label>
               <Input value={draft.subject} onChange={(e) => onDraftChange({ ...draft, subject: e.target.value })} className="h-8" /></div>
             <div className="grid grid-cols-2 gap-2">
@@ -306,179 +339,215 @@ export default function Angebote() {
             </div>
             <div className="sm:col-span-2"><Label className="text-xs">Anschreiben</Label>
               <Textarea value={draft.cover_text} onChange={(e) => onDraftChange({ ...draft, cover_text: e.target.value })} rows={4} /></div>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
 
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Positionen</CardTitle></CardHeader>
-          <CardContent>
-            <OfferPositionsTable state={draft} onChange={onDraftChange} />
-          </CardContent>
-        </Card>
+        <SectionCard title="Positionen" subtitle="Summen rechnet die Console live mit; verbindlich ist der Server beim Speichern.">
+          <OfferPositionsTable state={draft} onChange={onDraftChange} />
+        </SectionCard>
 
+        {/* Druckansicht: bleibt bewusst HELL (Papier-Look, @media print in index.css). */}
         {showPdf && <OfferPdf state={draft} seller={billing.data?.profile} onClose={() => setShowPdf(false)} />}
       </div>
     );
   }
 
   // ── LISTEN-Ansicht (Anfragen) ───────────────────────────────────────────────
+  // v4.130.0 — Filter, „Wartet auf Freigabe" prominent
+  const reqItems = requests.data?.items ?? [];
+  const nFreigabe = reqItems.filter((r) => r.has_offer && r.offer_status === "draft").length;
+  const nOhne = reqItems.filter((r) => !r.has_offer).length;
+  const matchesFilter = (req: RequestItem) =>
+    listFilter === "alle" ? true
+      : listFilter === "freigabe" ? (req.has_offer && req.offer_status === "draft")
+      : !req.has_offer;
+  const shownRequests = reqItems.filter(matchesFilter);
+
   return (
-    <div className="p-4 sm:p-6 space-y-4 max-w-4xl">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2"><FileText className="h-5 w-5" /> Angebote</h1>
-          <p className="text-sm text-muted-foreground">Erstellen Sie ein Angebot direkt aus einer Kundenanfrage — Jana schlägt Positionen und Anschreiben vor.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => requests.refetch()} disabled={requests.isFetching}>
-            <RefreshCw className={"mr-1 h-4 w-4 " + (requests.isFetching ? "animate-spin" : "")} /> Aktualisieren
-          </Button>
-          <Button size="sm" onClick={() => generateFrom(undefined)} disabled={genOffer.isPending}>
-            <Plus className="mr-1 h-4 w-4" /> Leeres Angebot
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        kicker="Vertrieb"
+        title="Angebote"
+        subtitle="Aus einer Kundenanfrage wird per Knopfdruck ein Angebot — Jana schlägt Positionen und Anschreiben vor. Verschickt wird nichts automatisch."
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => requests.refetch()} disabled={requests.isFetching}>
+              <RefreshCw className={"mr-1 h-4 w-4 " + (requests.isFetching ? "animate-spin" : "")} /> Aktualisieren
+            </Button>
+            <Button size="sm" onClick={() => generateFrom(undefined)} disabled={genOffer.isPending}>
+              <Plus className="mr-1 h-4 w-4" /> Leeres Angebot
+            </Button>
+          </>
+        }
+      />
 
       {pendingMsg && (
-        <Card className="border-primary/50">
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4" /> Angebot aus Ihrer Postfach-Nachricht</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {genOffer.isPending ? (
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Jana liest die E-Mail und erstellt das Angebot mit Ihren Listenpreisen ...
-              </p>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground">Das Angebot konnte nicht automatisch erstellt werden. Erneut versuchen?</p>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" onClick={() => generateFromMessage(pendingMsg.messageId, pendingMsg.provider)} disabled={genOffer.isPending}>
-                    <Sparkles className="mr-1 h-4 w-4" /> Angebot erstellen
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setPendingMsg(null)} disabled={genOffer.isPending}>Abbrechen</Button>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <CardTitle className="text-base">Offene Anfragen</CardTitle>
-            {/* v4.130.0 — Filter, „Wartet auf Freigabe" prominent */}
-            {(() => {
-              const items = requests.data?.items ?? [];
-              const nFreigabe = items.filter((r) => r.has_offer && r.offer_status === "draft").length;
-              const nOhne = items.filter((r) => !r.has_offer).length;
-              return (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <Button variant={listFilter === "freigabe" ? "default" : "outline"} size="sm" className="h-7 text-xs"
-                    onClick={() => setListFilter(listFilter === "freigabe" ? "alle" : "freigabe")}>
-                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Wartet auf Freigabe{nFreigabe > 0 ? ` (${nFreigabe})` : ""}
-                  </Button>
-                  <Button variant={listFilter === "ohne" ? "default" : "outline"} size="sm" className="h-7 text-xs"
-                    onClick={() => setListFilter(listFilter === "ohne" ? "alle" : "ohne")}>
-                    Ohne Angebot{nOhne > 0 ? ` (${nOhne})` : ""}
-                  </Button>
-                </div>
-              );
-            })()}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {requests.isLoading && <><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></>}
-          {requests.isError && (
-            <QueryErrorNotice label="Die Anfragen konnten nicht geladen werden." onRetry={() => requests.refetch()} retrying={requests.isFetching} />
-          )}
-          {!requests.isLoading && !requests.isError && (requests.data?.items?.length ?? 0) === 0 && (
-            <p className="text-sm text-muted-foreground py-4">Keine offenen Anfragen gefunden. Anfragen erscheinen hier, sobald E-Mails als „Anfrage &amp; Auftrag" eingeordnet wurden.</p>
-          )}
-          {requests.data?.items
-            ?.filter((req) => listFilter === "alle" ? true
-              : listFilter === "freigabe" ? (req.has_offer && req.offer_status === "draft")
-              : !req.has_offer)
-            .map((req, i) => {
-            // v4.131.0: lesbare Liste — Betreff-Fallback (alte Threads ohne audit-Betreff)
-            const hasSubject = !!req.subject && req.subject !== "(kein Betreff)";
-            const when = req.event_at ? new Date(req.event_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : null;
-            const title = hasSubject ? req.subject : (req.summary || `Kundenanfrage${when ? ` vom ${when}` : ""}`);
-            const senderShown = req.sender && req.sender !== "(unbekannt)" ? req.sender : null;
-            const subline = [senderShown, when, hasSubject && req.summary ? req.summary : null].filter(Boolean).join(" · ");
-            return (
-            <div key={i} className="flex items-center justify-between gap-3 rounded-lg border p-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium truncate">{title}</span>
-                  {req.has_offer && <Badge variant="secondary" className="text-[10px]">Angebot: {req.offer_status}</Badge>}
-                  {req.offer_auto && (
-                    <Badge className="text-[10px] gap-1 bg-primary/15 text-primary hover:bg-primary/15 border-0">
-                      <Sparkles className="h-3 w-3" /> Automatisch aus E-Mail
-                    </Badge>
-                  )}
-                </div>
-                {subline && <p className="text-xs text-muted-foreground truncate">{subline}</p>}
-              </div>
-              <div className="shrink-0">
-                {req.has_offer && req.offer_id != null ? (
-                  <Button variant={req.offer_auto && req.offer_status === "draft" ? "default" : "outline"} size="sm" onClick={() => openExistingOffer(req.offer_id as number)}>
-                    {req.offer_auto && req.offer_status === "draft" ? "Prüfen & freigeben" : "Angebot öffnen"}
-                  </Button>
-                ) : (
-                  <Button size="sm" onClick={() => generateFrom(req)} disabled={genOffer.isPending}>
-                    <Sparkles className="mr-1 h-4 w-4" /> Angebot erstellen
-                  </Button>
-                )}
+        <SectionCard
+          className="border-primary/30"
+          title={<span className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Angebot aus deiner Postfach-Nachricht</span>}
+        >
+          {genOffer.isPending ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Jana liest die E-Mail und erstellt das Angebot mit deinen Listenpreisen …
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">Das Angebot konnte nicht automatisch erstellt werden. Erneut versuchen?</p>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={() => generateFromMessage(pendingMsg.messageId, pendingMsg.provider)} disabled={genOffer.isPending}>
+                  <Sparkles className="mr-1 h-4 w-4" /> Angebot erstellen
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setPendingMsg(null)} disabled={genOffer.isPending}>Abbrechen</Button>
               </div>
             </div>
-            );
-          })}
-          {!requests.isLoading && (requests.data?.items?.length ?? 0) > 0 && listFilter !== "alle" &&
-            (requests.data?.items ?? []).filter((req) => listFilter === "freigabe" ? (req.has_offer && req.offer_status === "draft") : !req.has_offer).length === 0 && (
-            <p className="text-sm text-muted-foreground py-4">
-              {listFilter === "freigabe" ? "Kein Angebot wartet gerade auf Freigabe." : "Alle Anfragen haben bereits ein Angebot."}
-            </p>
           )}
-        </CardContent>
-      </Card>
+        </SectionCard>
+      )}
+
+      <SectionCard
+        title="Offene Anfragen"
+        subtitle="E-Mails, die als „Anfrage & Auftrag“ eingeordnet wurden"
+        bodyClassName="p-0"
+        action={
+          <div className="flex flex-wrap gap-1.5">
+            <Chip
+              active={listFilter === "freigabe"}
+              count={nFreigabe > 0 ? nFreigabe : undefined}
+              onClick={() => setListFilter(listFilter === "freigabe" ? "alle" : "freigabe")}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> Wartet auf Freigabe
+            </Chip>
+            <Chip
+              active={listFilter === "ohne"}
+              count={nOhne > 0 ? nOhne : undefined}
+              onClick={() => setListFilter(listFilter === "ohne" ? "alle" : "ohne")}
+            >
+              Ohne Angebot
+            </Chip>
+          </div>
+        }
+      >
+        {requests.isLoading ? (
+          <div className="space-y-2 p-4">
+            <Skeleton className="h-14 w-full rounded-lg" />
+            <Skeleton className="h-14 w-full rounded-lg" />
+          </div>
+        ) : requests.isError ? (
+          <div className="p-4">
+            <QueryErrorNotice label="Die Anfragen konnten nicht geladen werden." onRetry={() => requests.refetch()} retrying={requests.isFetching} />
+          </div>
+        ) : reqItems.length === 0 ? (
+          <EmptyState
+            icon={<Inbox className="h-7 w-7" />}
+            title="Keine offenen Anfragen gefunden."
+            description="Anfragen erscheinen hier, sobald E-Mails als „Anfrage & Auftrag“ eingeordnet wurden."
+          />
+        ) : shownRequests.length === 0 ? (
+          <EmptyState
+            title={listFilter === "freigabe" ? "Kein Angebot wartet gerade auf Freigabe." : "Alle Anfragen haben bereits ein Angebot."}
+            description="Filter zurücksetzen, um alle Anfragen zu sehen."
+            action={<Button variant="outline" size="sm" onClick={() => setListFilter("alle")}>Alle Anfragen</Button>}
+          />
+        ) : (
+          <ul className="divide-y divide-line-soft">
+            {shownRequests.map((req, i) => {
+              // v4.131.0: lesbare Liste — Betreff-Fallback (alte Threads ohne audit-Betreff)
+              const hasSubject = !!req.subject && req.subject !== "(kein Betreff)";
+              const when = req.event_at ? new Date(req.event_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : null;
+              const title = hasSubject ? req.subject : (req.summary || `Kundenanfrage${when ? ` vom ${when}` : ""}`);
+              const senderShown = req.sender && req.sender !== "(unbekannt)" ? req.sender : null;
+              const subline = [senderShown, when, hasSubject && req.summary ? req.summary : null].filter(Boolean).join(" · ");
+              const st = offerStatus(req.offer_status);
+              return (
+                <li key={i} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate text-[13px] font-medium text-foreground">{title}</span>
+                      {req.has_offer && (
+                        <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <Dot tone={st.tone} className="!h-1.5 !w-1.5" /> Angebot: {st.label}
+                        </span>
+                      )}
+                      {req.offer_auto && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-surface bg-emerald-surface/70 px-2 py-0.5 text-[10.5px] font-medium text-emerald-light">
+                          <Sparkles className="h-3 w-3" /> Automatisch aus E-Mail
+                        </span>
+                      )}
+                    </div>
+                    {subline && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{subline}</p>}
+                  </div>
+                  <div className="shrink-0">
+                    {req.has_offer && req.offer_id != null ? (
+                      <Button variant={req.offer_auto && req.offer_status === "draft" ? "default" : "outline"} size="sm" onClick={() => openExistingOffer(req.offer_id as number)}>
+                        {req.offer_auto && req.offer_status === "draft" ? "Prüfen & freigeben" : "Angebot öffnen"}
+                      </Button>
+                    ) : (
+                      <Button size="sm" onClick={() => generateFrom(req)} disabled={genOffer.isPending}>
+                        <Sparkles className="mr-1 h-4 w-4" /> Angebot erstellen
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </SectionCard>
 
       {/* Umbau 2026-07-27: freigegebene Angebote (auch ohne Anfrage-Thread) —
           hier werden sie zur Rechnung. Vorher lag diese Karte auf der
           Rechnungen-Seite; ausserdem waren "Leere Angebote" nach dem Verlassen
           des Editors nirgends mehr auffindbar. */}
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base">Freigegebene Angebote</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {approved.isLoading && <Skeleton className="h-14 w-full" />}
-          {approved.isError && (
+      <SectionCard
+        title="Freigegebene Angebote"
+        subtitle="bereit zur Umwandlung in eine Rechnung"
+        bodyClassName="p-0"
+      >
+        {approved.isLoading ? (
+          <div className="p-4"><Skeleton className="h-14 w-full rounded-lg" /></div>
+        ) : approved.isError ? (
+          <div className="p-4">
             <QueryErrorNotice label="Die freigegebenen Angebote konnten nicht geladen werden." onRetry={() => approved.refetch()} retrying={approved.isFetching} />
-          )}
-          {!approved.isLoading && !approved.isError && (approved.data?.items?.length ?? 0) === 0 && (
-            <p className="text-sm text-muted-foreground py-4">Noch keine freigegebenen Angebote. Ein Angebot erscheint hier nach der Freigabe — bereit zur Umwandlung in eine Rechnung.</p>
-          )}
-          {approved.data?.items?.map((o: ApprovedOfferItem) => (
-            <div key={o.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium truncate">{o.subject || o.counterpart_name || "Angebot #" + o.id}</span>
-                  {o.has_invoice && <Badge variant="secondary" className="text-[10px]">Rechnung vorhanden</Badge>}
+          </div>
+        ) : (approved.data?.items?.length ?? 0) === 0 ? (
+          <EmptyState
+            icon={<FileCheck2 className="h-7 w-7" />}
+            title="Noch keine freigegebenen Angebote."
+            description="Ein Angebot erscheint hier nach der Freigabe — bereit zur Umwandlung in eine Rechnung."
+          />
+        ) : (
+          <ul className="divide-y divide-line-soft">
+            {approved.data?.items?.map((o: ApprovedOfferItem) => (
+              <li key={o.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="truncate text-[13px] font-medium text-foreground">{o.subject || o.counterpart_name || "Angebot #" + o.id}</span>
+                    {o.has_invoice && (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <Dot tone="emerald" className="!h-1.5 !w-1.5" /> Rechnung vorhanden
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                    {o.counterpart_name || "–"}
+                    {o.amount_gross != null ? <> · <span className="tabular">{fmtEUR(o.amount_gross)}</span></> : null}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{o.counterpart_name || ""}{o.amount_gross != null ? " · " + fmtEUR(o.amount_gross) : ""}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button variant="ghost" size="sm" onClick={() => openExistingOffer(o.id)}>Öffnen</Button>
-                {o.has_invoice && o.invoice_id != null ? (
-                  <Button variant="outline" size="sm" onClick={() => navigate(`/forderungen?tab=rechnungen&invoice=${o.invoice_id}`)}>Rechnung öffnen</Button>
-                ) : (
-                  <Button size="sm" onClick={() => convertToInvoice(o.id)} disabled={genInv.isPending}>
-                    {genInv.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ArrowRightLeft className="mr-1 h-4 w-4" />} In Rechnung umwandeln
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => openExistingOffer(o.id)}>Öffnen</Button>
+                  {o.has_invoice && o.invoice_id != null ? (
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/forderungen?tab=rechnungen&invoice=${o.invoice_id}`)}>Rechnung öffnen</Button>
+                  ) : (
+                    <Button size="sm" onClick={() => convertToInvoice(o.id)} disabled={genInv.isPending}>
+                      {genInv.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ArrowRightLeft className="mr-1 h-4 w-4" />} In Rechnung umwandeln
+                    </Button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
     </div>
   );
 }

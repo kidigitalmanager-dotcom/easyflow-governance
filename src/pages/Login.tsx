@@ -8,6 +8,7 @@ import { needsMfaChallenge } from "@/lib/mfa";
 import MfaChallengeCard from "@/components/MfaChallengeCard";
 import { Helmet } from "react-helmet-async";
 import { Dot } from "@/components/ue/primitives";
+import { armBootSequence } from "@/lib/boot-flag";
 import logo from "@/assets/useeasy-logo.jpg";
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -128,7 +129,10 @@ export default function Login() {
       // fail-open: ohne AAL-Info normal weiter (MFA ist optional)
     }
     // Erfolg: Full-Reload — AuthProvider mountet neu und liest die Session deterministisch.
-    // Das Boot-Flag hat der AuthProvider beim SIGNED_IN-Event bereits gesetzt.
+    // Boot-Sequenz genau hier armen (§7.2): das ist ein frischer Login. Der
+    // AuthProvider darf das NICHT anhand von SIGNED_IN tun — das Event feuert
+    // auch beim Wiederherstellen einer Sitzung.
+    armBootSequence();
     window.location.href = "/";
   };
 
@@ -164,6 +168,7 @@ export default function Login() {
     // Mitarbeiter-Weiche greift serverseitig über /me role:'employee').
     localStorage.setItem("ue_role", "company");
     if (data.session) {
+      armBootSequence();
       window.location.href = "/";
       return;
     }
@@ -213,6 +218,7 @@ export default function Login() {
         <MfaChallengeCard
           onVerified={() => {
             // Gleicher deterministischer Einstieg wie der normale Login-Erfolg.
+            armBootSequence();
             window.location.href = "/";
           }}
           onCancel={async () => {

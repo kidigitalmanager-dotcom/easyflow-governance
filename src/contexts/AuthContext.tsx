@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { armBootSequence, disarmBootSequence } from "@/lib/boot-flag";
+import { armBootSequence, disarmBootSequence, isOAuthReturn } from "@/lib/boot-flag";
 import type { Session, User } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -20,10 +20,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         // Redesign 27.07.2026 (§7.2): die Boot-Sequenz laeuft NUR bei frischem
-        // Login. SIGNED_IN feuert genau dort (E-Mail, OAuth-Rueckkehr, MFA) —
-        // INITIAL_SESSION und TOKEN_REFRESHED bleiben aussen vor, deshalb
-        // wiederholt sich die Sequenz bei Reload/Routenwechsel nicht.
-        if (event === "SIGNED_IN") armBootSequence();
+        // Login.
+        //
+        // ACHTUNG, hier steckte ein Fehler: SIGNED_IN feuert auch beim
+        // Wiederherstellen einer gespeicherten Sitzung — die Sequenz lief
+        // dadurch bei JEDEM Reload (E2E-Fund 27.07.). Deshalb wird hier nur
+        // noch der OAuth-Rueckweg abgedeckt, den man an den Callback-Parametern
+        // in der URL sicher erkennt. Den E-Mail-Login und die MFA-Bestaetigung
+        // armt die Login-Seite selbst, direkt vor dem Redirect.
+        if (event === "SIGNED_IN" && isOAuthReturn()) armBootSequence();
         setSession(session);
         setLoading(false);
       }
