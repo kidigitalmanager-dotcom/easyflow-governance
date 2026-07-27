@@ -1,10 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { useCashIndex, useApSettings, useSetApSettings } from "@/hooks/use-api";
+import {
+  useCashIndex,
+  useApSettings,
+  useSetApSettings,
+  useDocuments,
+  useApInvoices,
+} from "@/hooks/use-api";
 import { exportApXlsx, exportApCsvDatev, exportArXlsx } from "@/lib/api-client";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -13,25 +18,36 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import {
-  Wallet, Download, FileSpreadsheet, FileText, ChevronDown, ArrowDownCircle, ArrowUpCircle,
-  Receipt, CreditCard, TrendingUp,
+  Download, FileSpreadsheet, FileText, ChevronDown, ArrowDownCircle, ArrowUpCircle,
+  Receipt, CreditCard, Send,
 } from "lucide-react";
+import { PageHeader, SectionCard, Chip, Dot } from "@/components/ue/primitives";
+import { agingBuckets, avgPaymentDays, confirmedShare } from "@/lib/ar-metrics";
 
-// Buchhaltung — Cash-Dashboard (Uebersicht). Reine Berechnung aus Forderungen (AR) +
-// Verbindlichkeiten (AP): Geld rein / Geld raus im Horizont, Verzug, Liquiditaets-Kennzahl
-// mit Ampel. Nichts wird persistiert (kein Drift), alles server-berechnet.
+/* Buchhaltung — Cash-Dashboard (Uebersicht). Cash-Index, Geld rein / Geld raus
+   und Verzug kommen server-berechnet aus /cashindex (nichts persistiert, kein Drift).
+
+   Redesign 27.07.2026 (Briefing §3): zusaetzlich Altersstruktur, Ø Zahlungsdauer
+   und die Belege-Quote. Diese drei rechnet die Console aus den ohnehin geladenen
+   Rohdaten (tenant_documents bzw. AP-Liste) — kein neuer Endpoint, keine
+   geschaetzten Zahlen. Der 30-Tage-Trend fehlt weiterhin bewusst: dafuer gibt es
+   keine Historie, und eine erfundene Kurve waere schlimmer als gar keine.
+   Ein USt-Widget gibt es nicht (Entscheidung Leon) — kein Steuer-Feature vortaeuschen. */
 
 const HORIZONS = [7, 14, 30, 60];
-const AMPEL: Record<string, { dot: string; text: string; label: string }> = {
-  gruen: { dot: "bg-emerald-500", text: "text-emerald-600", label: "grün" },
-  gelb: { dot: "bg-amber-500", text: "text-amber-600", label: "gelb" },
-  rot: { dot: "bg-red-500", text: "text-red-600", label: "rot" },
+const AMPEL: Record<string, { tone: "emerald" | "amber" | "danger"; text: string; label: string }> = {
+  gruen: { tone: "emerald", text: "text-primary", label: "grün" },
+  gelb: { tone: "amber", text: "text-amber", label: "gelb" },
+  rot: { tone: "danger", text: "text-danger", label: "rot" },
 };
 
 function eur(v: number | null | undefined): string {
   if (v == null) return "—";
-  try { return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(v); }
-  catch { return `${v} EUR`; }
+  try {
+    return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(v);
+  } catch {
+    return `${v} EUR`;
+  }
 }
 
 export default function Buchhaltung() {
@@ -39,6 +55,9 @@ export default function Buchhaltung() {
   const ci = useCashIndex(horizon);
   const settings = useApSettings();
   const setSettings = useSetApSettings();
+  // Rohdaten fuer die drei neuen Kennzahlen (Briefing §3).
+  const arDocs = useDocuments("ar_invoice");
+  const apList = useApInvoices();
 
   const d = ci.data;
   // 2026-07-27: KEINE Ampel-Aussage ohne Daten. Vorher stand waehrend des
@@ -46,6 +65,14 @@ export default function Buchhaltung() {
   const ampel = d ? (AMPEL[d.ampel] ?? null) : null;
   const featureOn = settings.data?.feature_on ?? false;
   const s = settings.data?.settings;
+
+  const docs = arDocs.data?.items;
+  const buckets = useMemo(() => agingBuckets(docs), [docs]);
+  const bucketMax = Math.max(1, ...buckets.map((b) => b.amount));
+  const bucketTotal = buckets.reduce((sum, b) => sum + b.amount, 0);
+  const avgDays = useMemo(() => avgPaymentDays(docs), [docs]);
+  const belege = useMemo(() => confirmedShare(apList.data?.items), [apList.data]);
+  const overdueCount = (docs ?? []).filter((x) => x.overdue && !x.paid_at).length;
 
   // 2026-07-27: gespeicherten Horizont (cash_horizon_days) beim Laden uebernehmen
   // und Aenderungen zurueckschreiben — vorher war die Server-Einstellung tot.
@@ -57,6 +84,7 @@ export default function Buchhaltung() {
       setHorizon(saved);
     }
   }, [s?.cash_horizon_days]);
+
   function pickHorizon(h: number) {
     setHorizon(h);
     horizonSynced.current = true;
@@ -65,155 +93,311 @@ export default function Buchhaltung() {
   }
 
   async function toggleAutoIngest(v: boolean) {
-    try { await setSettings.mutateAsync({ auto_ingest: v }); toast.success(v ? "Auto-Erfassung an." : "Auto-Erfassung aus."); }
-    catch { toast.error("Einstellung konnte nicht gespeichert werden."); }
+    try {
+      await setSettings.mutateAsync({ auto_ingest: v });
+      toast.success(v ? "Auto-Erfassung an." : "Auto-Erfassung aus.");
+    } catch {
+      toast.error("Einstellung konnte nicht gespeichert werden.");
+    }
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6 max-w-6xl mx-auto">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2"><Wallet className="h-6 w-6" /> Buchhaltung — Uebersicht</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Geld rein, Geld raus und deine Liquiditaet auf einen Blick — aus Forderungen und
-            Verbindlichkeiten der naechsten Tage.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-md border overflow-hidden">
-            {HORIZONS.map((h) => (
-              <button key={h} onClick={() => pickHorizon(h)}
-                className={`px-3 py-1.5 text-sm ${horizon === h ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}>
-                {h} Tage
-              </button>
-            ))}
-          </div>
+    <div className="space-y-6">
+      <PageHeader
+        kicker="Buchhaltung"
+        title="Geld rein, Geld raus"
+        subtitle="Deine Liquidität aus Forderungen und Verbindlichkeiten der nächsten Tage — server-berechnet, nichts gespeichert."
+        actions={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm"><Download className="h-4 w-4" /> Export <ChevronDown className="h-3 w-3 opacity-60" /></Button>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4" /> Export <ChevronDown className="h-3 w-3 opacity-60" />
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Forderungen exportieren</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => exportArXlsx().catch(() => toast.error("Export fehlgeschlagen."))}>
-                <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel (Betrieb)
+                <FileSpreadsheet className="mr-2 h-4 w-4" /> Excel (Betrieb)
               </DropdownMenuItem>
               <DropdownMenuLabel>Verbindlichkeiten exportieren</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => exportApXlsx().catch(() => toast.error("Export fehlgeschlagen."))}>
-                <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel (Betrieb)
+                <FileSpreadsheet className="mr-2 h-4 w-4" /> Excel (Betrieb)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => exportApCsvDatev().catch(() => toast.error("Export fehlgeschlagen."))}>
-                <FileText className="h-4 w-4 mr-2" /> DATEV-Kreditoren-CSV
+                <FileText className="mr-2 h-4 w-4" /> DATEV-Kreditoren-CSV
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        }
+      />
+
+      {/* ── Cash-Index ──────────────────────────────────────────────────── */}
+      <SectionCard
+        title={`Cash-Index · ${horizon} Tage`}
+        subtitle="erwartete Zuflüsse minus Abflüsse im Horizont"
+        action={
+          <div className="flex flex-wrap gap-1.5">
+            {HORIZONS.map((h) => (
+              <Chip key={h} active={horizon === h} onClick={() => pickHorizon(h)}>
+                {h} Tage
+              </Chip>
+            ))}
+          </div>
+        }
+      >
+        {ci.isLoading ? (
+          <Skeleton className="h-16 w-full" />
+        ) : ci.isError ? (
+          <QueryErrorNotice
+            label="Der Cash-Index konnte nicht berechnet werden."
+            onRetry={() => ci.refetch()}
+            retrying={ci.isFetching}
+          />
+        ) : (
+          <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
+            <div>
+              <p
+                className={
+                  "tabular text-[34px] font-semibold leading-none tracking-[-0.02em] " +
+                  (d && d.cash_index < 0 ? "text-danger" : "text-primary")
+                }
+              >
+                {eur(d?.cash_index)}
+              </p>
+              <p className="mt-1.5 text-[11.5px] text-muted-foreground">Cash-Index im Horizont</p>
+            </div>
+            {ampel && (
+              <div>
+                <p className={"flex items-center gap-2 text-sm font-medium " + ampel.text}>
+                  <Dot tone={ampel.tone} pulse={ampel.tone !== "emerald"} />
+                  Liquidität {ampel.label}
+                </p>
+                <p className="mt-1.5 text-[11.5px] text-muted-foreground">Ampel des Servers</p>
+              </div>
+            )}
+            <div>
+              <p className="tabular text-[20px] font-semibold leading-none">
+                {d?.coverage_ratio != null ? `${(d.coverage_ratio * 100).toFixed(0)} %` : "—"}
+              </p>
+              <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+                Deckung (Forderungen / Verbindlichkeiten)
+              </p>
+            </div>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* ── Geld rein / Geld raus ───────────────────────────────────────── */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <SectionCard
+          title={
+            <span className="flex items-center gap-2 text-primary">
+              <ArrowDownCircle className="h-4 w-4" /> Geld rein — Forderungen
+            </span>
+          }
+        >
+          {ci.isLoading ? (
+            <Skeleton className="h-16 w-full" />
+          ) : ci.isError ? (
+            <QueryErrorNotice label="Forderungs-Summen nicht ladbar." />
+          ) : (
+            <div className="space-y-1">
+              <Row label="Offen gesamt" value={eur(d?.receivables.total)} />
+              <Row label={`Fällig in ${horizon} Tagen`} value={eur(d?.receivables.due_horizon)} strong />
+              <Row label="davon überfällig" value={eur(d?.receivables.overdue)} muted />
+              <Link
+                to="/forderungen"
+                className="inline-flex items-center gap-1 pt-1 text-xs text-primary hover:underline"
+              >
+                <Receipt className="h-3 w-3" /> zu den Forderungen
+              </Link>
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title={
+            <span className="flex items-center gap-2 text-danger">
+              <ArrowUpCircle className="h-4 w-4" /> Geld raus — Verbindlichkeiten
+            </span>
+          }
+        >
+          {ci.isLoading ? (
+            <Skeleton className="h-16 w-full" />
+          ) : ci.isError ? (
+            <QueryErrorNotice label="Verbindlichkeits-Summen nicht ladbar." />
+          ) : (
+            <div className="space-y-1">
+              <Row label="Offen gesamt" value={eur(d?.payables.total)} />
+              <Row label={`Fällig in ${horizon} Tagen`} value={eur(d?.payables.due_horizon)} strong />
+              <Row label="davon überfällig (im Verzug)" value={eur(d?.payables.overdue)} muted />
+              <Link
+                to="/verbindlichkeiten"
+                className="inline-flex items-center gap-1 pt-1 text-xs text-primary hover:underline"
+              >
+                <CreditCard className="h-3 w-3" /> zu den Verbindlichkeiten
+              </Link>
+            </div>
+          )}
+        </SectionCard>
+      </div>
+
+      {/* ── Altersstruktur + Ø Zahlungsdauer (client-berechnet, §3) ─────── */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <SectionCard
+          className="lg:col-span-2"
+          title="Altersstruktur der offenen Forderungen"
+          subtitle="aus Fälligkeitsdatum und Zahlungseingang deiner Rechnungen"
+          action={
+            overdueCount > 0 ? (
+              <Link
+                to="/forderungen?tab=forderungen"
+                className="inline-flex items-center gap-1.5 rounded-[10px] border border-amber/40 bg-amber-surface px-3 py-1.5 text-[12px] font-medium text-amber transition-colors hover:border-amber"
+              >
+                <Send className="h-3.5 w-3.5" />
+                Mahnlauf vorbereiten ({overdueCount})
+              </Link>
+            ) : null
+          }
+        >
+          {arDocs.isLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : arDocs.isError ? (
+            <QueryErrorNotice
+              label="Die Forderungen konnten nicht geladen werden."
+              onRetry={() => arDocs.refetch()}
+              retrying={arDocs.isFetching}
+            />
+          ) : bucketTotal === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Keine offenen Forderungen mit Fälligkeitsdatum.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {buckets.map((b) => (
+                <div key={b.key}>
+                  <div className="mb-1 flex items-baseline justify-between gap-3">
+                    <span className="text-[12.5px] text-tx-secondary">
+                      {b.label}
+                      {b.count > 0 && <span className="ml-1.5 text-[11px] text-tx-weak">{b.count}</span>}
+                    </span>
+                    <span className="tabular text-[12.5px] font-medium">{eur(b.amount)}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className={
+                        "h-full rounded-full transition-[width] duration-[1200ms] ease-out " +
+                        (b.key === "notyet"
+                          ? "bg-primary/70"
+                          : b.key === "d1_30"
+                            ? "bg-amber/70"
+                            : "bg-danger/70")
+                      }
+                      style={{ width: `${Math.round((b.amount / bucketMax) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <div className="space-y-4">
+          <SectionCard title="Ø Zahlungsdauer" subtitle="Ausstellung bis Zahlungseingang">
+            {arDocs.isLoading ? (
+              <Skeleton className="h-12 w-full" />
+            ) : arDocs.isError ? (
+              <QueryErrorNotice label="Nicht berechenbar." />
+            ) : (
+              <>
+                <p className="tabular text-[30px] font-semibold leading-none">
+                  {avgDays === null ? "–" : avgDays.toLocaleString("de-DE")}
+                  {avgDays !== null && <span className="ml-1.5 text-base font-medium text-muted-foreground">Tage</span>}
+                </p>
+                <p className="mt-2 text-[11.5px] text-muted-foreground">
+                  {avgDays === null
+                    ? "Noch keine bezahlte Rechnung mit Ausstellungs- und Zahldatum."
+                    : "Mittelwert über alle bezahlten Rechnungen."}
+                </p>
+              </>
+            )}
+          </SectionCard>
+
+          <SectionCard title="Belege" subtitle="Eingangsrechnungen, eindeutig zugeordnet">
+            {apList.isLoading ? (
+              <Skeleton className="h-12 w-full" />
+            ) : apList.isError ? (
+              <QueryErrorNotice label="Belege nicht ladbar." />
+            ) : (
+              <>
+                <p className="tabular text-[30px] font-semibold leading-none">
+                  {belege.pct === null ? "–" : `${belege.pct} %`}
+                </p>
+                <p className="mt-2 text-[11.5px] text-muted-foreground">
+                  {belege.pct === null
+                    ? "Noch keine Eingangsrechnungen erfasst."
+                    : `${belege.confirmed} von ${belege.total} erkannt · Rest wartet auf deine Bestätigung.`}
+                </p>
+                {belege.total > belege.confirmed && (
+                  <Link
+                    to="/verbindlichkeiten"
+                    className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    Offene Belege prüfen
+                  </Link>
+                )}
+              </>
+            )}
+          </SectionCard>
         </div>
       </div>
 
-      {/* Cash-Index-Kachel */}
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Cash-Index ({horizon} Tage)</CardTitle></CardHeader>
-        <CardContent>
-          {ci.isLoading ? <Skeleton className="h-16 w-full" /> : ci.isError ? (
-            <QueryErrorNotice label="Der Cash-Index konnte nicht berechnet werden." onRetry={() => ci.refetch()} retrying={ci.isFetching} />
-          ) : (
-            <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-              <div>
-                <div className={`text-3xl font-semibold ${d && d.cash_index < 0 ? "text-red-600" : "text-emerald-600"}`}>{eur(d?.cash_index)}</div>
-                <div className="text-xs text-muted-foreground">erwartete Zufluesse minus Abfluesse im Horizont</div>
-              </div>
-              {ampel && (
-                <div className="flex items-center gap-2">
-                  <span className={`inline-block h-3 w-3 rounded-full ${ampel.dot}`} />
-                  <span className={`text-sm font-medium ${ampel.text}`}>Liquiditaet {ampel.label}</span>
-                </div>
-              )}
-              <div>
-                <div className="text-lg font-medium">{d?.coverage_ratio != null ? `${(d.coverage_ratio * 100).toFixed(0)} %` : "—"}</div>
-                <div className="text-xs text-muted-foreground">Deckung (Forderungen / Verbindlichkeiten)</div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* ── Rechnungseingang ────────────────────────────────────────────── */}
+      <SectionCard title="Rechnungseingang">
+        {settings.isLoading ? (
+          /* 2026-07-27: waehrend des Ladens NICHT "nicht freigeschaltet" behaupten. */
+          <Skeleton className="h-6 w-2/3" />
+        ) : settings.isError ? (
+          <QueryErrorNotice
+            label="Die Einstellung konnte nicht geladen werden."
+            onRetry={() => settings.refetch()}
+            retrying={settings.isFetching}
+          />
+        ) : !featureOn ? (
+          <p className="text-sm text-muted-foreground">
+            Die automatische Erfassung eingehender Rechnungen ist für deinen Betrieb noch nicht
+            freigeschaltet. Du kannst Verbindlichkeiten jederzeit manuell anlegen.
+          </p>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Switch
+              id="auto"
+              checked={s?.auto_ingest ?? true}
+              onCheckedChange={toggleAutoIngest}
+              disabled={setSettings.isPending}
+            />
+            <Label htmlFor="auto" className="text-sm text-muted-foreground">
+              Eingehende Rechnungen automatisch als Verbindlichkeit erfassen (unsichere PDFs zur
+              Bestätigung). Es wird nie automatisch bezahlt.
+            </Label>
+          </div>
+        )}
+      </SectionCard>
 
-      {/* Geld rein / Geld raus */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="border-emerald-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2 text-emerald-700">
-              <ArrowDownCircle className="h-4 w-4" /> Geld rein — Forderungen
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {ci.isLoading ? <Skeleton className="h-16 w-full" /> : ci.isError ? (
-              <QueryErrorNotice label="Forderungs-Summen nicht ladbar." />
-            ) : (
-              <>
-                <Row label="Offen gesamt" value={eur(d?.receivables.total)} />
-                <Row label={`Faellig in ${horizon} Tagen`} value={eur(d?.receivables.due_horizon)} strong />
-                <Row label="davon ueberfaellig" value={eur(d?.receivables.overdue)} muted />
-                <Link to="/forderungen" className="text-xs text-primary hover:underline inline-flex items-center gap-1 pt-1"><Receipt className="h-3 w-3" /> zu den Forderungen</Link>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        <Card className="border-red-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2 text-red-700">
-              <ArrowUpCircle className="h-4 w-4" /> Geld raus — Verbindlichkeiten
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {ci.isLoading ? <Skeleton className="h-16 w-full" /> : ci.isError ? (
-              <QueryErrorNotice label="Verbindlichkeits-Summen nicht ladbar." />
-            ) : (
-              <>
-                <Row label="Offen gesamt" value={eur(d?.payables.total)} />
-                <Row label={`Faellig in ${horizon} Tagen`} value={eur(d?.payables.due_horizon)} strong />
-                <Row label="davon ueberfaellig (im Verzug)" value={eur(d?.payables.overdue)} muted />
-                <Link to="/verbindlichkeiten" className="text-xs text-primary hover:underline inline-flex items-center gap-1 pt-1"><CreditCard className="h-3 w-3" /> zu den Verbindlichkeiten</Link>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Auto-Erfassung */}
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base">Rechnungseingang</CardTitle></CardHeader>
-        <CardContent>
-          {settings.isLoading ? (
-            /* 2026-07-27: waehrend des Ladens NICHT "nicht freigeschaltet" behaupten. */
-            <Skeleton className="h-6 w-2/3" />
-          ) : settings.isError ? (
-            <QueryErrorNotice label="Die Einstellung konnte nicht geladen werden." onRetry={() => settings.refetch()} retrying={settings.isFetching} />
-          ) : !featureOn ? (
-            <div className="text-sm text-muted-foreground">
-              Die automatische Erfassung eingehender Rechnungen ist fuer deinen Betrieb noch nicht
-              freigeschaltet. Du kannst Verbindlichkeiten jederzeit manuell anlegen.
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Switch id="auto" checked={s?.auto_ingest ?? true} onCheckedChange={toggleAutoIngest} disabled={setSettings.isPending} />
-              <Label htmlFor="auto" className="text-sm text-muted-foreground">
-                Eingehende Rechnungen automatisch als Verbindlichkeit erfassen (unsichere PDFs zur Bestaetigung).
-                Es wird nie automatisch bezahlt.
-              </Label>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {d?.as_of && <div className="text-xs text-muted-foreground">Stand {new Date(d.as_of).toLocaleDateString("de-DE")}. Server-berechnet, nicht gespeichert.</div>}
+      {d?.as_of && (
+        <p className="text-xs text-tx-weak">
+          Stand {new Date(d.as_of).toLocaleDateString("de-DE")}. Server-berechnet, nicht gespeichert.
+        </p>
+      )}
     </div>
   );
 }
 
 function Row({ label, value, strong, muted }: { label: string; value: string; strong?: boolean; muted?: boolean }) {
   return (
-    <div className="flex justify-between text-sm">
-      <span className={muted ? "text-muted-foreground" : ""}>{label}</span>
-      <span className={strong ? "font-semibold" : muted ? "text-muted-foreground" : ""}>{value}</span>
+    <div className="flex justify-between gap-3 text-sm">
+      <span className={muted ? "text-muted-foreground" : "text-tx-secondary"}>{label}</span>
+      <span className={"tabular " + (strong ? "font-semibold" : muted ? "text-muted-foreground" : "")}>{value}</span>
     </div>
   );
 }
