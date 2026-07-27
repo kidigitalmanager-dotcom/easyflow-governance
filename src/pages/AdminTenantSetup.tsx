@@ -15,6 +15,10 @@ import {
   Building2, Mail, ToggleLeft,
 } from "lucide-react";
 import type { TenantSetup, TenantSetupWriteBody } from "@/lib/api-client";
+import {
+  TENANT_FLAG_ROWS, visibleTenantFlags, buildTenantFlagPayload, describeSkippedFlags,
+  type TenantFlagKey,
+} from "@/lib/tenant-flags";
 import AgentTenantAdminTab from "@/components/voice/AgentTenantAdminTab";
 import VoiceLinesTab from "@/components/VoiceLinesTab";
 
@@ -87,7 +91,12 @@ type FormState = {
   spreadsheet_enabled: boolean; autopilot_kill_switch: boolean;
   auto_consent_on_inquiry: boolean; email_cta_enabled: boolean;
   telegram_enabled: boolean; whatsapp_enabled: boolean;
-};
+}
+  // Flags (v4.149.0) — die acht public.tenants-Gates, vorher nur per SQL setzbar.
+  // Bewusst aus TENANT_FLAG_ROWS abgeleitet: kommt dort ein Gate dazu, verlangt
+  // tsc es hier und in initForm — die Liste kann nicht auseinanderlaufen.
+  & Record<TenantFlagKey, boolean>;
+
 
 function initForm(s: TenantSetup): FormState {
   return {
@@ -114,6 +123,13 @@ function initForm(s: TenantSetup): FormState {
     email_cta_enabled: s.flags?.email_cta_enabled ?? false,
     telegram_enabled: s.flags?.telegram_enabled ?? false,
     whatsapp_enabled: s.flags?.whatsapp_enabled ?? false,
+    documents_enabled: s.flags?.documents_enabled ?? false,
+    accounting_ap_enabled: s.flags?.accounting_ap_enabled ?? false,
+    auto_offer_enabled: s.flags?.auto_offer_enabled ?? false,
+    dunning_scan_enabled: s.flags?.dunning_scan_enabled ?? false,
+    einvoice_enabled: s.flags?.einvoice_enabled ?? false,
+    sales_pack_enabled: s.flags?.sales_pack_enabled ?? false,
+    spam_rescue_enabled: s.flags?.spam_rescue_enabled ?? false,
   };
 }
 
@@ -177,6 +193,11 @@ export default function AdminTenantSetup() {
 
   useEffect(() => { if (setup?.ok) setForm(initForm(setup)); }, [setup]);
 
+  // v4.149.0 — nur Gates anzeigen und schreiben, die die DB wirklich kennt.
+  // `flags_available === null` heisst „unbekannt" (keine Tenant-Zeile) → dann
+  // alle zeigen, statt dem Kunden Schalter zu verstecken, die es geben koennte.
+  const flagRows = visibleTenantFlags(setup?.flags_available);
+
   // v4.35.0 — Rückkehr vom Outlook/M365-OAuth-Reconnect: Toast + URL säubern.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -232,14 +253,23 @@ export default function AdminTenantSetup() {
       tenant: { status: form.status, plan: form.plan || undefined },
       pack: form.mailbox_profile ? { mailbox_profile: form.mailbox_profile } : undefined,
       flags: {
-        spreadsheet_enabled: form.spreadsheet_enabled, autopilot_kill_switch: form.autopilot_kill_switch,
+        autopilot_kill_switch: form.autopilot_kill_switch,
         auto_consent_on_inquiry: form.auto_consent_on_inquiry, email_cta_enabled: form.email_cta_enabled,
         telegram_enabled: form.telegram_enabled, whatsapp_enabled: form.whatsapp_enabled,
+        // v4.149.0 — nur die Gates mitschicken, die auch als Schalter dastehen.
+        // Was nicht im Body steht, laesst der Server unangetastet (Partial-Merge).
+        ...buildTenantFlagPayload(flagRows, form),
       },
       ...extra,
     };
     save.mutate({ tenantId: selected, body }, {
-      onSuccess: () => toast.success("Setup gespeichert."),
+      onSuccess: (res) => {
+        // v4.149.0 — ehrlich bleiben: hat der Server ein Gate NICHT geschrieben
+        // (Spalte fehlt / keine Tenant-Zeile), ist das kein „gespeichert".
+        const skipped = describeSkippedFlags(res?.skipped_flags);
+        if (skipped) toast.warning(`Gespeichert, aber nicht alles: ${skipped}`);
+        else toast.success("Setup gespeichert.");
+      },
       onError: (e) => toast.error("Fehler: " + (e instanceof Error ? e.message : String(e))),
     });
   };
@@ -587,7 +617,17 @@ export default function AdminTenantSetup() {
           {/* D) Feature-Flags */}
           <SectionCard title={<CardTitle icon={Zap}>Feature-Flags</CardTitle>}>
             <div className="space-y-3">
-              <Toggle checked={form.spreadsheet_enabled} onChange={(v) => upd({ spreadsheet_enabled: v })} label="Excel Live-Sync aktiv" hint="Erlaubt das automatische Aktualisieren verbundener Tabellen." />
+              {/* v4.149.0 — Freischaltung ohne SQL. Ohne diese Gates meldet der
+                  Postfach-Scan beim Kunden „Scan uebersprungen: tenant_disabled". */}
+              {flagRows.map((r) => (
+                <Toggle key={r.key} checked={form[r.key]} onChange={(v) => upd({ [r.key]: v } as Partial<FormState>)} label={r.label} hint={r.hint} />
+              ))}
+              {flagRows.length < TENANT_FLAG_ROWS.length && (
+                <p className="text-[11.5px] leading-snug text-muted-foreground">
+                  {TENANT_FLAG_ROWS.length - flagRows.length} weitere Schalter sind ausgeblendet: die zugehoerige Spalte fehlt in der Datenbank.
+                </p>
+              )}
+              <div className="border-t border-line-soft pt-3" />
               <Toggle checked={form.autopilot_kill_switch} onChange={(v) => upd({ autopilot_kill_switch: v })} label="Autopilot-Notbremse (Kill-Switch)" hint="Wenn AN: stoppt jeden automatischen Versand sofort, egal welcher Modus." />
               <Toggle checked={form.auto_consent_on_inquiry} onChange={(v) => upd({ auto_consent_on_inquiry: v })} label="Auto-Einwilligung bei eingehender Anfrage" hint="Wenn der Kunde von sich aus schreibt/anruft, gilt die Aufzeichnungs-Einwilligung als gegeben (für Rückrufe)." />
               <Toggle checked={form.email_cta_enabled} onChange={(v) => upd({ email_cta_enabled: v })} label="Rückruf-CTA in E-Mails" hint="Hängt bei passenden Antworten einen Rückruf-Hinweis an (nur wenn Auto-Versand aus)." />
