@@ -150,7 +150,7 @@ export function StatCard({
 /* ---------------------------------------------------------- SectionCard */
 export function SectionCard({
   title,
-  kicker,
+  subtitle,
   action,
   children,
   className,
@@ -158,7 +158,9 @@ export function SectionCard({
   live = false,
 }: {
   title?: React.ReactNode;
-  kicker?: React.ReactNode;
+  /** Erklaerzeile unter dem Titel — normale Schreibweise, bewusst KEIN
+      Uppercase-Kicker: lange Saetze in Versalien schreien nur. */
+  subtitle?: React.ReactNode;
   action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
@@ -168,15 +170,17 @@ export function SectionCard({
 }) {
   return (
     <section className={cn("glass-card animate-fade-up", className)}>
-      {(title || action || kicker) && (
-        <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-line-soft">
+      {(title || action || subtitle) && (
+        <header className="flex items-start justify-between gap-3 px-4 py-3 border-b border-line-soft">
           <div className="min-w-0">
-            {kicker ? <p className="ue-kicker mb-1">{kicker}</p> : null}
             {title ? (
               <h2 className="flex items-center gap-2 text-[13.5px] font-semibold text-foreground truncate">
                 {live ? <Dot pulse /> : null}
                 {title}
               </h2>
+            ) : null}
+            {subtitle ? (
+              <p className="mt-0.5 text-[11.5px] text-muted-foreground">{subtitle}</p>
             ) : null}
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}

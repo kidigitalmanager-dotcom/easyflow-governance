@@ -22,7 +22,7 @@ const ENTRIES: Entry[] = [
   { label: "Verlauf", to: "/audit", group: "Arbeit", keywords: "audit trail historie undo entscheidungen" },
   // Umbau 2026-07-27: Buchhaltungs-Gruppe vollstaendig + Mitarbeiter-Gruppe;
   // Rechnungen sind Untertab von Forderungen.
-  { label: "Buchhaltung · Uebersicht", to: "/buchhaltung", group: "Buchhaltung", keywords: "cash index liquiditaet geld rein raus ampel" },
+  { label: "Buchhaltung · Übersicht", to: "/buchhaltung", group: "Buchhaltung", keywords: "cash index liquiditaet geld rein raus ampel" },
   { label: "Forderungen", to: "/forderungen", group: "Buchhaltung", keywords: "zahlungserinnerung mahnung dunning offene posten" },
   { label: "Rechnungen", to: "/forderungen?tab=rechnungen", group: "Buchhaltung", keywords: "invoice zugferd rechnung finalisieren" },
   { label: "Verbindlichkeiten", to: "/verbindlichkeiten", group: "Buchhaltung", keywords: "lieferanten eingangsrechnung kreditoren zahlen" },

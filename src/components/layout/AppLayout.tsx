@@ -41,7 +41,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     // Zeiterfassung/Abrechnung ist zu "Mitarbeiter" gezogen.
     label: "Buchhaltung",
     items: [
-      { to: "/buchhaltung", label: "Uebersicht", icon: Wallet },
+      { to: "/buchhaltung", label: "Übersicht", icon: Wallet },
       { to: "/forderungen", label: "Forderungen & Rechnungen", icon: Receipt },
       { to: "/verbindlichkeiten", label: "Verbindlichkeiten", icon: CreditCard },
       { to: "/angebote", label: "Angebote", icon: FileText },

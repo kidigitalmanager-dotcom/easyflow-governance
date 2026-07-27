@@ -28,7 +28,7 @@ const CRUMBS: Record<string, [string, string]> = {
   "/review": ["Arbeit", "Freigaben"],
   "/audit": ["Arbeit", "Verlauf"],
   // Umbau 2026-07-27: Buchhaltung + Mitarbeiter als eigene Gruppen.
-  "/buchhaltung": ["Buchhaltung", "Uebersicht"],
+  "/buchhaltung": ["Buchhaltung", "Übersicht"],
   "/forderungen": ["Buchhaltung", "Forderungen & Rechnungen"],
   "/verbindlichkeiten": ["Buchhaltung", "Verbindlichkeiten"],
   "/angebote": ["Buchhaltung", "Angebote"],

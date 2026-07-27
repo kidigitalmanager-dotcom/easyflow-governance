@@ -1,13 +1,26 @@
 import { Link } from "react-router-dom";
-import { Bot, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useAutopilotPolicy } from "@/hooks/use-api";
-import { computeGates, maturityStatus, MODE_SHORT_LABELS, MIN_SAMPLES, type MaturityMode } from "@/lib/autopilot-maturity";
+import {
+  computeGates,
+  maturityStatus,
+  MODE_ORDER,
+  MODE_SHORT_LABELS,
+  MIN_SAMPLES,
+  type MaturityMode,
+} from "@/lib/autopilot-maturity";
 import { humanizeCategory } from "@/data/humanize";
+import { SectionCard, ProgressRing } from "@/components/ue/primitives";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Autopilot-Reife auf "Heute" (Redesign Follow-up): macht den Weg zur naechsten
-// Stufe sichtbar (x/400 Samples + Gates) — reuse der Maturity-Logik aus den
-// Einstellungen. Rendert NICHTS ohne Daten.
+// Autopilot-Reife auf "Heute".
+//
+// Redesign 27.07.2026: der Entwurf zeigt hier einen Reife-Ring. Der Ring bildet
+// den ECHTEN Stand ab — Sample-Fortschritt (x/400) des staerksten Intents —,
+// die Stufenangabe kommt aus MODE_ORDER (Schatten -> Assistiert -> Autonom).
+// promotion_ready wird NAECHTLICH vom autopilot-sender berechnet; diese Anzeige
+// erfindet keine eigene Freigabe-Logik, sie visualisiert nur den DB-Stand.
+// Rendert NICHTS ohne Daten (Heute bleibt ruhig).
 // ─────────────────────────────────────────────────────────────────────────────
 export function AutopilotReifeWidget() {
   const { data } = useAutopilotPolicy();
@@ -17,41 +30,68 @@ export function AutopilotReifeWidget() {
     .slice(0, 3);
   if (rows.length === 0) return null;
 
+  const lead = rows[0];
+  const leadPct = Math.min(1, (lead.sample_count ?? 0) / MIN_SAMPLES);
+  const leadStage = Math.max(1, MODE_ORDER.indexOf(String(lead.mode) as MaturityMode) + 1);
+  const leadGates = computeGates(lead);
+  const leadPassed = leadGates.filter((g) => g.status === "pass").length;
+
   return (
-    <div className="glass-card p-6">
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-base font-semibold">Autopilot-Reife</h2>
-        <Bot className="w-4 h-4 text-muted-foreground" />
+    <SectionCard
+      title="Autopilot-Reife"
+      subtitle="Weg zur nächsten Stufe"
+      action={
+        <Link
+          to="/einstellungen?tab=email-autopilot"
+          className="inline-flex items-center gap-1 text-[11.5px] text-primary hover:underline"
+        >
+          Stufen <ChevronRight className="w-3 h-3" />
+        </Link>
+      }
+    >
+      <div className="flex items-center gap-4">
+        <ProgressRing value={leadPct} label={`${leadStage}/${MODE_ORDER.length}`} sublabel="Stufe" />
+        <div className="min-w-0">
+          <p className="truncate text-[13px] font-semibold">{humanizeCategory(lead.core_key)}</p>
+          <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+            {MODE_SHORT_LABELS[lead.mode as MaturityMode] ?? lead.mode} ·{" "}
+            <span className="tabular">
+              {lead.sample_count}/{MIN_SAMPLES}
+            </span>{" "}
+            Mails · {leadPassed}/{leadGates.length} Gates
+          </p>
+          <p className="mt-1.5 text-[11.5px] text-tx-weak">{maturityStatus(lead).label}</p>
+        </div>
       </div>
-      <p className="text-xs text-muted-foreground mb-4">Fortschritt bis zur nächsten Stufe je Intent.</p>
-      <div className="space-y-3.5">
-        {rows.map((r) => {
-          const gates = computeGates(r);
-          const passed = gates.filter((g) => g.status === "pass").length;
-          const st = maturityStatus(r);
-          const pct = Math.min(100, Math.round((r.sample_count / MIN_SAMPLES) * 100));
-          return (
-            <div key={r.core_key}>
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="text-xs font-semibold truncate">{humanizeCategory(r.core_key)}</span>
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                  {MODE_SHORT_LABELS[r.mode as MaturityMode] ?? r.mode} · {passed}/{gates.length} Gates
-                </span>
+
+      {rows.length > 1 && (
+        <div className="mt-4 space-y-3 border-t border-line-soft pt-4">
+          {rows.slice(1).map((r) => {
+            const gates = computeGates(r);
+            const passed = gates.filter((g) => g.status === "pass").length;
+            const pct = Math.min(100, Math.round(((r.sample_count ?? 0) / MIN_SAMPLES) * 100));
+            return (
+              <div key={r.core_key}>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="truncate text-[12px] font-medium">{humanizeCategory(r.core_key)}</span>
+                  <span className="whitespace-nowrap text-[10.5px] text-tx-weak">
+                    {MODE_SHORT_LABELS[r.mode as MaturityMode] ?? r.mode} · {passed}/{gates.length} Gates
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className={
+                      "h-full rounded-full transition-[width] duration-[1200ms] ease-out " +
+                      (r.promotion_ready ? "bg-primary" : "bg-primary/50")
+                    }
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
               </div>
-              <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                <div
-                  className={"h-full rounded-full " + (r.promotion_ready ? "bg-primary" : "bg-primary/50")}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <p className="text-[10.5px] text-muted-foreground mt-1">{st.label}</p>
-            </div>
-          );
-        })}
-      </div>
-      <Link to="/einstellungen?tab=email-autopilot" className="text-xs text-primary hover:underline mt-4 inline-flex items-center gap-1">
-        Stufen & Reife öffnen <ChevronRight className="w-3 h-3" />
-      </Link>
-    </div>
+            );
+          })}
+        </div>
+      )}
+    </SectionCard>
   );
 }
