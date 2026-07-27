@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { armBootSequence, disarmBootSequence } from "@/lib/boot-flag";
 import type { Session, User } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -17,7 +18,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        // Redesign 27.07.2026 (§7.2): die Boot-Sequenz laeuft NUR bei frischem
+        // Login. SIGNED_IN feuert genau dort (E-Mail, OAuth-Rueckkehr, MFA) —
+        // INITIAL_SESSION und TOKEN_REFRESHED bleiben aussen vor, deshalb
+        // wiederholt sich die Sequenz bei Reload/Routenwechsel nicht.
+        if (event === "SIGNED_IN") armBootSequence();
         setSession(session);
         setLoading(false);
       }
@@ -32,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
+    disarmBootSequence();
     await supabase.auth.signOut();
   };
 

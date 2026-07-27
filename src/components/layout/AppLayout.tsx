@@ -11,6 +11,7 @@ import { MailboxHealthBanner } from "@/components/MailboxHealthBanner";
 import { OnboardingRunnerProvider } from "@/components/onboarding/OnboardingRunner";
 import { CommandPalette } from "@/components/CommandPalette";
 import { JanaFab } from "@/components/JanaFab";
+import { BootSequence } from "@/components/BootSequence";
 import logo from "@/assets/useeasy-logo.jpg";
 import { useMe } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -221,6 +222,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Redesign 07.07.2026: globale Begleiter */}
       <CommandPalette />
       <JanaFab />
+
+      {/* Redesign 27.07.2026 (§7.2): Ladesequenz nach frischem Login. Liegt
+          bewusst UEBER der Console — die Seiten darunter laden waehrenddessen
+          schon, damit "Heute" fertig ist, wenn die Sequenz endet. */}
+      <BootSequence />
     </div>
   );
 }
