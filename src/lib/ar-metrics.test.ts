@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { agingBuckets, avgPaymentDays, confirmedShare, daysOverdue } from "./ar-metrics";
+import { agingBuckets, avgPaymentDays, confirmedShare, daysOverdue, monthlyRevenue } from "./ar-metrics";
 
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-07-27T12:00:00Z");
@@ -97,5 +97,65 @@ describe("confirmedShare", () => {
 
   it("zaehlt nur explizites false als bestaetigt", () => {
     expect(confirmedShare([{ needs_confirmation: null }, { needs_confirmation: false }]).confirmed).toBe(1);
+  });
+});
+
+describe("monthlyRevenue", () => {
+  const NOW = new Date(2026, 6, 27); // Juli 2026
+  const doc = (issue: string, amount: number, paid?: string | null, status?: string) => ({
+    issue_date: issue, amount_gross: amount, paid_at: paid ?? null, status,
+  });
+
+  it("liefert immer 12 Monate und endet im laufenden Monat", () => {
+    const r = monthlyRevenue([], NOW);
+    expect(r.months).toHaveLength(12);
+    expect(r.months[11].month).toBe("2026-07");
+    expect(r.months[11].label).toBe("Jul");
+    expect(r.months[0].month).toBe("2025-08");
+    expect(r.hasData).toBe(false);
+    expect(r.max).toBe(1); // Divisionsschutz
+  });
+
+  it("stapelt bezahlt und offen im Monat der Ausstellung", () => {
+    const r = monthlyRevenue([
+      doc("2026-07-02", 1000, "2026-07-20"),
+      doc("2026-07-15", 500),
+      doc("2026-06-10", 300, "2026-06-30"),
+    ], NOW);
+    const jul = r.months.find((m) => m.month === "2026-07")!;
+    expect(jul.paid).toBe(1000);
+    expect(jul.open).toBe(500);
+    expect(jul.total).toBe(1500);
+    expect(jul.count).toBe(2);
+    const jun = r.months.find((m) => m.month === "2026-06")!;
+    expect(jun.paid).toBe(300);
+    expect(jun.open).toBe(0);
+    expect(r.total).toBe(1800);
+    expect(r.max).toBe(1500);
+    expect(r.hasData).toBe(true);
+  });
+
+  it("laesst Stornos, Betragslose und Datumslose weg", () => {
+    const r = monthlyRevenue([
+      doc("2026-07-02", 900, null, "void"),
+      doc("2026-07-03", 900, null, "cancelled"),
+      doc("2026-07-04", 0),
+      { amount_gross: 500, issue_date: null, paid_at: null },
+      doc("kein datum", 700),
+    ], NOW);
+    expect(r.total).toBe(0);
+    expect(r.hasData).toBe(false);
+  });
+
+  it("ignoriert Rechnungen ausserhalb des Fensters", () => {
+    const r = monthlyRevenue([doc("2024-01-05", 5000), doc("2026-07-01", 10)], NOW);
+    expect(r.total).toBe(10);
+  });
+
+  it("ordnet nach Ausstellungsdatum, nicht nach Zahlungseingang", () => {
+    // Juni gestellt, Juli bezahlt -> zaehlt in JUNI (als bezahlt).
+    const r = monthlyRevenue([doc("2026-06-28", 800, "2026-07-05")], NOW);
+    expect(r.months.find((m) => m.month === "2026-06")!.paid).toBe(800);
+    expect(r.months.find((m) => m.month === "2026-07")!.total).toBe(0);
   });
 });

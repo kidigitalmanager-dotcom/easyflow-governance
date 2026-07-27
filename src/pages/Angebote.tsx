@@ -31,6 +31,7 @@ import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { PageHeader, SectionCard, Chip, Dot, EmptyState, type DotTone } from "@/components/ue/primitives";
 import { toast } from "sonner";
 import { fmtEUR } from "@/lib/offer-calc";
+import { describeSkipped } from "@/lib/scan-result";
 import {
   Inbox, Sparkles, RefreshCw, ArrowLeft, Save, CheckCircle2, Loader2, Printer, Plus, Trash2, Mail,
   ArrowRightLeft, FileCheck2,
@@ -100,7 +101,8 @@ export default function Angebote() {
   async function convertToInvoice(offerId: number) {
     try {
       const res = await genInv.mutateAsync({ offer_id: offerId });
-      if (res.skipped) { toast.error("Rechnungen sind noch nicht aktiviert (Feature/Postfach)."); return; }
+      const _skip = describeSkipped(res.skipped);
+      if (_skip) { toast.error(_skip.title + ": " + _skip.hint); return; }
       if (!res.ok || !res.document_id) { toast.error("Rechnung konnte nicht erstellt werden."); return; }
       toast.success("Rechnung aus Angebot erstellt.");
       navigate(`/forderungen?tab=rechnungen&invoice=${res.document_id}`);
@@ -140,7 +142,8 @@ export default function Angebote() {
     const body: GenerateOfferBody = { source_message_id: messageId, source_provider: provider };
     try {
       const res = await genOffer.mutateAsync(body);
-      if (res.skipped) { toast.error("Angebote sind noch nicht aktiviert (Feature/Postfach)."); return; }
+      const _skip = describeSkipped(res.skipped);
+      if (_skip) { toast.error(_skip.title + ": " + _skip.hint); return; }
       setPendingMsg(null);
       const d: OfferDraftState = {
         positions: res.positions || [],
@@ -169,7 +172,8 @@ export default function Angebote() {
       : {};
     try {
       const res = await genOffer.mutateAsync(body);
-      if (res.skipped) { toast.error("Angebote sind noch nicht aktiviert (Feature/Postfach)."); return; }
+      const _skip = describeSkipped(res.skipped);
+      if (_skip) { toast.error(_skip.title + ": " + _skip.hint); return; }
       const d: OfferDraftState = {
         positions: res.positions || [],
         opts: { kleinunternehmer: !!res.kleinunternehmer_default },

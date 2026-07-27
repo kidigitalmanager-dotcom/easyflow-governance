@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { PageHeader, SectionCard, Chip, Dot, EmptyState, type DotTone } from "@/components/ue/primitives";
+import { describeSkipped } from "@/lib/scan-result";
 import { toast } from "sonner";
 import {
   CreditCard, Download, Plus, CheckCircle2, Loader2, AlertTriangle,
@@ -81,7 +82,7 @@ export default function Verbindlichkeiten() {
   // 2026-07-27: Der Server kann die Liste mit `skipped` ausliefern (Rechnungseingang
   // fuer den Betrieb nicht freigeschaltet). Ohne Hinweis stand dann "Noch keine offenen
   // Verbindlichkeiten" da — eine falsche Entwarnung bei einer Liste, die es gar nicht gab.
-  const skipped = open.data?.skipped ?? null;
+  const skipped = describeSkipped(open.data?.skipped);
 
   const counts = {
     alle: rows.length,
@@ -232,8 +233,8 @@ export default function Verbindlichkeiten() {
         ) : rows.length === 0 && skipped ? (
           <EmptyState
             icon={<AlertTriangle className="h-8 w-8" />}
-            title="Der Rechnungseingang ist für deinen Betrieb noch nicht freigeschaltet"
-            description={`Der Server hat keine Liste ausgeliefert (Grund: ${skipped}) — das ist kein leerer Bestand. Manuell anlegen kannst du Verbindlichkeiten trotzdem jederzeit.`}
+            title={skipped.title}
+            description={skipped.hint + " Das ist kein leerer Bestand: der Server hat gar keine Liste ausgeliefert."}
             action={<Button size="sm" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Manuell anlegen</Button>}
           />
         ) : rows.length === 0 ? (

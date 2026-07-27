@@ -115,3 +115,89 @@ export function confirmedShare(
   const confirmed = list.filter((i) => i.needs_confirmation === false).length;
   return { total, confirmed, pct: total === 0 ? null : Math.round((confirmed / total) * 100) };
 }
+
+/* ------------------------------------------------------------------ Umsatz */
+
+export interface RevenueMonth {
+  /** yyyy-mm */
+  month: string;
+  /** Kurzlabel fuer die Achse, z.B. "Jul". */
+  label: string;
+  /** Bereits bezahlter Anteil des Monats, in EUR. */
+  paid: number;
+  /** Noch offener Anteil, in EUR. */
+  open: number;
+  total: number;
+  count: number;
+}
+
+export interface RevenueSeries {
+  months: RevenueMonth[];
+  /** Groesster Monatsumsatz, mindestens 1 (Divisionsschutz). */
+  max: number;
+  /** Summe ueber den gesamten Zeitraum. */
+  total: number;
+  /** true, sobald irgendein Monat einen Betrag traegt. */
+  hasData: boolean;
+}
+
+const MONTH_SHORT = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+
+/**
+ * Umsatz je Monat aus den Rechnungen, gestapelt in bezahlt und offen
+ * (Leon-Entscheid 27.07.: Balken, 12 Monate, bezahlt + offen).
+ *
+ * Zugeordnet wird nach AUSSTELLUNGSDATUM (issue_date), nicht nach Zahlungs-
+ * eingang: der Balken zeigt, was in dem Monat fakturiert wurde, und die
+ * Zweiteilung zeigt, wie viel davon schon hereingekommen ist.
+ *
+ * Regeln wie im Rest der Datei: nur rechnen, was aus vorhandenen Feldern folgt.
+ * Rechnungen ohne Ausstellungsdatum oder ohne Betrag zaehlen nicht mit, stornierte
+ * ebenfalls nicht. Monate ohne Umsatz bleiben als leere Saeule stehen, damit die
+ * Zeitachse nicht luegt.
+ */
+export function monthlyRevenue(
+  docs: AgingDoc[] | undefined,
+  now: Date = new Date(),
+  monthCount = 12,
+): RevenueSeries {
+  const slots: RevenueMonth[] = [];
+  for (let i = monthCount - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    slots.push({
+      month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      label: MONTH_SHORT[d.getMonth()],
+      paid: 0,
+      open: 0,
+      total: 0,
+      count: 0,
+    });
+  }
+  const byMonth = new Map(slots.map((s) => [s.month, s]));
+
+  for (const doc of docs ?? []) {
+    if (!doc.issue_date) continue;
+    if (doc.status === "void" || doc.status === "cancelled") continue;
+    const t = Date.parse(doc.issue_date);
+    if (!Number.isFinite(t)) continue;
+    const d = new Date(t);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const slot = byMonth.get(key);
+    if (!slot) continue; // ausserhalb des Fensters
+
+    const amount = Number(doc.amount_gross ?? 0) || 0;
+    if (amount <= 0) continue;
+    if (doc.paid_at) slot.paid += amount;
+    else slot.open += amount;
+    slot.total += amount;
+    slot.count += 1;
+  }
+
+  const total = slots.reduce((n, s) => n + s.total, 0);
+  return {
+    months: slots,
+    max: Math.max(1, ...slots.map((s) => s.total)),
+    total,
+    hasData: total > 0,
+  };
+}

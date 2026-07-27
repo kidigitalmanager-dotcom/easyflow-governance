@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { PageHeader, SectionCard, Chip, Dot } from "@/components/ue/primitives";
 import { agingBuckets, avgPaymentDays, confirmedShare } from "@/lib/ar-metrics";
+import { FristenStrip } from "@/components/ue/FristenStrip";
+import { UmsatzChart } from "@/components/ue/UmsatzChart";
 
 /* Buchhaltung — Cash-Dashboard (Uebersicht). Cash-Index, Geld rein / Geld raus
    und Verzug kommen server-berechnet aus /cashindex (nichts persistiert, kein Drift).
@@ -241,6 +243,18 @@ export default function Buchhaltung() {
           )}
         </SectionCard>
       </div>
+
+      {/* ── Umsatz je Monat (client-berechnet aus denselben Rechnungen) ──── */}
+      <UmsatzChart
+        docs={docs}
+        isLoading={arDocs.isLoading}
+        isError={arDocs.isError}
+        isFetching={arDocs.isFetching}
+        onRetry={() => arDocs.refetch()}
+      />
+
+      {/* ── Fristen-Band: hier sind Fristen Zahlungsziele (Leon 27.07.) ───── */}
+      <FristenStrip />
 
       {/* ── Altersstruktur + Ø Zahlungsdauer (client-berechnet, §3) ─────── */}
       <div className="grid gap-4 lg:grid-cols-3">

@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { PageHeader, SectionCard, EmptyState, Dot, type DotTone } from "@/components/ue/primitives";
+import { describeSkipped } from "@/lib/scan-result";
 import { toast } from "sonner";
 import {
   ReceiptText, ArrowLeft, Save, CheckCircle2, Loader2, Printer, FileDown, Plus, Trash2, Settings, AlertTriangle,
@@ -166,7 +167,8 @@ export function RechnungenView() {
   async function generateManual() {
     try {
       const res = await genInv.mutateAsync({});
-      if (res.skipped) { toast.error("Rechnungen sind noch nicht aktiviert (Feature/Postfach)."); return; }
+      const _skip = describeSkipped(res.skipped);
+      if (_skip) { toast.error(_skip.title + ": " + _skip.hint); return; }
       if (!res.ok || !res.document_id) { toast.error("Rechnung konnte nicht erstellt werden."); return; }
       openInvoice(res.document_id);
     } catch { toast.error("Rechnung konnte nicht erstellt werden."); }

@@ -12,6 +12,7 @@ import { storeProviderTokens } from "@/lib/api-client";
 import { OnboardingNudges } from "@/components/onboarding/OnboardingNudges";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { FristenBoard } from "@/components/FristenBoard";
+import { FristenStrip } from "@/components/ue/FristenStrip";
 import { AutopilotReifeWidget } from "@/components/AutopilotReifeWidget";
 import { WochenRueckblick } from "@/components/WochenRueckblick";
 import { LiveActivity } from "@/components/ue/LiveActivity";
@@ -226,7 +227,12 @@ export default function Uebersicht() {
             </SectionCard>
           </div>
 
-          {/* Erkannte Fristen/Zusagen (nightly, rendert nur mit Daten) */}
+          {/* Fristen: erst das 14-Tage-Band (Ueberblick), darunter die Liste mit
+              den Namen. Leon-Entscheid 27.07.: das Band ERSETZT die Liste nicht,
+              sonst sieht man nicht mehr, zu wem eine Frist gehoert. Das Band
+              traegt Leer- und Fehlerzustand fuer beide, die Liste darunter
+              bleibt bei leer bewusst still (sonst zwei Leermeldungen). */}
+          <FristenStrip />
           <FristenBoard />
 
           <LiveActivity />

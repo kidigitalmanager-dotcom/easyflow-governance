@@ -32,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { describeSkipped } from "@/lib/scan-result";
 import { toast } from "sonner";
 import { Clock, Plus, Trash2, Loader2, Pencil, RotateCcw, Download, Lock, Users, ReceiptText, FileText, Wallet, Check, AlertTriangle, FolderKanban, Archive, ArrowUp, ArrowDown, Sheet } from "lucide-react";
 
@@ -628,7 +629,8 @@ export default function Zeiterfassung() {
         counterpart_name: kunde === "(ohne Kunde)" ? undefined : kunde,
         subject: "Rechnung" + (kunde !== "(ohne Kunde)" ? " für " + kunde : ""),
       });
-      if ((inv as { skipped?: unknown }).skipped) { toast.error("Rechnungen sind noch nicht aktiviert (Feature/Postfach)."); return; }
+      const _skip = describeSkipped((inv as { skipped?: unknown }).skipped);
+      if (_skip) { toast.error(_skip.title + ": " + _skip.hint); return; }
       if (!inv.ok || !inv.document_id) { toast.error("Rechnung konnte nicht erstellt werden."); return; }
       const res = await applyTime.mutateAsync({ document_id: inv.document_id, entry_ids: ids, gruppierung: "je_eintrag" });
       if (!res.ok) { toast.error("Zeiten-Übernahme fehlgeschlagen: " + (res.error || "")); return; }

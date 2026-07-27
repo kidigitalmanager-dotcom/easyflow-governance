@@ -90,6 +90,17 @@ import type { AutopilotChannel, AutonomyPolicyPayload, AutonomyTestCallPayload, 
   ReviewVerdictInput, AutopilotPromoteRequestInput, AutopilotPolicyPutInput, AutopilotCoreKey, AutopilotPromoteInput, DecideRuleSuggestionInput, ApplyRuleInput } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Pflicht fuer JEDEN Query-Hook: enabled: !!session.
+//
+// apiFetch/apiPost werfen sofort ApiError(401), wenn noch kein Token da ist.
+// Ohne den Guard feuert eine Query schon beim Mount, also moeglicherweise
+// bevor der AuthProvider die Sitzung aus dem Storage wiederhergestellt hat.
+// Ergebnis: die Seite zeigt einen Fehler, obwohl mit dem Server alles stimmt.
+// Zusaetzlich retry: false, weil ein 401/403 sich durch Wiederholen nicht
+// aendert (Fund 27.07.2026, Leons erster Durchlauf).
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function useMe() {
   const { session } = useAuth();
   return useQuery({
@@ -885,9 +896,12 @@ import {
 import type { TenantSetupWriteBody, CreateTenantBody } from "@/lib/api-client";
 
 export function useAdminTenants(includeArchived = false) {
+  const { session } = useAuth();
   return useQuery({
     queryKey: ["admin-tenants", includeArchived],
     queryFn: () => fetchAdminTenants(includeArchived),
+    enabled: !!session,
+    retry: false,
     staleTime: 30_000,
   });
 }
@@ -931,7 +945,13 @@ export function useCreateAdminTenant() {
   });
 }
 export function useTenantSetupSelf() {
-  return useQuery({ queryKey: ["tenant-setup-self"], queryFn: fetchTenantSetupSelf });
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["tenant-setup-self"],
+    queryFn: fetchTenantSetupSelf,
+    enabled: !!session,
+    retry: false,
+  });
 }
 export function useSaveTenantSetupSelf() {
   const qc = useQueryClient();
@@ -1009,9 +1029,11 @@ export function useDeleteVoiceLine(tenantId: string | null) {
 // ── Co-Pilot Vertriebler-Verwaltung (leads-sync Admin-API) ──────────────────
 
 export function useCopilotVertriebler() {
+  const { session } = useAuth();
   return useQuery({
     queryKey: ["copilot-vertriebler"],
     queryFn: fetchCopilotVertriebler,
+    enabled: !!session,
     retry: false,
   });
 }
@@ -1047,7 +1069,13 @@ export function useCopilotVertrieblerDelete() {
 
 // ── v4.61.0 Billing (In-Console-Kauf) ──
 export function useBillingSummary() {
-  return useQuery({ queryKey: ["billing-summary"], queryFn: fetchBillingSummary });
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["billing-summary"],
+    queryFn: fetchBillingSummary,
+    enabled: !!session,
+    retry: false,
+  });
 }
 export function useBillingCheckout() {
   const qc = useQueryClient();
@@ -1061,19 +1089,31 @@ export function useBillingPortal() {
 }
 
 export function useAiTransparencySummary() {
-  return useQuery({ queryKey: ["ai-transparency-summary"], queryFn: fetchAiTransparencySummary });
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["ai-transparency-summary"],
+    queryFn: fetchAiTransparencySummary,
+    enabled: !!session,
+    retry: false,
+  });
 }
 export function useAiTransparencyCalls(params?: { limit?: number; purpose?: string; since_days?: number }) {
+  const { session } = useAuth();
   return useQuery({
     queryKey: ["ai-transparency-calls", params ?? {}],
     queryFn: () => fetchAiTransparencyCalls(params),
+    enabled: !!session,
+    retry: false,
   });
 }
 
 export function useDocuments(docType: "ar_invoice" | "dunning" = "ar_invoice", status?: string) {
+  const { session } = useAuth();
   return useQuery({
     queryKey: ["documents", docType, status ?? ""],
     queryFn: () => listDocuments(docType, status),
+    enabled: !!session,
+    retry: false,
   });
 }
 
@@ -1132,9 +1172,12 @@ import {
 } from "@/lib/api-client";
 
 export function useRequests(limit = 40) {
+  const { session } = useAuth();
   return useQuery({
     queryKey: ["documents-requests", limit],
     queryFn: () => listRequests(limit),
+    enabled: !!session,
+    retry: false,
   });
 }
 export function useOffer(id: number | null) {
@@ -1202,15 +1245,21 @@ import {
 } from "@/lib/api-client";
 
 export function useInvoices(limit = 50) {
+  const { session } = useAuth();
   return useQuery({
     queryKey: ["documents-invoices", limit],
     queryFn: () => listInvoices(limit),
+    enabled: !!session,
+    retry: false,
   });
 }
 export function useApprovedOffers(limit = 40) {
+  const { session } = useAuth();
   return useQuery({
     queryKey: ["documents-approved-offers", limit],
     queryFn: () => listApprovedOffers(limit),
+    enabled: !!session,
+    retry: false,
   });
 }
 export function useInvoice(id: number | null) {
@@ -1256,9 +1305,12 @@ export function useVoidInvoice() {
   });
 }
 export function useBillingProfile() {
+  const { session } = useAuth();
   return useQuery({
     queryKey: ["documents-billing-profile"],
     queryFn: () => getBillingProfile(),
+    enabled: !!session,
+    retry: false,
   });
 }
 export function useUpdateBillingProfile() {
@@ -1500,7 +1552,13 @@ import {
 } from "@/lib/api-client";
 
 export function useApInvoices(status?: string) {
-  return useQuery({ queryKey: ["ap", status ?? ""], queryFn: () => listAp(status) });
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["ap", status ?? ""],
+    queryFn: () => listAp(status),
+    enabled: !!session,
+    retry: false,
+  });
 }
 export function useApDetail(apId: number | null) {
   return useQuery({ queryKey: ["ap-detail", apId], queryFn: () => getAp(apId as number), enabled: apId != null });
@@ -1529,10 +1587,22 @@ export function useUploadApPdf() {
   return useMutation({ mutationFn: (v: { apId: number; file: File }) => uploadApPdf(v.apId, v.file), onSuccess: () => qc.invalidateQueries({ queryKey: ["ap"] }) });
 }
 export function useCashIndex(horizon?: number) {
-  return useQuery({ queryKey: ["cashindex", horizon ?? 0], queryFn: () => fetchCashIndex(horizon) });
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["cashindex", horizon ?? 0],
+    queryFn: () => fetchCashIndex(horizon),
+    enabled: !!session,
+    retry: false,
+  });
 }
 export function useApSettings() {
-  return useQuery({ queryKey: ["ap-settings"], queryFn: () => fetchApSettings() });
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["ap-settings"],
+    queryFn: () => fetchApSettings(),
+    enabled: !!session,
+    retry: false,
+  });
 }
 export function useSetApSettings() {
   const qc = useQueryClient();

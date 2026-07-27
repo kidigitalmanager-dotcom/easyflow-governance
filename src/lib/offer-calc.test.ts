@@ -1,79 +1,112 @@
 // Cross-Check: der Client-Spiegel (offer-calc.ts) MUSS dieselben Zahlen liefern
-// wie die Server-Engine (offer_generator.js). Gleiche bekannten Werte wie test_engine.js.
-// Lauf: node --experimental-strip-types offer-calc.test.ts
-import { computeOffer, computePosition, money2, fmtEUR } from "./offer-calc.ts";
+// wie die Server-Engine (offer_generator.js). Gleiche bekannte Werte wie test_engine.js.
+//
+// 2026-07-27: Diese Datei war ein eigenstaendiges Skript mit eigenen PASS/FAIL-
+// Zaehlern (Aufruf ueber `node --experimental-strip-types`). Vitest hat sie zwar
+// eingesammelt, aber keine Suite darin gefunden und die Testlaeufe rot gemacht.
+// Ergebnis: dreissig Pruefungen der GELD-Mathematik liefen faktisch nie mit.
+// Jetzt als vitest-Suite, inhaltlich unveraendert.
+import { describe, it, expect } from "vitest";
+import { computeOffer, computePosition, money2, fmtEUR } from "./offer-calc";
 
-let PASS = 0, FAIL = 0; const fails: string[] = [];
-function eq(name: string, got: unknown, exp: unknown) {
-  if (got === exp) PASS++; else { FAIL++; fails.push(name + " got " + JSON.stringify(got) + " exp " + JSON.stringify(exp)); }
-}
-function ok(name: string, cond: boolean) { if (cond) PASS++; else { FAIL++; fails.push(name); } }
+describe("money2 (float-sichere Rundung)", () => {
+  it("rundet kaufmaennisch", () => {
+    expect(money2(1.005)).toBe(1.01);
+    expect(money2(2.675)).toBe(2.68);
+    expect(money2(0.005)).toBe(0.01);
+    expect(money2(3.192)).toBe(3.19);
+  });
+});
 
-// Rundung (float-sicher)
-eq("money2 1.005", money2(1.005), 1.01);
-eq("money2 2.675", money2(2.675), 2.68);
-eq("money2 0.005", money2(0.005), 0.01);
-eq("money2 3.192", money2(3.192), 3.19);
+describe("computeOffer", () => {
+  it("rechnet 19 Prozent auf einer Position", () => {
+    const r = computeOffer([{ menge: 2, einzelpreis_netto: 45, mwst_satz: 19 }]);
+    expect(r.totals.netto).toBe(90);
+    expect(r.totals.mwst_19).toBe(17.1);
+    expect(r.totals.brutto).toBe(107.1);
+    expect(r.incomplete).toBe(false);
+  });
 
-// 19% Einzel
-let r = computeOffer([{ menge: 2, einzelpreis_netto: 45, mwst_satz: 19 }]);
-eq("19% netto", r.totals.netto, 90);
-eq("19% mwst_19", r.totals.mwst_19, 17.1);
-eq("19% brutto", r.totals.brutto, 107.1);
-eq("19% incomplete", r.incomplete, false);
+  it("trennt gemischte Saetze 7 und 19", () => {
+    const r = computeOffer([
+      { menge: 1, einzelpreis_netto: 100, mwst_satz: 19 },
+      { menge: 1, einzelpreis_netto: 50, mwst_satz: 7 },
+    ]);
+    expect(r.totals.mwst_19).toBe(19);
+    expect(r.totals.mwst_7).toBe(3.5);
+    expect(r.totals.brutto).toBe(172.5);
+  });
 
-// gemischt 7+19
-r = computeOffer([{ menge: 1, einzelpreis_netto: 100, mwst_satz: 19 }, { menge: 1, einzelpreis_netto: 50, mwst_satz: 7 }]);
-eq("mixed mwst_19", r.totals.mwst_19, 19);
-eq("mixed mwst_7", r.totals.mwst_7, 3.5);
-eq("mixed brutto", r.totals.brutto, 172.5);
+  it("setzt bei Paragraph 13b die Steuer auf 0 und weist darauf hin", () => {
+    const r = computeOffer([{ menge: 1, einzelpreis_netto: 100, mwst_satz: 19 }], { reverse_charge: true });
+    expect(r.totals.mwst_gesamt).toBe(0);
+    expect(r.totals.brutto).toBe(100);
+    expect(r.totals.hinweise.some((h) => /§13b/.test(h))).toBe(true);
+  });
 
-// §13b Reverse-Charge
-r = computeOffer([{ menge: 1, einzelpreis_netto: 100, mwst_satz: 19 }], { reverse_charge: true });
-eq("§13b mwst 0", r.totals.mwst_gesamt, 0);
-eq("§13b brutto=netto", r.totals.brutto, 100);
-ok("§13b hinweis", r.totals.hinweise.some((h) => /§13b/.test(h)));
+  it("setzt bei Paragraph 19 die Steuer auf 0 und weist darauf hin", () => {
+    const r = computeOffer([{ menge: 1, einzelpreis_netto: 100, mwst_satz: 19 }], { kleinunternehmer: true });
+    expect(r.totals.mwst_gesamt).toBe(0);
+    expect(r.totals.hinweise.some((h) => /§19/.test(h))).toBe(true);
+  });
 
-// §19 Kleinunternehmer
-r = computeOffer([{ menge: 1, einzelpreis_netto: 100, mwst_satz: 19 }], { kleinunternehmer: true });
-eq("§19 mwst 0", r.totals.mwst_gesamt, 0);
-ok("§19 hinweis", r.totals.hinweise.some((h) => /§19/.test(h)));
+  it("erfindet ohne Einzelpreis keine Summe", () => {
+    const r = computeOffer([
+      { menge: 2, einzelpreis_netto: 45, mwst_satz: 19 },
+      { menge: 1, einzelpreis_netto: null, mwst_satz: 19 },
+    ]);
+    expect(r.incomplete).toBe(true);
+    expect(r.totals.netto).toBe(90); // nur die bepreiste Position
+    expect(r.positions[1].netto).toBeNull();
+    expect(r.positions[1].needs_price).toBe(true);
+  });
 
-// null-EP -> unvollstaendig, keine Fake-Summe
-r = computeOffer([{ menge: 2, einzelpreis_netto: 45, mwst_satz: 19 }, { menge: 1, einzelpreis_netto: null, mwst_satz: 19 }]);
-eq("incomplete flag", r.incomplete, true);
-eq("incomplete netto (nur bepreist)", r.totals.netto, 90);
-eq("incomplete pos2 netto null", r.positions[1].netto, null);
-eq("incomplete pos2 needs_price", r.positions[1].needs_price, true);
+  it("haelt die Satz-Summe autoritativ (Rundungsdrift)", () => {
+    const r = computeOffer([
+      { menge: 1, einzelpreis_netto: 8.4, mwst_satz: 19 },
+      { menge: 1, einzelpreis_netto: 8.4, mwst_satz: 19 },
+    ]);
+    expect(r.totals.mwst_19).toBe(3.19);
+    expect(r.totals.brutto).toBe(19.99);
+  });
 
-// Rundungsdrift (Satz-Summe autoritativ)
-r = computeOffer([{ menge: 1, einzelpreis_netto: 8.4, mwst_satz: 19 }, { menge: 1, einzelpreis_netto: 8.4, mwst_satz: 19 }]);
-eq("drift mwst_19 3.19", r.totals.mwst_19, 3.19);
-eq("drift brutto 19.99", r.totals.brutto, 19.99);
+  it("rechnet den Gesamt-Rabatt in Prozent", () => {
+    const r = computeOffer(
+      [
+        { menge: 1, einzelpreis_netto: 60, mwst_satz: 19 },
+        { menge: 1, einzelpreis_netto: 40, mwst_satz: 19 },
+      ],
+      { rabatt_gesamt_prozent: 10 },
+    );
+    expect(r.totals.netto_nach_rabatt).toBe(90);
+    expect(r.totals.brutto).toBe(107.1);
+  });
 
-// Gesamt-Rabatt %
-r = computeOffer([{ menge: 1, einzelpreis_netto: 60, mwst_satz: 19 }, { menge: 1, einzelpreis_netto: 40, mwst_satz: 19 }], { rabatt_gesamt_prozent: 10 });
-eq("rabatt netto_nach_rabatt", r.totals.netto_nach_rabatt, 90);
-eq("rabatt brutto", r.totals.brutto, 107.1);
+  it("weist Skonto nur informativ aus, ohne den Bruttobetrag zu aendern", () => {
+    const r = computeOffer([{ menge: 2, einzelpreis_netto: 45, mwst_satz: 19 }], {
+      skonto_prozent: 2,
+      skonto_tage: 14,
+    });
+    expect(r.totals.brutto).toBe(107.1);
+    expect(r.totals.skonto_betrag).toBe(2.14);
+  });
+});
 
-// Skonto (informativ)
-r = computeOffer([{ menge: 2, einzelpreis_netto: 45, mwst_satz: 19 }], { skonto_prozent: 2, skonto_tage: 14 });
-eq("skonto brutto unveraendert", r.totals.brutto, 107.1);
-eq("skonto betrag", r.totals.skonto_betrag, 2.14);
+describe("computePosition", () => {
+  it("versteht deutsche Zahlen mit Komma", () => {
+    const p = computePosition({ menge: "2,5", einzelpreis_netto: "45,50", mwst_satz: 19 });
+    expect(p.netto).toBe(113.75);
+  });
 
-// dt-String menge/EP
-const p = computePosition({ menge: "2,5", einzelpreis_netto: "45,50", mwst_satz: 19 });
-eq("dt-string netto 113.75", p.netto, 113.75);
+  it("meldet einen unzulaessigen Steuersatz", () => {
+    const p = computePosition({ menge: 1, einzelpreis_netto: 10, mwst_satz: 10 });
+    expect(p.errors ?? []).toContain("invalid_mwst_satz");
+  });
+});
 
-// invalid satz -> error
-const pe = computePosition({ menge: 1, einzelpreis_netto: 10, mwst_satz: 10 });
-ok("invalid satz error", !!(pe.errors && pe.errors.indexOf("invalid_mwst_satz") >= 0));
-
-// fmtEUR
-eq("fmtEUR", fmtEUR(107.1), "107,10 EUR");
-eq("fmtEUR null", fmtEUR(null), "—");
-
-console.log("\n=== offer-calc (Client-Spiegel) ===");
-console.log("PASS " + PASS + "  FAIL " + FAIL);
-if (FAIL) { console.log("FAILED:\n - " + fails.join("\n - ")); process.exit(1); }
-console.log("CLIENT-SPIEGEL == SERVER-ENGINE (bekannte Werte)");
+describe("fmtEUR", () => {
+  it("formatiert Betraege und fehlende Werte", () => {
+    expect(fmtEUR(107.1)).toBe("107,10 EUR");
+    expect(fmtEUR(null)).toBe("—");
+  });
+});

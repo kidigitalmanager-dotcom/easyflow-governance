@@ -1,10 +1,11 @@
 import { History } from "lucide-react";
 import { useMemoryEpisode } from "@/hooks/use-memory";
+import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Wochen-Rueckblick (Redesign Follow-up): juengste Wochen-Episode aus der
 // memory-engine (B2 memory_episodes) — deterministische Stats + Narrativ.
-// Rendert NICHTS bei leer/Fehler.
+// Fehler und Leerstand werden ausgewiesen, die Karte verschwindet nie lautlos.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STAT_LABELS: Record<string, string> = {
@@ -27,7 +28,36 @@ export function statChips(stats: unknown, max = 4): { label: string; value: stri
 
 export function WochenRueckblick() {
   const q = useMemoryEpisode("week");
-  if (q.isLoading || q.isError || !q.data) return null;
+
+  // 2026-07-27: Fehler und "noch nichts da" sind zwei verschiedene Dinge und
+  // beide duerfen die Karte nicht verschwinden lassen (Leons Durchlauf: man
+  // sieht sonst nicht, DASS es den Rueckblick gibt).
+  if (q.isError || (!q.isLoading && !q.data)) {
+    return (
+      <div className="glass-card p-6">
+        <div className="mb-1 flex items-center justify-between">
+          <h2 className="text-base font-semibold">Dein Wochen-Rückblick</h2>
+          <History className="h-4 w-4 text-muted-foreground" />
+        </div>
+        {q.isError ? (
+          <div className="mt-3">
+            <QueryErrorNotice
+              label="Der Wochen-Rückblick konnte nicht geladen werden."
+              onRetry={() => q.refetch()}
+              retrying={q.isFetching}
+            />
+          </div>
+        ) : (
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            Noch kein Rückblick vorhanden. Er wird nächtlich aus deiner Kommunikation
+            der letzten Woche erstellt und erscheint hier ab dem ersten vollen Lauf.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (q.isLoading || !q.data) return null;
   const ep = q.data;
   const chips = statChips(ep.stats);
   const range = `${new Date(ep.period_start).toLocaleDateString("de-DE", { day: "numeric", month: "short" })} bis ${new Date(ep.period_end).toLocaleDateString("de-DE", { day: "numeric", month: "short" })}`;

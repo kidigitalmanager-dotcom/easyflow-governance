@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDashboardStats, useDashboardRoi } from "@/hooks/use-api";
+import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import {
   computeRoi, computeRoiFromCounts, computeM5Hook, loadAssumptions, saveAssumptions, sanitizeAssumptions,
   formatHoursRange, formatEuroRange, formatMinutes, periodLabel,
@@ -96,7 +97,31 @@ export function RoiSavingsCard() {
       </Card>
     );
   }
-  if (!result) return null;
+  // 2026-07-27: Fehler und "noch keine Aktivitaet" sind zwei Zustaende. Beide
+  // duerfen die Karte nicht lautlos entfernen.
+  if (!result) {
+    const bothFailed = roiQuery.isError && statsQuery.isError;
+    return (
+      <Card className="glass-card border-primary/20">
+        <CardContent className="space-y-2 pb-4 pt-4">
+          <p className="text-sm font-semibold">Was Jana dir gespart hat</p>
+          {bothFailed ? (
+            <QueryErrorNotice
+              label="Die Zeitersparnis konnte nicht berechnet werden."
+              onRetry={() => { roiQuery.refetch(); statsQuery.refetch(); }}
+              retrying={roiQuery.isFetching || statsQuery.isFetching}
+            />
+          ) : (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Noch zu wenig Aktivität für eine belastbare Zahl. Sobald Jana Entwürfe
+              vorbereitet und E-Mails einsortiert hat, steht hier die geschätzte Ersparnis
+              mit offengelegter Rechenweise.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
 
   const windowNote = result.measured
     ? period === "week" ? "letzte 7 Tage · gemessen" : "letzte 30 Tage · gemessen"

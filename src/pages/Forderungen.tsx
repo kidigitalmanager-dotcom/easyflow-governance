@@ -28,6 +28,7 @@ import {
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { RechnungenView } from "@/pages/Rechnungen";
 import { PageHeader, SectionCard, Chip, Dot, EmptyState, type DotTone } from "@/components/ue/primitives";
+import { describeSkipped, type SkipInfo } from "@/lib/scan-result";
 import { toast } from "sonner";
 import {
   Receipt, ReceiptText, RefreshCw, Download, Upload, Plus, Mail, CheckCircle2, Loader2, AlertTriangle,
@@ -178,6 +179,10 @@ function ForderungenView({ tabs }: { tabs: React.ReactNode }) {
   // 2026-07-27: Spinner nur in der geklickten Zeile — vorher drehte sich das
   // Icon in JEDER Zeile, weil nur der globale isPending-Zustand abgefragt wurde.
   const [busyRow, setBusyRow] = useState<number | null>(null);
+  // Ergebnis des letzten Scans, falls er uebersprungen wurde. Ein Toast ist nach
+  // drei Sekunden weg; wenn der Betrieb gar nicht freigeschaltet ist, muss der
+  // Hinweis stehen bleiben, sonst klickt man ewig weiter.
+  const [scanSkip, setScanSkip] = useState<SkipInfo | null>(null);
 
   const rows = open.data?.items ?? [];
   const paidRows = paid.data?.items ?? [];
@@ -199,7 +204,12 @@ function ForderungenView({ tabs }: { tabs: React.ReactNode }) {
   async function handleScan() {
     try {
       const r = await scan.mutateAsync(720); // letzte 30 Tage
-      if (r.skipped) toast.info("Scan übersprungen: " + String(r.skipped));
+      // `skipped` kann ein Zaehler ODER ein Abbruchgrund sein. describeSkipped
+      // trennt beides und liefert deutschen Klartext statt des Roh-Enums.
+      const skip = describeSkipped(r.skipped);
+      setScanSkip(skip);
+      if (skip?.tone === "blocked") toast.error(skip.title);
+      else if (skip) toast.info(skip.title + ": " + skip.hint);
       else toast.success(`Gesendet-Ordner gescannt: ${r.upserted ?? 0} Forderungen erfasst (${r.structured ?? 0} aus E-Rechnung, ${r.text_fallback ?? 0} aus E-Mail-Text).`);
     } catch { toast.error("Scan fehlgeschlagen."); }
   }
@@ -351,6 +361,31 @@ function ForderungenView({ tabs }: { tabs: React.ReactNode }) {
       />
 
       {tabs}
+
+      {scanSkip && (
+        <div
+          className={
+            "flex items-start gap-3 rounded-[var(--radius)] border px-4 py-3 " +
+            (scanSkip.tone === "blocked"
+              ? "border-amber-surface bg-amber-surface/30"
+              : "border-line-soft bg-muted")
+          }
+          role="status"
+        >
+          <AlertTriangle className={"mt-0.5 h-4 w-4 shrink-0 " + (scanSkip.tone === "blocked" ? "text-amber" : "text-muted-foreground")} />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-medium">{scanSkip.title}</p>
+            <p className="mt-0.5 text-[12.5px] text-muted-foreground">{scanSkip.hint}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setScanSkip(null)}
+            className="shrink-0 text-[12px] text-muted-foreground hover:text-foreground"
+          >
+            Ausblenden
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center gap-2.5 rounded-[var(--radius)] border border-line-soft bg-muted px-4 py-2.5">
         <Switch checked={useLlm} onCheckedChange={setUseLlm} id="llm" />

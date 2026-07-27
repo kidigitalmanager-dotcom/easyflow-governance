@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { capital } from "@/integrations/capital/client";
 import { supabase as authClient } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import type {
   CapAccount, CapCategory, CapMetric, CapSource,
   HealthPoint, CategoryPoint, MetricValue,
@@ -158,9 +159,11 @@ export function useUploadCapitalStatement() {
 
 // ── Capital-Layer F3: Live-Bank-Connect (finAPI) ──
 export function useCapitalBankStatus() {
+  const { session } = useAuth();
   return useQuery({
     queryKey: ["cap", "bank", "status"],
     queryFn: () => getCapitalBankStatus(),
+    enabled: !!session,
     retry: false,
   });
 }
@@ -184,9 +187,11 @@ export function useSyncCapitalBank() {
 
 // ── Capital-Layer Schicht 2: Buchhaltungs-Connector (Maesn) ──
 export function useCapitalAccountingStatus() {
+  const { session } = useAuth();
   return useQuery({
     queryKey: ["cap", "accounting", "status"],
     queryFn: () => getCapitalAccountingStatus(),
+    enabled: !!session,
     retry: false,
   });
 }
@@ -210,9 +215,11 @@ export function useSyncCapitalAccounting() {
 
 // ── Capital-Layer Step 3: Stripe ──
 export function useCapitalStripeStatus() {
+  const { session } = useAuth();
   return useQuery({
     queryKey: ["cap", "stripe", "status"],
     queryFn: () => getCapitalStripeStatus(),
+    enabled: !!session,
     retry: false,
   });
 }
@@ -263,9 +270,11 @@ export function useDisconnectCapitalTicketing() {
 
 // ── Capital-Layer Step 3: Shopify ──
 export function useCapitalShopifyStatus() {
+  const { session } = useAuth();
   return useQuery({
     queryKey: ["cap", "shopify", "status"],
     queryFn: () => getCapitalShopifyStatus(),
+    enabled: !!session,
     retry: false,
   });
 }
@@ -292,9 +301,11 @@ export function useSyncCapitalShopify() {
 
 // ── Capital-Layer: Meta Ads (sales_cac) ──
 export function useCapitalMetaAdsStatus() {
+  const { session } = useAuth();
   return useQuery({
     queryKey: ["cap", "meta-ads", "status"],
     queryFn: () => getCapitalMetaAdsStatus(),
+    enabled: !!session,
     retry: false,
   });
 }
@@ -318,7 +329,13 @@ export function useSyncCapitalMetaAds() {
 
 // ── Capital-Layer: Ticketing (risk_*/cust_csat + ops) ──
 export function useCapitalTicketingStatus() {
-  return useQuery({ queryKey: ["cap", "ticketing", "status"], queryFn: () => getCapitalTicketingStatus(), retry: false });
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["cap", "ticketing", "status"],
+    queryFn: () => getCapitalTicketingStatus(),
+    enabled: !!session,
+    retry: false,
+  });
 }
 export function useConnectCapitalTicketing() {
   const qc = useQueryClient();

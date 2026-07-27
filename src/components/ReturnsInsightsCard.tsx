@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Undo2, Info, ChevronDown, ShoppingBag, Mail, Plug } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useReturnsInsights } from "@/hooks/use-api";
+import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 
 // Retouren-Grund-Intelligenz — zeigt, WARUM Kunden zurueckschicken (7 feste Buckets),
 // aus Shopify strukturiert (Ruecksendeportal-Codes) + E-Mail-Fallback fuer eigene Shops.
@@ -57,8 +58,29 @@ export function ReturnsInsightsCard() {
       </Card>
     );
   }
-  // Endpoint noch nicht deployt / kein Ergebnis -> Karte ausblenden (retry:false).
-  if (!data) return null;
+  // 2026-07-27: frueher wurde die Karte hier ausgeblendet. Damit war auf einer
+  // frischen Console nicht erkennbar, DASS es die Retourengruende gibt.
+  if (!data) {
+    return (
+      <Card className="glass-card border-primary/20">
+        <CardContent className="space-y-2 pb-4 pt-4">
+          <p className="text-sm font-semibold">Retouren-Gründe</p>
+          {q.isError ? (
+            <QueryErrorNotice
+              label="Die Retouren-Gründe konnten nicht geladen werden."
+              onRetry={() => q.refetch()}
+              retrying={q.isFetching}
+            />
+          ) : (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Noch keine Retouren-Gründe erfasst. Sie entstehen aus deinem Shop
+              (Shopify) oder aus den Retouren-Vorgängen im Postfach.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
 
   const total = data.total || 0;
   const hasData = !!data.has_data && total > 0;

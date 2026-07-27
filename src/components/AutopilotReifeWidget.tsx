@@ -11,6 +11,7 @@ import {
 } from "@/lib/autopilot-maturity";
 import { humanizeCategory } from "@/data/humanize";
 import { SectionCard, ProgressRing } from "@/components/ue/primitives";
+import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Autopilot-Reife auf "Heute".
@@ -20,15 +21,61 @@ import { SectionCard, ProgressRing } from "@/components/ue/primitives";
 // die Stufenangabe kommt aus MODE_ORDER (Schatten -> Assistiert -> Autonom).
 // promotion_ready wird NAECHTLICH vom autopilot-sender berechnet; diese Anzeige
 // erfindet keine eigene Freigabe-Logik, sie visualisiert nur den DB-Stand.
-// Rendert NICHTS ohne Daten (Heute bleibt ruhig).
+//
+// 2026-07-27 (Leons Durchlauf): die Karte verschwand lautlos, weil sie bei
+// leerem maturity-Array `null` lieferte. Auf einer frisch aufgesetzten Console
+// sah es aus, als gaebe es das Widget gar nicht. Jetzt gilt:
+//   - Query-Fehler  -> QueryErrorNotice (Fehler ist nicht leer)
+//   - keine Daten   -> Ring auf 0 mit ehrlichem Satz, ab wann Zahlen kommen
+//   - Daten         -> unveraendert wie bisher
 // ─────────────────────────────────────────────────────────────────────────────
 export function AutopilotReifeWidget() {
-  const { data } = useAutopilotPolicy();
+  const { data, isLoading, isError, isFetching, refetch } = useAutopilotPolicy();
   const rows = (data?.maturity ?? [])
     .slice()
     .sort((a, b) => Number(b.promotion_ready) - Number(a.promotion_ready) || b.sample_count - a.sample_count)
     .slice(0, 3);
-  if (rows.length === 0) return null;
+
+  const header = (
+    <Link
+      to="/einstellungen?tab=email-autopilot"
+      className="inline-flex items-center gap-1 text-[11.5px] text-primary hover:underline"
+    >
+      Stufen <ChevronRight className="w-3 h-3" />
+    </Link>
+  );
+
+  if (isError) {
+    return (
+      <SectionCard title="Autopilot-Reife" subtitle="Weg zur nächsten Stufe" action={header}>
+        <QueryErrorNotice
+          label="Der Autopilot-Stand konnte nicht geladen werden."
+          onRetry={() => refetch()}
+          retrying={isFetching}
+        />
+      </SectionCard>
+    );
+  }
+
+  if (rows.length === 0) {
+    return (
+      <SectionCard title="Autopilot-Reife" subtitle="Weg zur nächsten Stufe" action={header}>
+        <div className="flex items-center gap-4">
+          <ProgressRing value={0} label={`1/${MODE_ORDER.length}`} sublabel="Stufe" />
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold">
+              {isLoading ? "Wird geladen" : "Noch keine Auswertung"}
+            </p>
+            <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+              {isLoading
+                ? "Einen Moment."
+                : `Die Reife entsteht aus deinen Freigaben. Sie wird nächtlich gezählt und erscheint hier, sobald für eine Kategorie genug Entscheidungen vorliegen (${MIN_SAMPLES} Mails).`}
+            </p>
+          </div>
+        </div>
+      </SectionCard>
+    );
+  }
 
   const lead = rows[0];
   const leadPct = Math.min(1, (lead.sample_count ?? 0) / MIN_SAMPLES);
@@ -40,14 +87,7 @@ export function AutopilotReifeWidget() {
     <SectionCard
       title="Autopilot-Reife"
       subtitle="Weg zur nächsten Stufe"
-      action={
-        <Link
-          to="/einstellungen?tab=email-autopilot"
-          className="inline-flex items-center gap-1 text-[11.5px] text-primary hover:underline"
-        >
-          Stufen <ChevronRight className="w-3 h-3" />
-        </Link>
-      }
+      action={header}
     >
       <div className="flex items-center gap-4">
         <ProgressRing value={leadPct} label={`${leadStage}/${MODE_ORDER.length}`} sublabel="Stufe" />
