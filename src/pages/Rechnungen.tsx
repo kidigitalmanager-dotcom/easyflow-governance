@@ -335,8 +335,20 @@ export function RechnungenView() {
                   {updInv.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />} Speichern
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setConfirmVoid(true)} disabled={busy}><Trash2 className="mr-1 h-4 w-4" /> Verwerfen</Button>
+                {/* 2026-07-27: Tooltip an das Banner unten angeglichen. `missing` enthaelt
+                    bei einer gescheiterten Stammdaten-Query zwangslaeufig
+                    "Verkäufer-Stammdaten" (sellerComplete ist dann false) — der Tooltip
+                    behauptete also einen Pflege-Mangel, wo nur die Query kaputt ist. */}
                 <Button size="sm" onClick={() => setConfirmFinalize(true)} disabled={busy || !canFinalize}
-                  title={dirty ? "Bitte zuerst speichern" : missing.length ? "Es fehlen: " + missing.join(", ") : ""}>
+                  title={
+                    dirty
+                      ? "Bitte zuerst speichern"
+                      : billing.isError
+                        ? "Die Rechnungs-Stammdaten konnten nicht geladen werden — ob etwas fehlt, ist gerade nicht feststellbar."
+                        : missing.length
+                          ? "Es fehlen: " + missing.join(", ")
+                          : ""
+                  }>
                   {finalize.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />} Finalisieren
                 </Button>
               </>

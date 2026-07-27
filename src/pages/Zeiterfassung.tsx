@@ -74,8 +74,12 @@ const EMPTY_FORM: FormState = { projectId: "", customer: "", date: todayIso(), m
 const SELECT_CLASS = "w-full h-10 rounded-[10px] border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary";
 
 // ── Erfassungs-Formular (Mitarbeiter + Owner-Nacherfassung) ──────────────────
-function EntryForm({ customers, projects, isOwner, isEmployee, memberOptions, editEntry, onDone }: {
-  customers: string[]; projects: TimeProject[]; isOwner: boolean; isEmployee: boolean;
+function EntryForm({ customers, projects, projectsError, isOwner, isEmployee, memberOptions, editEntry, onDone }: {
+  customers: string[]; projects: TimeProject[];
+  /* Fehler != leer: ohne dieses Flag waere eine ausgefallene Projekt-Query im
+     Formular nicht von "es gibt noch keine Projekte" zu unterscheiden. */
+  projectsError: boolean;
+  isOwner: boolean; isEmployee: boolean;
   memberOptions: { email: string; name: string }[];
   editEntry: TimeEntry | null; onDone: () => void;
 }) {
@@ -231,6 +235,16 @@ function EntryForm({ customers, projects, isOwner, isEmployee, memberOptions, ed
                 {memberOptions.map((m) => <option key={m.email} value={m.email}>{m.name}</option>)}
               </select>
             </div>
+          )}
+          {/* Fehler != leer: faellt /time/projects aus, verschwand die Auswahl bisher
+              kommentarlos — die Zeit landete still als Freitext und damit ohne
+              Projektbindung. Eine Zeile in text-danger sagt, dass die Liste FEHLT.
+              Im Formular ist fuer QueryErrorNotice kein Platz (Sidebar-Breite). */}
+          {projectsError && (
+            <p className="text-xs leading-snug text-danger">
+              Die Projekt-Liste konnte nicht geladen werden — es gibt hier gerade keine Auswahl.
+              Bitte Kunde/Ort unten als Freitext eintragen oder die Seite neu laden.
+            </p>
           )}
           {projects.length > 0 && (
             <div>
@@ -522,6 +536,9 @@ export default function Zeiterfassung() {
   const entries = useTimeEntries(params, !me.isLoading);
   const team = useTeamMembers(isOwner);
   const projectsActive = useTimeProjects({ active: true }, !me.isLoading); // fuer den One-Click-Dropdown (employee + owner-Nacherfassung)
+  // Fehler != leer: der Fehlerzustand muss bis ins Formular durchgereicht werden,
+  // sonst sieht eine ausgefallene Query dort wie "keine Projekte angelegt" aus.
+  const projectsError = projectsActive.isError;
   const del = useDeleteTimeEntry();
   const unbill = useUnbillTimeEntry();
 
@@ -900,6 +917,7 @@ export default function Zeiterfassung() {
         <EntryForm key={editEntry ? "edit-" + editEntry.id : "new-" + formKey}
           customers={entries.data?.customers || []}
           projects={projectsActive.data?.items || []}
+          projectsError={projectsError}
           isOwner={isOwner} isEmployee={isEmployee} memberOptions={memberOptions} editEntry={editEntry}
           onDone={() => { setEditEntry(null); setFormKey((k) => k + 1); setShowCapture(false); }} />
       )}

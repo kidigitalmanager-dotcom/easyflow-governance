@@ -153,7 +153,12 @@ export default function AuditTrail() {
   }, []);
 
   const q = textQuery.trim().toLowerCase();
-  const rangeDays = RANGES.find((r) => r.key === range)?.days ?? null;
+  const activeRange = RANGES.find((r) => r.key === range);
+  const rangeDays = activeRange?.days ?? null;
+  /* Der CSV-Export schreibt die GEFILTERTE Liste — beim Default „7 Tage" also
+     nur eine Woche. Der Umfang gehoert deshalb sichtbar an den Knopf, sonst
+     haelt jemand den Teil-Export fuer den vollstaendigen Beleg. */
+  const rangeLabel = activeRange?.label ?? "Alle";
 
   /* Ein Durchlauf, mehrere Sichten: die Chip-Zaehler zeigen jeweils, was die
      ANDEREN Filter uebrig lassen. Sonst stuende hinter „30 Tage" die Zahl des
@@ -343,9 +348,35 @@ export default function AuditTrail() {
           subtitle="Zeit, Akteur, Aktion, Objekt und Ergebnis — vollständige Dokumentation aller UseEasy-Entscheidungen. Klick eine Zeile an, um Begründung und gesetztes Label zu sehen."
           actions={
             plan.exportEnabled ? (
-              <Button variant="outline" size="sm" onClick={exportCsv}>
-                <Download className="h-4 w-4" /> CSV-Export ({filtered.length})
-              </Button>
+              /* Fehler != leer: ohne geladenen Verlauf waere `filtered` leer — der
+                 Knopf haette "(0)" angeboten, eine Datei mit nur der Kopfzeile
+                 geschrieben und "0 Eintraege exportiert" gemeldet. Genau dieser
+                 Beleg darf nicht falsch entwarnen. */
+              /* Kein stiller Umfang: Beschriftung und Titel nennen den aktiven
+                 Zeitraum, daneben steht bei gesetzter Zeitgrenze der Hinweis auf
+                 die sichtbaren Zeilen. Vorher stand am Knopf nur "CSV-Export" —
+                 der Default-Zeitraum schnitt den Beleg unbemerkt auf 7 Tage. */
+              <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportCsv}
+                  disabled={isLoading || isError}
+                  title={
+                    isError
+                      ? "Der Verlauf konnte nicht geladen werden — ein Export wäre unvollständig."
+                      : `CSV-Export · Zeitraum ${rangeLabel}${filtersActive ? " · aktive Filter" : ""} — exportiert werden genau die sichtbaren Zeilen.`
+                  }
+                >
+                  <Download className="h-4 w-4" /> CSV-Export · {rangeLabel}
+                  {isLoading || isError ? "" : ` (${filtered.length})`}
+                </Button>
+                {rangeDays !== null && !isLoading && !isError && (
+                  <span className="text-[11px] leading-snug text-muted-foreground">
+                    Nur die sichtbaren Zeilen (letzte {rangeDays} Tage).
+                  </span>
+                )}
+              </div>
             ) : (
               <Button variant="outline" size="sm" disabled title="Der CSV-Export ist ab dem Scale-Plan enthalten.">
                 <Download className="h-4 w-4" /> Export (ab Scale-Plan)
@@ -360,7 +391,15 @@ export default function AuditTrail() {
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="ue-kicker mr-0.5">Zeitraum</span>
           {RANGES.map((r) => (
-            <Chip key={r.key} active={range === r.key} count={rangeCounts[r.key]} onClick={() => setRange(r.key)}>
+            /* Kein erfundener Zaehler: ohne Daten (laedt/Fehler) steht am Chip gar
+               nichts statt einer 0 — sonst behaupteten acht Nullen ueber der
+               Fehlermeldung, es gebe schlicht keine Eintraege. */
+            <Chip
+              key={r.key}
+              active={range === r.key}
+              count={isLoading || isError ? undefined : rangeCounts[r.key]}
+              onClick={() => setRange(r.key)}
+            >
               {r.label}
             </Chip>
           ))}
@@ -369,7 +408,12 @@ export default function AuditTrail() {
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="ue-kicker mr-0.5">Priorität</span>
           {priorities.map((p) => (
-            <Chip key={p} active={selectedPriority === p} count={prioCounts[p]} onClick={() => setSelectedPriority(p)}>
+            <Chip
+              key={p}
+              active={selectedPriority === p}
+              count={isLoading || isError ? undefined : prioCounts[p]}
+              onClick={() => setSelectedPriority(p)}
+            >
               {p}
             </Chip>
           ))}

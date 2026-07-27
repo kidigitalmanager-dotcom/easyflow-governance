@@ -15,7 +15,7 @@
  * der neue Tastatur-Flow (F/A/E) und diese Buttons GARANTIERT dasselbe tun.
  * `openEditorSignal` erlaubt der Seite, den Editor per Taste E zu oeffnen.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, Edit2, X } from "lucide-react";
@@ -41,8 +41,16 @@ export default function ReviewVerdictButtons({
   const [editedBody, setEditedBody] = useState(originalBody);
   const actions = useReviewActions();
 
+  /* Nur eine ERHOEHUNG des Zaehlers oeffnet den Editor — nicht schon ein
+     Mount mit bereits erhoehtem Zaehler. Sonst sprang die Warteschlange nach
+     dem ersten "E" bei JEDEM weiteren Vorgang direkt in den Editor (die Seite
+     zaehlt den Zaehler nie zurueck, und die Komponente wird pro draft_id neu
+     gemountet). Das blockierte zugleich das Blaettern mit ↓/↑, weil der Fokus
+     dann im Textfeld liegt. */
+  const seenSignal = useRef(openEditorSignal);
   useEffect(() => {
-    if (openEditorSignal > 0) {
+    if (openEditorSignal > 0 && openEditorSignal !== seenSignal.current) {
+      seenSignal.current = openEditorSignal;
       setEditedBody(originalBody);
       setEditMode(true);
     }

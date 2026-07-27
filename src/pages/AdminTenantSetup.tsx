@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useMe } from "@/hooks/use-api";
 import {
   useAdminTenants, useAdminTenantSetup, useSaveAdminTenantSetup, useCreateAdminTenant,
   useArchiveTenant, useDeleteTenant,
 } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorNotice } from "@/components/QueryErrorNotice";
+import { PageHeader, SectionCard, Dot } from "@/components/ue/primitives";
 import { toast } from "sonner";
 import {
   ShieldAlert, PhoneCall, ShieldCheck, ListChecks, Clock, Check, X,
@@ -18,11 +21,28 @@ import VoiceLinesTab from "@/components/VoiceLinesTab";
 // v4.32.0/v4.33.0 — Super-Admin Tenant-Setup: Voice/Assistenz + Tenant-Verwaltung
 // (Archivieren/Löschen) + erweitertes Setup (Status/Tarif, Pack/Branche, Postfach-
 // Status, Feature-Flags) — alles ohne SQL. Gated über is_super_admin (+ Backend-403).
+//
+// Redesign 27.07.2026: Abschnitte als SectionCard, Eingaben im Konsolen-Look
+// (dunkle Fläche, Emerald-Fokus). Die Seite liegt im AppLayout — kein eigener
+// max-w-Container mehr. Sämtliche Bestätigungsabfragen (Voice-Preset, zweifaches
+// Löschen) bleiben unverändert.
 
 const WEEKDAYS = [
   { n: 1, label: "Mo" }, { n: 2, label: "Di" }, { n: 3, label: "Mi" },
   { n: 4, label: "Do" }, { n: 5, label: "Fr" }, { n: 6, label: "Sa" }, { n: 7, label: "So" },
 ];
+
+/* Eingabe/Select im Konsolen-Look — ein nacktes <input> fällt auf dunklem Grund
+   optisch heraus (gleiche Sprache wie .ue-input, nur kompakter). */
+const FIELD_CLASS =
+  "mt-1 w-full rounded-[10px] border border-border bg-muted px-2.5 py-1.5 text-sm text-foreground outline-none transition-colors placeholder:text-tx-weak focus:border-primary";
+const LABEL_CLASS = "block text-[11.5px] text-muted-foreground";
+/* Wie FIELD_CLASS, nur ohne den mt-1-Abstand (steht nicht unter einem Label).
+   Bewusst eine eigene Konstante: `FIELD_CLASS + " mt-0"` waere wirkungslos —
+   bei gleicher Spezifitaet entscheidet die Reihenfolge im Stylesheet, nicht die
+   im class-Attribut. */
+const PICKER_CLASS =
+  "w-full rounded-[10px] border border-border bg-muted px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary";
 
 // Klartext-Erklärungen für die Assistenz-Aktionen (Tooltip bei ?-Hover).
 const ACTION_HELP: Record<string, string> = {
@@ -36,7 +56,16 @@ function InfoTip({ text }: { text: string }) {
   return (
     <span className="relative inline-flex group/tip align-middle ml-1">
       <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-border text-[10px] leading-none text-muted-foreground cursor-help select-none">?</span>
-      <span role="tooltip" className="pointer-events-none absolute left-1/2 bottom-full z-50 mb-1.5 hidden w-64 -translate-x-1/2 group-hover/tip:block rounded-md border border-border bg-card px-2.5 py-2 text-xs font-normal text-foreground shadow-lg leading-snug whitespace-normal text-left">{text}</span>
+      <span role="tooltip" className="pointer-events-none absolute left-1/2 bottom-full z-50 mb-1.5 hidden w-64 -translate-x-1/2 group-hover/tip:block rounded-[10px] border border-border bg-card px-2.5 py-2 text-xs font-normal text-foreground shadow-lg leading-snug whitespace-normal text-left">{text}</span>
+    </span>
+  );
+}
+
+/* Kartenkopf mit Icon — spart in jedem Abschnitt drei Zeilen Markup. */
+function CardTitle({ icon: Icon, children }: { icon: typeof PhoneCall; children: ReactNode }) {
+  return (
+    <span className="flex items-center gap-2">
+      <Icon className="w-4 h-4 text-primary" /> {children}
     </span>
   );
 }
@@ -102,13 +131,13 @@ function buildVoiceWrite(f: FormState) {
 function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
   return (
     <label className="flex items-start gap-3 cursor-pointer select-none">
-      <button type="button" onClick={() => onChange(!checked)}
-        className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors ${checked ? "bg-primary" : "bg-muted"}`}>
-        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform mt-0.5 ${checked ? "translate-x-4" : "translate-x-0.5"}`} />
+      <button type="button" onClick={() => onChange(!checked)} role="switch" aria-checked={checked}
+        className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors ${checked ? "bg-primary" : "bg-secondary"}`}>
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-foreground transition-transform mt-0.5 ${checked ? "translate-x-4" : "translate-x-0.5"}`} />
       </button>
       <span>
         <span className="text-sm font-medium text-foreground">{label}</span>
-        {hint && <span className="block text-xs text-muted-foreground leading-snug">{hint}</span>}
+        {hint && <span className="block text-[11.5px] leading-snug text-muted-foreground">{hint}</span>}
       </span>
     </label>
   );
@@ -128,11 +157,14 @@ function mergePackOptions(packs?: { pack_key: string; label: string; domain: str
 }
 
 export default function AdminTenantSetup() {
-  const { data: me, isLoading: meLoading } = useMe();
+  const meQ = useMe();
+  const me = meQ.data;
   const [showArchived, setShowArchived] = useState(false);
-  const { data: list, isLoading: listLoading } = useAdminTenants(showArchived);
+  const listQ = useAdminTenants(showArchived);
+  const list = listQ.data;
   const [selected, setSelected] = useState<string | null>(null);
-  const { data: setup, isLoading: setupLoading } = useAdminTenantSetup(selected);
+  const setupQ = useAdminTenantSetup(selected);
+  const setup = setupQ.data;
   const save = useSaveAdminTenantSetup();
   const create = useCreateAdminTenant();
   const archive = useArchiveTenant();
@@ -161,9 +193,27 @@ export default function AdminTenantSetup() {
     window.history.replaceState({}, "", url.pathname + url.search);
   }, []);
 
-  if (meLoading) return <div className="text-sm text-muted-foreground">Lädt …</div>;
+  if (meQ.isLoading) return <Skeleton className="h-8 w-56" />;
+  // Ein /me-Fehler ist kein „Kein Zugriff" — der Gate bleibt trotzdem zu.
+  if (meQ.isError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader kicker="Admin" title="Tenant-Setup" />
+        <QueryErrorNotice
+          label="Deine Berechtigung konnte nicht geprüft werden."
+          onRetry={() => meQ.refetch()}
+          retrying={meQ.isFetching}
+        />
+      </div>
+    );
+  }
   if (!me?.user?.is_super_admin) {
-    return <div className="max-w-lg flex items-center gap-2 text-destructive"><ShieldAlert className="w-5 h-5" /><h1 className="text-lg font-semibold">Kein Zugriff</h1></div>;
+    return (
+      <div className="max-w-lg flex items-center gap-2 text-danger">
+        <ShieldAlert className="w-5 h-5" />
+        <h1 className="text-lg font-semibold">Kein Zugriff</h1>
+      </div>
+    );
   }
 
   const kv = setup?.known_values ?? list?.known_values;
@@ -233,92 +283,119 @@ export default function AdminTenantSetup() {
   const toggleDay = (n: number) => upd({ active_days: form!.active_days.includes(n) ? form!.active_days.filter((x) => x !== n) : [...form!.active_days, n].sort() });
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Tenant-Setup</h1>
-          <p className="text-sm text-muted-foreground">Kunden visuell verwalten &amp; einrichten — ohne SQL. Status, Tarif, Branche, Telefonie, DSGVO, Assistenz-Aktionen, Anrufzeiten, Feature-Flags.</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => setShowNew((v) => !v)} className="gap-1.5 flex-shrink-0">
-          <UserPlus className="w-4 h-4" /> Neuer Kunde
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        kicker="Admin"
+        title="Tenant-Setup"
+        subtitle="Kunden visuell verwalten & einrichten — ohne SQL. Status, Tarif, Branche, Telefonie, DSGVO, Assistenz-Aktionen, Anrufzeiten, Feature-Flags."
+        actions={
+          <Button variant="outline" size="sm" onClick={() => setShowNew((v) => !v)} className="gap-1.5 flex-shrink-0">
+            <UserPlus className="w-4 h-4" /> Neuer Kunde
+          </Button>
+        }
+      />
 
       {showNew && (
-        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-          <h2 className="font-medium text-sm flex items-center gap-2"><UserPlus className="w-4 h-4 text-primary" /> Neuen Kunden anlegen</h2>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <label className="text-xs text-muted-foreground">Tenant-ID (Kürzel, klein)
-              <input className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={newT.tenant_id} onChange={(e) => setNewT({ ...newT, tenant_id: e.target.value })} placeholder="z. B. mueller_immobilien" />
-            </label>
-            <label className="text-xs text-muted-foreground">Firmenname
-              <input className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={newT.tenant_name} onChange={(e) => setNewT({ ...newT, tenant_name: e.target.value })} placeholder="Müller Immobilien GmbH" />
-            </label>
-            <label className="text-xs text-muted-foreground">Branche / Pack
-              <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={newT.pack_key} onChange={(e) => setNewT({ ...newT, pack_key: e.target.value })}>
-                {mergePackOptions(kv?.packs ?? [{ pack_key: "ecom_core", label: "E-Commerce", domain: "ecom" }]).map((p) => <option key={p.pack_key} value={p.pack_key}>{p.label}</option>)}
-              </select>
-            </label>
-            <label className="text-xs text-muted-foreground">E-Mail-Anbieter
-              <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={newT.provider} onChange={(e) => setNewT({ ...newT, provider: e.target.value })}>
-                <option value="gmail">Gmail</option><option value="outlook">Outlook / Microsoft 365</option>
-              </select>
-            </label>
-            <label className="text-xs text-muted-foreground">Tarif (optional)
-              <input className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={newT.plan} onChange={(e) => setNewT({ ...newT, plan: e.target.value })} placeholder="team" />
-            </label>
-            <label className="text-xs text-muted-foreground">Admin-E-Mail (optional)
-              <input className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={newT.admin_email} onChange={(e) => setNewT({ ...newT, admin_email: e.target.value })} placeholder="chef@kunde.de" />
-            </label>
+        <SectionCard title={<CardTitle icon={UserPlus}>Neuen Kunden anlegen</CardTitle>}>
+          <div className="space-y-3">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <label className={LABEL_CLASS}>Tenant-ID (Kürzel, klein)
+                <input className={FIELD_CLASS} value={newT.tenant_id} onChange={(e) => setNewT({ ...newT, tenant_id: e.target.value })} placeholder="z. B. mueller_immobilien" />
+              </label>
+              <label className={LABEL_CLASS}>Firmenname
+                <input className={FIELD_CLASS} value={newT.tenant_name} onChange={(e) => setNewT({ ...newT, tenant_name: e.target.value })} placeholder="Müller Immobilien GmbH" />
+              </label>
+              <label className={LABEL_CLASS}>Branche / Pack
+                <select className={FIELD_CLASS} value={newT.pack_key} onChange={(e) => setNewT({ ...newT, pack_key: e.target.value })}>
+                  {mergePackOptions(kv?.packs ?? [{ pack_key: "ecom_core", label: "E-Commerce", domain: "ecom" }]).map((p) => <option key={p.pack_key} value={p.pack_key}>{p.label}</option>)}
+                </select>
+              </label>
+              <label className={LABEL_CLASS}>E-Mail-Anbieter
+                <select className={FIELD_CLASS} value={newT.provider} onChange={(e) => setNewT({ ...newT, provider: e.target.value })}>
+                  <option value="gmail">Gmail</option><option value="outlook">Outlook / Microsoft 365</option>
+                </select>
+              </label>
+              <label className={LABEL_CLASS}>Tarif (optional)
+                <input className={FIELD_CLASS} value={newT.plan} onChange={(e) => setNewT({ ...newT, plan: e.target.value })} placeholder="team" />
+              </label>
+              <label className={LABEL_CLASS}>Admin-E-Mail (optional)
+                <input className={FIELD_CLASS} value={newT.admin_email} onChange={(e) => setNewT({ ...newT, admin_email: e.target.value })} placeholder="chef@kunde.de" />
+              </label>
+            </div>
+            <p className="text-[11.5px] text-muted-foreground">Das E-Mail-Postfach (Gmail/Outlook/M365) wird separat über den Connect-Flow (OAuth) verbunden. Hier wird der Tenant + leere Voice-Konfiguration angelegt.</p>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={doCreate} disabled={create.isPending}>{create.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Anlegen"}</Button>
+              <Button size="sm" variant="ghost" onClick={() => setShowNew(false)}>Abbrechen</Button>
+            </div>
           </div>
-          <p className="text-[11px] text-muted-foreground">Das E-Mail-Postfach (Gmail/Outlook/M365) wird separat über den Connect-Flow (OAuth) verbunden. Hier wird der Tenant + leere Voice-Konfiguration angelegt.</p>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={doCreate} disabled={create.isPending}>{create.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Anlegen"}</Button>
-            <Button size="sm" variant="ghost" onClick={() => setShowNew(false)}>Abbrechen</Button>
-          </div>
-        </div>
+        </SectionCard>
       )}
 
       {/* Tenant-Picker + Verwaltung */}
-      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-medium text-muted-foreground">Kunde auswählen</label>
-          <label className="text-xs text-muted-foreground flex items-center gap-1.5 cursor-pointer">
+      <SectionCard
+        title="Kunde auswählen"
+        action={
+          <label className="flex cursor-pointer items-center gap-1.5 text-[11.5px] text-muted-foreground">
             <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="accent-primary" />
             Archivierte anzeigen{typeof list?.archived_count === "number" ? ` (${list.archived_count})` : ""}
           </label>
-        </div>
-        <select className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-          value={selected ?? ""} onChange={(e) => setSelected(e.target.value || null)}>
-          <option value="">{listLoading ? "Lädt …" : "— Kunde wählen —"}</option>
-          {(list?.tenants ?? []).map((t) => (
-            <option key={t.tenant_id} value={t.tenant_id}>
-              {t.archived ? "🗄 " : t.voice_ready ? "✅ " : ""}{t.tenant_name} ({t.tenant_id}){t.status && t.status !== "active" ? ` · ${t.status}` : ""}
-            </option>
-          ))}
-        </select>
-        {selected && (
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            {isArchived
-              ? <Button size="sm" variant="outline" className="gap-1.5" onClick={() => doArchive(false)} disabled={archive.isPending}><ArchiveRestore className="w-3.5 h-3.5" /> Reaktivieren</Button>
-              : <Button size="sm" variant="outline" className="gap-1.5" onClick={() => doArchive(true)} disabled={archive.isPending}><Archive className="w-3.5 h-3.5" /> Archivieren</Button>}
-            <Button size="sm" variant="ghost" className="gap-1.5 text-destructive hover:text-destructive" onClick={doDelete} disabled={del.isPending || isProtected}
-              title={isProtected ? "Prod-Tenant — nur Archivieren erlaubt" : "Endgültig löschen"}>
-              <Trash2 className="w-3.5 h-3.5" /> Löschen
-            </Button>
-            {isProtected && <span className="text-[11px] text-muted-foreground">Prod-Tenant (geschützt)</span>}
+        }
+      >
+        {/* Fehler ≠ leere Kundenliste: sonst sähe ein Ausfall aus wie „keine Kunden". */}
+        {listQ.isError ? (
+          <QueryErrorNotice
+            label="Die Kundenliste konnte nicht geladen werden."
+            onRetry={() => listQ.refetch()}
+            retrying={listQ.isFetching}
+          />
+        ) : (
+          <div className="space-y-3">
+            <select className={PICKER_CLASS} aria-label="Kunde auswählen"
+              value={selected ?? ""} onChange={(e) => setSelected(e.target.value || null)}>
+              <option value="">{listQ.isLoading ? "Lädt …" : "— Kunde wählen —"}</option>
+              {(list?.tenants ?? []).map((t) => (
+                <option key={t.tenant_id} value={t.tenant_id}>
+                  {t.archived ? "🗄 " : t.voice_ready ? "✅ " : ""}{t.tenant_name} ({t.tenant_id}){t.status && t.status !== "active" ? ` · ${t.status}` : ""}
+                </option>
+              ))}
+            </select>
+            {selected && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {isArchived
+                  ? <Button size="sm" variant="outline" className="gap-1.5" onClick={() => doArchive(false)} disabled={archive.isPending}><ArchiveRestore className="w-3.5 h-3.5" /> Reaktivieren</Button>
+                  : <Button size="sm" variant="outline" className="gap-1.5" onClick={() => doArchive(true)} disabled={archive.isPending}><Archive className="w-3.5 h-3.5" /> Archivieren</Button>}
+                <Button size="sm" variant="ghost" className="gap-1.5 text-danger hover:text-danger" onClick={doDelete} disabled={del.isPending || isProtected}
+                  title={isProtected ? "Prod-Tenant — nur Archivieren erlaubt" : "Endgültig löschen"}>
+                  <Trash2 className="w-3.5 h-3.5" /> Löschen
+                </Button>
+                {isProtected && <span className="text-[11.5px] text-muted-foreground">Prod-Tenant (geschützt)</span>}
+              </div>
+            )}
           </div>
         )}
-      </div>
+      </SectionCard>
 
-      {selected && setupLoading && <div className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Setup lädt …</div>}
+      {/* Fehler beim Setup selbst — nicht stillschweigend die Formulare ausblenden. */}
+      {selected && setupQ.isError && (
+        <QueryErrorNotice
+          label={`Das Setup für „${selected}" konnte nicht geladen werden.`}
+          onRetry={() => setupQ.refetch()}
+          retrying={setupQ.isFetching}
+        />
+      )}
+
+      {selected && setupQ.isLoading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" /> Setup lädt …
+        </div>
+      )}
 
       {/* v4.54.0 — Tabs: Setup | Voice-Agents | Rufnummern */}
       {selected && (
         <div className="flex gap-1 border-b border-border">
           {([["setup", "Setup"], ["agents", "Voice-Agents"], ["lines", "Rufnummern"]] as const).map(([k, l]) => (
             <button key={k} type="button" onClick={() => setTab(k)}
-              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === k ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+              className={`px-3 py-2 text-[13px] font-medium border-b-2 -mb-px transition-colors ${tab === k ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
               {l}
             </button>
           ))}
@@ -330,11 +407,11 @@ export default function AdminTenantSetup() {
       {tab === "setup" && selected && form && setup && (
         <>
           {/* Voice-Readiness */}
-          <div className={`rounded-lg border p-4 ${setup.voice_ready ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`}>
+          <div className={`rounded-[var(--radius)] border p-4 ${setup.voice_ready ? "border-primary/30 bg-emerald-surface/40" : "border-amber/30 bg-amber-surface/50"}`}>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                {setup.voice_ready ? <CircleCheck className="w-5 h-5 text-emerald-500" /> : <CircleAlert className="w-5 h-5 text-amber-500" />}
-                <span className="font-medium text-sm">{setup.voice_ready ? "Bereit für Telefon-Anrufe" : "Telefon-Anrufe noch nicht bereit"}</span>
+                {setup.voice_ready ? <CircleCheck className="w-5 h-5 text-primary" /> : <CircleAlert className="w-5 h-5 text-amber" />}
+                <span className="text-sm font-medium text-foreground">{setup.voice_ready ? "Bereit für Telefon-Anrufe" : "Telefon-Anrufe noch nicht bereit"}</span>
               </div>
               {!setup.voice_ready && (
                 <Button size="sm" onClick={doPreset} disabled={save.isPending} className="gap-1.5"><Zap className="w-4 h-4" /> Voice-Call aktivieren</Button>
@@ -342,57 +419,61 @@ export default function AdminTenantSetup() {
             </div>
             <ul className="mt-3 grid sm:grid-cols-2 gap-1.5">
               {setup.voice_ready_checklist.map((c) => (
-                <li key={c.key} className="flex items-center gap-2 text-xs">
-                  {c.ok ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <X className="w-3.5 h-3.5 text-muted-foreground" />}
-                  <span className={c.ok ? "text-foreground" : "text-muted-foreground"}>{c.label}</span>
+                <li key={c.key} className="flex items-center gap-2 text-[12px]">
+                  {c.ok ? <Check className="w-3.5 h-3.5 text-primary" /> : <X className="w-3.5 h-3.5 text-muted-foreground" />}
+                  <span className={c.ok ? "text-tx-secondary" : "text-muted-foreground"}>{c.label}</span>
                 </li>
               ))}
             </ul>
           </div>
 
           {/* A) Status & Tarif */}
-          <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <h2 className="font-medium text-sm flex items-center gap-2"><ToggleLeft className="w-4 h-4 text-primary" /> Status &amp; Tarif</h2>
+          <SectionCard title={<CardTitle icon={ToggleLeft}>Status &amp; Tarif</CardTitle>}>
             <div className="grid sm:grid-cols-2 gap-3">
-              <label className="text-xs text-muted-foreground">Status
-                <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.status} onChange={(e) => upd({ status: e.target.value })}>
+              <label className={LABEL_CLASS}>Status
+                <select className={FIELD_CLASS} value={form.status} onChange={(e) => upd({ status: e.target.value })}>
                   {(kv?.status_options ?? ["active", "suspended", "archived"]).map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>
               </label>
-              <label className="text-xs text-muted-foreground">Tarif
-                <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.plan} onChange={(e) => upd({ plan: e.target.value })}>
+              <label className={LABEL_CLASS}>Tarif
+                <select className={FIELD_CLASS} value={form.plan} onChange={(e) => upd({ plan: e.target.value })}>
                   <option value="">— kein —</option>
                   {(kv?.plan_options ?? ["starter", "team", "scale", "pro", "enterprise"]).map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>
               </label>
             </div>
-          </section>
+          </SectionCard>
 
           {/* B) Pack/Branche & Domain */}
-          <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <h2 className="font-medium text-sm flex items-center gap-2"><Building2 className="w-4 h-4 text-primary" /> Branche / Pack <InfoTip text="Steuert, welche Klassifikations-Regeln laufen und wie Labels heißen (z. B. Hausverwaltung vs. E-Commerce). Domain wird automatisch passend gesetzt." /></h2>
-            <label className="text-xs text-muted-foreground block">Pack
-              <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.mailbox_profile} onChange={(e) => upd({ mailbox_profile: e.target.value })}>
+          <SectionCard
+            title={
+              <CardTitle icon={Building2}>
+                Branche / Pack
+                <InfoTip text="Steuert, welche Klassifikations-Regeln laufen und wie Labels heißen (z. B. Hausverwaltung vs. E-Commerce). Domain wird automatisch passend gesetzt." />
+              </CardTitle>
+            }
+          >
+            <label className={LABEL_CLASS}>Pack
+              <select className={FIELD_CLASS} value={form.mailbox_profile} onChange={(e) => upd({ mailbox_profile: e.target.value })}>
                 <option value="">{setup.tenant.mailbox_profile ? `aktuell: ${setup.tenant.mailbox_profile}` : "— wählen —"}</option>
                 {mergePackOptions(kv?.packs).map((p) => <option key={p.pack_key} value={p.pack_key}>{p.label} ({p.domain})</option>)}
               </select>
             </label>
-            <p className="text-[11px] text-muted-foreground">Aktuelle Domain: {setup.tenant.domain ?? "—"} · Packs: {(setup.tenant.active_pack_keys ?? []).join(", ") || "—"}</p>
-          </section>
+            <p className="mt-3 text-[11.5px] text-muted-foreground">Aktuelle Domain: {setup.tenant.domain ?? "—"} · Packs: {(setup.tenant.active_pack_keys ?? []).join(", ") || "—"}</p>
+          </SectionCard>
 
           {/* C) Postfach-Status & Connect */}
-          <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <h2 className="font-medium text-sm flex items-center gap-2"><Mail className="w-4 h-4 text-primary" /> Postfach-Status</h2>
+          <SectionCard title={<CardTitle icon={Mail}>Postfach-Status</CardTitle>}>
             {(setup.mailboxes ?? []).length === 0 ? (
-              <p className="text-xs text-muted-foreground">Kein Postfach verbunden. Der Kunde verbindet Gmail bzw. Outlook/Microsoft 365 selbst über den Connect-Button (OAuth, One-Click) in seinem Dashboard.</p>
+              <p className="text-[12px] text-muted-foreground">Kein Postfach verbunden. Der Kunde verbindet Gmail bzw. Outlook/Microsoft 365 selbst über den Connect-Button (OAuth, One-Click) in seinem Dashboard.</p>
             ) : (
               <ul className="space-y-1.5">
                 {(setup.mailboxes ?? []).map((m, i) => (
                   <li key={i} className="flex items-center gap-2 text-sm">
-                    <span className={`w-2 h-2 rounded-full ${m.expired ? "bg-destructive" : "bg-emerald-500"}`} />
+                    <Dot tone={m.expired ? "danger" : "emerald"} />
                     <span className="text-foreground">{m.provider}</span>
                     <span className="text-muted-foreground">{m.email}</span>
-                    <span className="text-[11px] text-muted-foreground">{m.expired ? "· Token abgelaufen (Reconnect nötig)" : "· verbunden"}</span>
+                    <span className="text-[11.5px] text-muted-foreground">{m.expired ? "· Token abgelaufen (Reconnect nötig)" : "· verbunden"}</span>
                     {m.provider === "outlook" && selected && (
                       <Button
                         size="sm"
@@ -412,115 +493,125 @@ export default function AdminTenantSetup() {
                 ))}
               </ul>
             )}
-            <p className="text-[11px] text-muted-foreground">Hinweis: Verbinden läuft über OAuth (kein Token-Eintippen). Ein „Outlook / Microsoft 365"-Button deckt beide ab, sobald die Azure-App „organizational + personal accounts" erlaubt.</p>
-          </section>
+            <p className="mt-3 text-[11.5px] text-muted-foreground">Hinweis: Verbinden läuft über OAuth (kein Token-Eintippen). Ein „Outlook / Microsoft 365"-Button deckt beide ab, sobald die Azure-App „organizational + personal accounts" erlaubt.</p>
+          </SectionCard>
 
           {/* 1) Telefonie */}
-          <section className="rounded-lg border border-border bg-card p-4 space-y-4">
-            <h2 className="font-medium text-sm flex items-center gap-2"><PhoneCall className="w-4 h-4 text-primary" /> Telefonie (Jana)</h2>
-            <Toggle checked={form.jana_enabled} onChange={(v) => upd({ jana_enabled: v })} label="Telefonie aktiviert" hint="Erlaubt Jana, für diesen Kunden Anrufe zu platzieren." />
-            <div className="grid sm:grid-cols-2 gap-3">
-              <label className="text-xs text-muted-foreground">VAPI-Assistent
-                <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
-                  value={(kv?.assistants ?? []).some((a) => a.id === form.vapi_assistant_id) || !form.vapi_assistant_id ? form.vapi_assistant_id : "__custom__"}
-                  onChange={(e) => upd({ vapi_assistant_id: e.target.value === "__custom__" ? "" : e.target.value })}>
-                  <option value="">— wählen —</option>
-                  {(kv?.assistants ?? []).map((a) => <option key={a.id} value={a.id}>{a.label}{a.is_default ? " · Standard" : ""}</option>)}
-                  <option value="__custom__">Andere (manuell)…</option>
-                </select>
-                {!((kv?.assistants ?? []).some((a) => a.id === form.vapi_assistant_id)) && (
-                  <input className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.vapi_assistant_id} onChange={(e) => upd({ vapi_assistant_id: e.target.value })} placeholder="VAPI Assistant-ID" />
-                )}
-              </label>
-              <label className="text-xs text-muted-foreground">Anruf-Nummer / Caller-ID
-                <input list="known-caller-ids" className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
-                  value={form.caller_id} onChange={(e) => upd({ caller_id: e.target.value })} placeholder="+4915… oder VAPI phone_number_id" />
-                <datalist id="known-caller-ids">{(kv?.caller_ids ?? []).map((c) => <option key={c} value={c} />)}</datalist>
-              </label>
-            </div>
-          </section>
-
-          {/* 2) DSGVO-Consent */}
-          <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <h2 className="font-medium text-sm flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-primary" /> DSGVO-Aufzeichnungs-Einwilligung</h2>
-            <Toggle checked={form.recording_consent_enabled} onChange={(v) => upd({ recording_consent_enabled: v })} label="Aufzeichnungs-Einwilligung aktiv" hint="Pflicht, bevor Jana anrufen darf. Nur aktivieren, wenn der Kunde DSGVO-konform aufzeichnet." />
-            <label className="text-xs text-muted-foreground block">Ansage-Text (optional)
-              <textarea rows={2} className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.recording_consent_banner_text} onChange={(e) => upd({ recording_consent_banner_text: e.target.value })} placeholder={kv?.default_consent_banner ?? ""} />
-            </label>
-          </section>
-
-          {/* 3) Assistenz-Aktionen (mit Tooltips) */}
-          <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <h2 className="font-medium text-sm flex items-center gap-2"><ListChecks className="w-4 h-4 text-primary" /> Assistenz-Aktionen</h2>
-            <Toggle checked={form.assistant_enabled} onChange={(v) => upd({ assistant_enabled: v })} label="Operations-Assistenz aktiv" />
-            <div className="space-y-1.5">
-              {(kv?.action_options ?? []).map((opt) => (
-                <label key={opt.action} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={form.allowed_actions.includes(opt.action)} onChange={() => toggleAction(opt.action)} className="accent-primary" />
-                  <span className="text-foreground">{opt.label}</span>
-                  {ACTION_HELP[opt.action] && <InfoTip text={ACTION_HELP[opt.action]} />}
+          <SectionCard title={<CardTitle icon={PhoneCall}>Telefonie (Jana)</CardTitle>}>
+            <div className="space-y-4">
+              <Toggle checked={form.jana_enabled} onChange={(v) => upd({ jana_enabled: v })} label="Telefonie aktiviert" hint="Erlaubt Jana, für diesen Kunden Anrufe zu platzieren." />
+              <div className="grid sm:grid-cols-2 gap-3">
+                <label className={LABEL_CLASS}>VAPI-Assistent
+                  <select className={FIELD_CLASS}
+                    value={(kv?.assistants ?? []).some((a) => a.id === form.vapi_assistant_id) || !form.vapi_assistant_id ? form.vapi_assistant_id : "__custom__"}
+                    onChange={(e) => upd({ vapi_assistant_id: e.target.value === "__custom__" ? "" : e.target.value })}>
+                    <option value="">— wählen —</option>
+                    {(kv?.assistants ?? []).map((a) => <option key={a.id} value={a.id}>{a.label}{a.is_default ? " · Standard" : ""}</option>)}
+                    <option value="__custom__">Andere (manuell)…</option>
+                  </select>
+                  {!((kv?.assistants ?? []).some((a) => a.id === form.vapi_assistant_id)) && (
+                    <input className={FIELD_CLASS} value={form.vapi_assistant_id} onChange={(e) => upd({ vapi_assistant_id: e.target.value })} placeholder="VAPI Assistant-ID" />
+                  )}
                 </label>
-              ))}
-            </div>
-            <label className="text-xs text-muted-foreground block">Nachfass-Tempo
-              <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.timeout_preset} onChange={(e) => upd({ timeout_preset: e.target.value })}>
-                {(kv?.timeout_presets ?? [{ value: "patient", label: "Geduldig" }, { value: "brisk", label: "Zügig" }]).map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-              </select>
-            </label>
-          </section>
-
-          {/* 4) Anrufzeiten & Limits */}
-          <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <h2 className="font-medium text-sm flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> Anrufzeiten &amp; Tageslimit</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <label className="text-xs text-muted-foreground">Von
-                <input type="time" className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.active_hours_start} onChange={(e) => upd({ active_hours_start: e.target.value })} />
-              </label>
-              <label className="text-xs text-muted-foreground">Bis
-                <input type="time" className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.active_hours_end} onChange={(e) => upd({ active_hours_end: e.target.value })} />
-              </label>
-              <label className="text-xs text-muted-foreground">Zeitzone
-                <input className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.timezone} onChange={(e) => upd({ timezone: e.target.value })} />
-              </label>
-              <label className="text-xs text-muted-foreground">Max. Anrufe/Tag
-                <input type="number" min={0} max={500} className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground" value={form.daily_cap} onChange={(e) => upd({ daily_cap: Number(e.target.value) })} />
-              </label>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">Wochentage</span>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {WEEKDAYS.map((d) => (
-                  <button key={d.n} type="button" onClick={() => toggleDay(d.n)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${form.active_days.includes(d.n) ? "bg-primary/10 border-primary/40 text-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
-                    {d.label}
-                  </button>
-                ))}
+                <label className={LABEL_CLASS}>Anruf-Nummer / Caller-ID
+                  <input list="known-caller-ids" className={FIELD_CLASS}
+                    value={form.caller_id} onChange={(e) => upd({ caller_id: e.target.value })} placeholder="+4915… oder VAPI phone_number_id" />
+                  <datalist id="known-caller-ids">{(kv?.caller_ids ?? []).map((c) => <option key={c} value={c} />)}</datalist>
+                </label>
               </div>
             </div>
-          </section>
+          </SectionCard>
+
+          {/* 2) DSGVO-Consent */}
+          <SectionCard title={<CardTitle icon={ShieldCheck}>DSGVO-Aufzeichnungs-Einwilligung</CardTitle>}>
+            <div className="space-y-3">
+              <Toggle checked={form.recording_consent_enabled} onChange={(v) => upd({ recording_consent_enabled: v })} label="Aufzeichnungs-Einwilligung aktiv" hint="Pflicht, bevor Jana anrufen darf. Nur aktivieren, wenn der Kunde DSGVO-konform aufzeichnet." />
+              <label className={LABEL_CLASS}>Ansage-Text (optional)
+                <textarea rows={2} className={FIELD_CLASS} value={form.recording_consent_banner_text} onChange={(e) => upd({ recording_consent_banner_text: e.target.value })} placeholder={kv?.default_consent_banner ?? ""} />
+              </label>
+            </div>
+          </SectionCard>
+
+          {/* 3) Assistenz-Aktionen (mit Tooltips) */}
+          <SectionCard title={<CardTitle icon={ListChecks}>Assistenz-Aktionen</CardTitle>}>
+            <div className="space-y-3">
+              <Toggle checked={form.assistant_enabled} onChange={(v) => upd({ assistant_enabled: v })} label="Operations-Assistenz aktiv" />
+              <div className="space-y-1.5">
+                {(kv?.action_options ?? []).map((opt) => (
+                  <label key={opt.action} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={form.allowed_actions.includes(opt.action)} onChange={() => toggleAction(opt.action)} className="accent-primary" />
+                    <span className="text-tx-secondary">{opt.label}</span>
+                    {ACTION_HELP[opt.action] && <InfoTip text={ACTION_HELP[opt.action]} />}
+                  </label>
+                ))}
+              </div>
+              <label className={LABEL_CLASS}>Nachfass-Tempo
+                <select className={FIELD_CLASS} value={form.timeout_preset} onChange={(e) => upd({ timeout_preset: e.target.value })}>
+                  {(kv?.timeout_presets ?? [{ value: "patient", label: "Geduldig" }, { value: "brisk", label: "Zügig" }]).map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+              </label>
+            </div>
+          </SectionCard>
+
+          {/* 4) Anrufzeiten & Limits */}
+          <SectionCard title={<CardTitle icon={Clock}>Anrufzeiten &amp; Tageslimit</CardTitle>}>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <label className={LABEL_CLASS}>Von
+                  <input type="time" className={FIELD_CLASS + " tabular"} value={form.active_hours_start} onChange={(e) => upd({ active_hours_start: e.target.value })} />
+                </label>
+                <label className={LABEL_CLASS}>Bis
+                  <input type="time" className={FIELD_CLASS + " tabular"} value={form.active_hours_end} onChange={(e) => upd({ active_hours_end: e.target.value })} />
+                </label>
+                <label className={LABEL_CLASS}>Zeitzone
+                  <input className={FIELD_CLASS} value={form.timezone} onChange={(e) => upd({ timezone: e.target.value })} />
+                </label>
+                <label className={LABEL_CLASS}>Max. Anrufe/Tag
+                  <input type="number" min={0} max={500} className={FIELD_CLASS + " tabular"} value={form.daily_cap} onChange={(e) => upd({ daily_cap: Number(e.target.value) })} />
+                </label>
+              </div>
+              <div>
+                <span className="text-[11.5px] text-muted-foreground">Wochentage</span>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {WEEKDAYS.map((d) => (
+                    <button key={d.n} type="button" onClick={() => toggleDay(d.n)}
+                      className={`rounded-full border px-3 py-1 text-[12px] font-medium transition-colors ${form.active_days.includes(d.n) ? "border-emerald-surface bg-emerald-surface/70 text-emerald-light" : "border-border bg-muted text-muted-foreground hover:text-foreground hover:border-primary/35"}`}>
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </SectionCard>
 
           {/* D) Feature-Flags */}
-          <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <h2 className="font-medium text-sm flex items-center gap-2"><Zap className="w-4 h-4 text-primary" /> Feature-Flags</h2>
-            <Toggle checked={form.spreadsheet_enabled} onChange={(v) => upd({ spreadsheet_enabled: v })} label="Excel Live-Sync aktiv" hint="Erlaubt das automatische Aktualisieren verbundener Tabellen." />
-            <Toggle checked={form.autopilot_kill_switch} onChange={(v) => upd({ autopilot_kill_switch: v })} label="Autopilot-Notbremse (Kill-Switch)" hint="Wenn AN: stoppt jeden automatischen Versand sofort, egal welcher Modus." />
-            <Toggle checked={form.auto_consent_on_inquiry} onChange={(v) => upd({ auto_consent_on_inquiry: v })} label="Auto-Einwilligung bei eingehender Anfrage" hint="Wenn der Kunde von sich aus schreibt/anruft, gilt die Aufzeichnungs-Einwilligung als gegeben (für Rückrufe)." />
-            <Toggle checked={form.email_cta_enabled} onChange={(v) => upd({ email_cta_enabled: v })} label="Rückruf-CTA in E-Mails" hint="Hängt bei passenden Antworten einen Rückruf-Hinweis an (nur wenn Auto-Versand aus)." />
-            <Toggle checked={form.telegram_enabled} onChange={(v) => upd({ telegram_enabled: v })} label="Telegram-Steuerung erlauben" hint="Erlaubt diesem Kunden, sein UseEasy per Telegram zu steuern (Verknüpfung via Magic-Link). Greift, sobald der Telegram-Bot live ist." />
-            <Toggle checked={form.whatsapp_enabled} onChange={(v) => upd({ whatsapp_enabled: v })} label="WhatsApp-Steuerung erlauben" hint="Wie Telegram, aber über WhatsApp (sobald der WhatsApp-Kanal live ist)." />
-            <div className="border-t border-border pt-3 space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Integrationen (Status)</p>
-              <p className="text-xs flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${setup.flags?.hubspot_connected ? "bg-emerald-500" : "bg-muted-foreground/40"}`} /> HubSpot: {setup.flags?.hubspot_connected ? "verbunden" : "nicht verbunden"}</p>
-              <p className="text-xs flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${(setup.flags?.mailbox_count ?? 0) > 0 ? "bg-emerald-500" : "bg-muted-foreground/40"}`} /> Postfächer verbunden: {setup.flags?.mailbox_count ?? 0}</p>
-              <p className="text-[11px] text-muted-foreground pt-1">Autopilot-Modus: {setup.flags?.autopilot_mode ?? "—"} (Freigabe/Reifegate über „Autopilot-Promotion").</p>
+          <SectionCard title={<CardTitle icon={Zap}>Feature-Flags</CardTitle>}>
+            <div className="space-y-3">
+              <Toggle checked={form.spreadsheet_enabled} onChange={(v) => upd({ spreadsheet_enabled: v })} label="Excel Live-Sync aktiv" hint="Erlaubt das automatische Aktualisieren verbundener Tabellen." />
+              <Toggle checked={form.autopilot_kill_switch} onChange={(v) => upd({ autopilot_kill_switch: v })} label="Autopilot-Notbremse (Kill-Switch)" hint="Wenn AN: stoppt jeden automatischen Versand sofort, egal welcher Modus." />
+              <Toggle checked={form.auto_consent_on_inquiry} onChange={(v) => upd({ auto_consent_on_inquiry: v })} label="Auto-Einwilligung bei eingehender Anfrage" hint="Wenn der Kunde von sich aus schreibt/anruft, gilt die Aufzeichnungs-Einwilligung als gegeben (für Rückrufe)." />
+              <Toggle checked={form.email_cta_enabled} onChange={(v) => upd({ email_cta_enabled: v })} label="Rückruf-CTA in E-Mails" hint="Hängt bei passenden Antworten einen Rückruf-Hinweis an (nur wenn Auto-Versand aus)." />
+              <Toggle checked={form.telegram_enabled} onChange={(v) => upd({ telegram_enabled: v })} label="Telegram-Steuerung erlauben" hint="Erlaubt diesem Kunden, sein UseEasy per Telegram zu steuern (Verknüpfung via Magic-Link). Greift, sobald der Telegram-Bot live ist." />
+              <Toggle checked={form.whatsapp_enabled} onChange={(v) => upd({ whatsapp_enabled: v })} label="WhatsApp-Steuerung erlauben" hint="Wie Telegram, aber über WhatsApp (sobald der WhatsApp-Kanal live ist)." />
+              <div className="border-t border-line-soft pt-3 space-y-1.5">
+                <p className="ue-kicker">Integrationen (Status)</p>
+                <p className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                  <Dot tone={setup.flags?.hubspot_connected ? "emerald" : "muted"} /> HubSpot: {setup.flags?.hubspot_connected ? "verbunden" : "nicht verbunden"}
+                </p>
+                <p className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                  {/* Kein `?? 0`: liefert der Server nichts, steht hier „–" statt einer erfundenen Null. */}
+                  <Dot tone={(setup.flags?.mailbox_count ?? 0) > 0 ? "emerald" : "muted"} /> Postfächer verbunden: <span className="tabular">{setup.flags?.mailbox_count ?? "–"}</span>
+                </p>
+                <p className="pt-1 text-[11.5px] text-muted-foreground">Autopilot-Modus: {setup.flags?.autopilot_mode ?? "—"} (Freigabe/Reifegate über „Autopilot-Promotion").</p>
+              </div>
             </div>
-          </section>
+          </SectionCard>
 
-          <div className="flex items-center gap-3 sticky bottom-0 bg-background/80 backdrop-blur py-3">
+          <div className="sticky bottom-0 flex items-center gap-3 bg-background/85 py-3 backdrop-blur">
             <Button onClick={() => doSave()} disabled={save.isPending} className="gap-1.5">
               {save.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Speichern
             </Button>
-            {setup.voice_ready && <span className="text-xs text-emerald-600 flex items-center gap-1"><CircleCheck className="w-3.5 h-3.5" /> Voice-bereit</span>}
+            {setup.voice_ready && <span className="flex items-center gap-1 text-[12px] text-primary"><CircleCheck className="w-3.5 h-3.5" /> Voice-bereit</span>}
           </div>
         </>
       )}

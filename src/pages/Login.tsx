@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Building2, Landmark, HardHat } from "lucide-react";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -494,18 +494,15 @@ function LoginShell({
           </div>
         </div>
 
-        {/* Fuss: Vertrauenssatz + Ersteinrichtung */}
+        {/* Fuss: Vertrauenssatz.
+            KEIN "Ersteinrichtung fortsetzen"-Link mehr: /connect braucht zwingend
+            den Token aus der Einrichtungs-Mail (Connect.tsx -> missing_token), ein
+            Link ohne Query landet also IMMER auf "Verbindung nicht moeglich". */}
         <div className="mt-12 max-w-[420px] space-y-3">
           <p className="text-[12px] leading-relaxed text-tx-faint">
             UseEasy erstellt ausschließlich Entwürfe. Es wird nichts versendet, gebucht oder
             gemeldet, bevor du freigibst.
           </p>
-          <Link
-            to="/connect"
-            className="inline-flex items-center rounded-[10px] border border-border px-3.5 py-2 text-[12.5px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-          >
-            Ersteinrichtung fortsetzen
-          </Link>
         </div>
       </div>
 

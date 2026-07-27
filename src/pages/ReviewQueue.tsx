@@ -248,6 +248,10 @@ export default function ReviewQueue() {
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+    /* `actions` ist seit 27.07.2026 referenz-stabil (useReviewActions memoisiert):
+       der Listener haengt sich nur noch bei echten Aenderungen neu ein, nicht mehr
+       bei JEDEM Render. Alle gelesenen Werte bleiben Dependencies — der Handler
+       sieht weiter denselben Stand wie die Buttons. */
   }, [selected, actions, move, stepAfterAction]);
 
   const clearWithoutSubject = () => {

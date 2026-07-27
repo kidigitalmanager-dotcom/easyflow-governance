@@ -151,7 +151,8 @@ function StatusChip({ state }: { state: "active" | "idle" | "manual" }) {
           : "bg-muted text-muted-foreground border-border",
       )}
     >
-      <span className={cn("w-1.5 h-1.5 rounded-full", active ? "bg-emerald-500" : "bg-muted-foreground/40")} />
+      {/* Token statt Rohfarbe (Design-Vertrag): bg-emerald-500 kannte das Theme nicht. */}
+      <span className={cn("w-1.5 h-1.5 rounded-full", active ? "bg-primary" : "bg-muted-foreground/40")} />
       {active ? "aktiv" : "keine Signale"}
     </span>
   );
@@ -492,8 +493,9 @@ export default function Signale() {
                         <span
                           className={cn(
                             "text-[11px] font-medium px-2 py-0.5 rounded-full border tabular-nums",
+                            // Tokens statt Rohfarben — gleiche Optik wie der StatusChip oben.
                             c.active > 0
-                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/25"
+                              ? "bg-emerald-surface/70 text-emerald-light border-emerald-surface"
                               : "bg-muted text-muted-foreground border-border",
                           )}
                         >
@@ -572,11 +574,13 @@ export default function Signale() {
                 </CardContent>
               </Card>
             ) : (
-              <Card className="glass-card border-emerald-500/20">
+              /* Tokens statt Rohfarben: emerald-500/400 kamen aus der Tailwind-Palette,
+                 nicht aus dem Theme — im dunklen Konsolen-Look ein Fremdkoerper. */
+              <Card className="glass-card border-emerald-surface">
                 <CardContent className="pt-5 pb-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
-                      <ShieldCheck className="w-5 h-5 text-emerald-400 mt-0.5" />
+                      <ShieldCheck className="w-5 h-5 text-emerald-light mt-0.5" />
                       <div>
                         <p className="text-sm font-medium text-foreground">An Investoren freigegeben</p>
                         <p className="text-xs text-muted-foreground mt-0.5">

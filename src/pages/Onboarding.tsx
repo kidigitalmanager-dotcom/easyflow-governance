@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { DEMOS, DEMO_ORDER, COPY, type Demo } from "@/data/onboarding-content";
 import { useOnboardingProgress, useOnboardingState } from "@/hooks/use-onboarding";
-import { useMe } from "@/hooks/use-api";
+import { useMe, useDashboardStats } from "@/hooks/use-api";
 import { useOnboardingRunner } from "@/components/onboarding/OnboardingRunner";
 import { demoDone, demosDoneCount } from "@/lib/onboarding";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
@@ -149,6 +149,11 @@ export default function Onboarding() {
   // benutzen — eine Wahrheit, kein zweiter Rechenweg.
   const st = useOnboardingState();
   const me = useMe();
+  // Die Ersteinrichtung steht auf ZWEI Quellen: /me (Postfach) und /stats
+  // (erste Einordnung, erster freigegebener Entwurf). Beide Fehlerzustaende
+  // muessen den Fortschritt sperren — dieselbe Query, kein zweiter Request.
+  const stats = useDashboardStats();
+  const setupError = me.isError || stats.isError;
 
   const prog = progressQ.data ?? {};
   const doneCount = demosDoneCount(prog, DEMO_ORDER);
@@ -213,14 +218,18 @@ export default function Onboarding() {
           </span>
         }
       >
-        {me.isError ? (
+        {setupError ? (
           <div className="p-4">
             {/* Fehler ≠ leer: ohne /me stuenden hier sonst drei graue "offen"-Punkte,
                 obwohl das Postfach laengst verbunden sein kann. */}
+            {/* 2026-07-27: gilt genauso fuer /stats — Schritt 2 und 3 lesen sich
+                AUSSCHLIESSLICH daraus. Faellt nur /stats aus, behauptete die Karte
+                bisher "0 von 3 Schritten erledigt", obwohl beides erledigt sein
+                kann. Bei Fehler also keine Fortschritts-Behauptung, sondern Hinweis. */}
             <QueryErrorNotice
               label="Der Einrichtungs-Status konnte nicht geladen werden."
-              onRetry={() => me.refetch()}
-              retrying={me.isFetching}
+              onRetry={() => { me.refetch(); stats.refetch(); }}
+              retrying={me.isFetching || stats.isFetching}
             />
           </div>
         ) : st.loading ? (

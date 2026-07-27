@@ -307,7 +307,9 @@ export default function Buchhaltung() {
             {arDocs.isLoading ? (
               <Skeleton className="h-12 w-full" />
             ) : arDocs.isError ? (
-              <QueryErrorNotice label="Nicht berechenbar." />
+              // Retry nachgereicht: die Query hat ein refetch, der Hinweis bot bisher
+              // nur eine Sackgasse — ein Neuladen der ganzen Seite als einzigen Ausweg.
+              <QueryErrorNotice label="Nicht berechenbar." onRetry={() => arDocs.refetch()} retrying={arDocs.isFetching} />
             ) : (
               <>
                 <p className="tabular text-[30px] font-semibold leading-none">
@@ -327,7 +329,8 @@ export default function Buchhaltung() {
             {apList.isLoading ? (
               <Skeleton className="h-12 w-full" />
             ) : apList.isError ? (
-              <QueryErrorNotice label="Belege nicht ladbar." />
+              // Wie oben: refetch ist vorhanden, also gehoert der Neu-laden-Knopf dran.
+              <QueryErrorNotice label="Belege nicht ladbar." onRetry={() => apList.refetch()} retrying={apList.isFetching} />
             ) : (
               <>
                 <p className="tabular text-[30px] font-semibold leading-none">

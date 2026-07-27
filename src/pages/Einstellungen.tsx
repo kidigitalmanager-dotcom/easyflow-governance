@@ -126,7 +126,7 @@ export default function Einstellungen() {
   const { user } = useAuth();
   // 2026-07-27: isError/refetch mitnehmen — ein /me-Fehler darf nicht wie
   // "kein Postfach verbunden" bzw. "Plan 0 / 0" aussehen (Fehler ≠ leer).
-  const { data: me, isLoading, isError, refetch, isFetching } = useMe();
+  const { data: me, isLoading, isError, isSuccess, refetch, isFetching } = useMe();
 
   const tenant = me?.tenant;
   const plan = me?.plan;
@@ -302,9 +302,15 @@ export default function Einstellungen() {
             title="Verbundene Postfächer"
             subtitle="UseEasy liest und entwirft je Postfach — gesendet wird nie ohne dich."
             action={
-              <span className="text-[11.5px] text-muted-foreground">
-                <span className="tabular">{activeMailboxes}</span> / <span className="tabular">{mailboxLimit}</span> verbunden
-              </span>
+              /* 2026-07-27: der Zaehler stand ausserhalb des isError-Guards. Bei
+                 kaputtem /me behauptete "0 / 0 verbunden" direkt UEBER der
+                 Fehlermeldung, es sei nichts verbunden — eine erfundene Zahl aus
+                 `?? 0`. Zahl nur bei erfolgreicher Query, sonst gar nichts. */
+              isSuccess ? (
+                <span className="text-[11.5px] text-muted-foreground">
+                  <span className="tabular">{activeMailboxes}</span> / <span className="tabular">{mailboxLimit}</span> verbunden
+                </span>
+              ) : null
             }
             bodyClassName="p-4 space-y-3"
           >
