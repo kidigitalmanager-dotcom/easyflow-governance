@@ -104,11 +104,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       : setupStatus === "needs_pack" ? "Pack zuweisen"
       : "Setup ausstehend");
 
+  // Redesign 27.07.2026: aktiver Punkt bekommt eine Emerald-Kante links,
+  // damit die Position auch beim Ueberfliegen sofort sichtbar ist.
   const navLinkClass = (isActive: boolean) =>
     cn(
-      "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all duration-150 border border-transparent",
+      "relative flex items-center gap-2.5 px-3 py-[7px] rounded-[10px] text-[13px] font-medium",
+      "transition-colors duration-150 border border-transparent",
       isActive
-        ? "bg-primary/10 text-primary border-primary/25"
+        ? "bg-emerald-surface/60 text-emerald-light border-emerald-surface"
         : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
     );
 
@@ -116,22 +119,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
       <aside className="w-60 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col">
-        {/* Logo */}
+        {/* Markenzeile — Logo + Wortmarke + CONSOLE-Chip (wie im Login) */}
         <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
-          <img src={logo} alt="UseEasy Logo" className="w-8 h-8 rounded-lg" />
-          <span className="text-[15px] font-bold tracking-tight text-sidebar-foreground">
+          <img src={logo} alt="UseEasy Logo" className="w-[30px] h-[30px] rounded-lg" />
+          <span className="text-[15px] font-semibold tracking-tight text-sidebar-foreground">
             Use<span className="text-primary">Easy</span>
+          </span>
+          <span className="ml-auto text-[9px] font-semibold uppercase tracking-[0.14em] text-tx-weak border border-border rounded-md px-1.5 py-0.5">
+            Console
           </span>
         </div>
 
         {/* Tenant-Karte (Anzeige: Firma + Plan + Rolle) */}
-        <div className="mx-3 mb-1 flex items-center gap-2.5 bg-card border border-border rounded-xl px-3 py-2">
+        <div className="mx-3 mb-1 flex items-center gap-2.5 ue-surface px-3 py-2">
           <span className="w-6 h-6 rounded-md bg-secondary grid place-items-center text-[10px] font-extrabold text-muted-foreground">
             {initials(String(tenantLabel))}
           </span>
           <span className="min-w-0">
-            <span className="block text-xs font-bold truncate">{tenantLabel}</span>
-            <span className="block text-[10px] text-muted-foreground/80 truncate">
+            <span className="block text-xs font-semibold truncate">{tenantLabel}</span>
+            <span className="block text-[10px] text-muted-foreground truncate">
               {planName} · Betrieb{user?.email ? ` · ${user.email}` : ""}
             </span>
           </span>
@@ -149,7 +155,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.label)}
-                  className="w-full flex items-center justify-between px-3 pt-3.5 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  className="w-full flex items-center justify-between px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-tx-weak hover:text-muted-foreground transition-colors"
                   aria-expanded={!isCollapsed}
                 >
                   {group.label}
@@ -180,18 +186,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {/* Footer */}
+        {/* Footer — der Vertrauenssatz bleibt wortgleich stehen. */}
         <div className="px-4 py-3 border-t border-sidebar-border space-y-2.5">
           {user && (
             <button
               onClick={signOut}
-              className="flex items-center gap-2 w-full px-3 py-1.5 rounded-lg text-[13px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              className="flex items-center gap-2 w-full px-3 py-1.5 rounded-[10px] text-[13px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             >
               <LogOut className="w-4 h-4" />
               Abmelden
             </button>
           )}
-          <p className="text-[10.5px] text-muted-foreground/80 leading-relaxed">
+          <p className="text-[10.5px] text-tx-faint leading-relaxed">
             UseEasy erstellt nur Entwürfe.<br />Senden erfolgt immer durch dich.
           </p>
         </div>

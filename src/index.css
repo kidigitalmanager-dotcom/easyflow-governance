@@ -4,56 +4,86 @@
 
 @layer base {
   :root {
-    /* UseEasy Console Redesign 07.07.2026 - Palette aus Konsole-Redesign-Preview.html
-       bg #0b0f15 · card #111722 · line #1e2733 · tx #e8edf2 · mut #8b96a5
-       emerald #10b981 · amber #e8a33d · red #e0685e · blue #5b8def · radius 14px */
-    --background: 216 31% 6%;
-    --foreground: 210 28% 93%;
+    /* ------------------------------------------------------------------
+       UseEasy Console — Redesign 27.07.2026 (Leons Entwurf)
+       Alle Werte als HSL-Tripel, damit shadcn-Komponenten mitziehen.
+       NIE hex hardcoden — immer ueber diese Tokens gehen.
 
-    --card: 219 33% 10%;
-    --card-foreground: 210 28% 93%;
+       Flaechen (geschichtet):
+         bg      #090d13   Seite
+         muted   #0d131b   ruhige Flaeche / Sidebar / Input
+         surface #10161f   Flaeche 2. Ebene
+         card    #131a24   Karte
+         card-2  #161d27   Karte gehoben
+         hover   #1b2431   Hover / Sekundaerflaeche
+       Linien: #1e2733 (border) · #1b2431 (weich)
+       Text:   #e8edf4 primaer · #c7d1de sekundaer · #8b97a8 muted
+               #5d6878 weak · #4c5665 faint  (weak/faint NUR Deko & Labels —
+               lesbarer Inhalt mindestens muted #8b97a8, a11y)
+       Semantik: Emerald #10b981 / #34d399 (Flaechen #14382c / #0f2119)
+                 Amber #e8a33d (Flaeche #2a2418) · Rot #e0685e
+       ------------------------------------------------------------------ */
 
-    --popover: 219 33% 10%;
-    --popover-foreground: 210 28% 93%;
+    --background: 216 36% 5%;
+    --foreground: 215 35% 93%;
+
+    --card: 215 31% 11%;
+    --card-foreground: 215 35% 93%;
+
+    --popover: 216 32% 9%;
+    --popover-foreground: 215 35% 93%;
 
     --primary: 160 84% 39%;
-    --primary-foreground: 165 62% 4%;
+    --primary-foreground: 159 64% 4%;
 
-    --secondary: 217 30% 15%;
-    --secondary-foreground: 213 16% 80%;
+    --secondary: 215 29% 15%;
+    --secondary-foreground: 214 26% 83%;
 
-    --muted: 217 29% 12%;
-    --muted-foreground: 215 13% 60%;
+    --muted: 214 35% 8%;
+    --muted-foreground: 215 14% 60%;
 
-    --accent: 160 60% 20%;
-    --accent-foreground: 160 45% 90%;
+    --accent: 160 47% 15%;
+    --accent-foreground: 152 76% 80%;
 
-    --destructive: 5 68% 55%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 5 68% 62%;
+    --destructive-foreground: 216 36% 5%;
 
     --border: 214 26% 16%;
-    --input: 214 26% 20%;
+    --input: 214 26% 16%;
     --ring: 160 84% 39%;
 
     --radius: 0.875rem;
 
-    --sidebar-background: 217 32% 8%;
-    --sidebar-foreground: 213 16% 85%;
+    --sidebar-background: 214 35% 8%;
+    --sidebar-foreground: 214 26% 83%;
     --sidebar-primary: 160 84% 39%;
-    --sidebar-primary-foreground: 165 62% 4%;
-    --sidebar-accent: 216 31% 11%;
-    --sidebar-accent-foreground: 210 20% 88%;
+    --sidebar-primary-foreground: 159 64% 4%;
+    --sidebar-accent: 215 29% 15%;
+    --sidebar-accent-foreground: 215 35% 93%;
     --sidebar-border: 214 26% 16%;
     --sidebar-ring: 160 84% 39%;
 
-    /* Custom tokens */
-    --emerald: 160 84% 39%;
+    /* --- Eigene Tokens aus dem Entwurf ------------------------------- */
+    --surface: 216 32% 9%;          /* #10161f */
+    --surface-hover: 215 29% 15%;   /* #1b2431 */
+    --card-raised: 215 28% 12%;     /* #161d27 */
+    --line-soft: 215 29% 15%;       /* #1b2431 */
+    --text-secondary: 214 26% 83%;  /* #c7d1de */
+    --text-weak: 216 13% 42%;       /* #5d6878 — nur Deko/Labels */
+    --text-faint: 216 14% 35%;      /* #4c5665 — Fusszeilen */
+
+    --emerald: 160 84% 39%;         /* #10b981 */
+    --emerald-light: 158 64% 52%;   /* #34d399 */
+    --emerald-surface: 160 47% 15%; /* #14382c */
+    --emerald-deep: 153 38% 9%;     /* #0f2119 */
     --emerald-dark: 163 85% 26%;
     --emerald-glow: 160 84% 39% / 0.15;
-    --surface: 219 33% 10%;
-    --surface-hover: 216 30% 12%;
 
-    /* Priority colors (Prototyp: red #e0685e · amber #e8a33d) */
+    --amber: 36 79% 57%;            /* #e8a33d */
+    --amber-surface: 40 27% 13%;    /* #2a2418 */
+    --danger: 5 68% 62%;            /* #e0685e */
+
+    /* Prioritaeten (unveraendert genutzt von PriorityBadge & Co.) */
     --p0: 5 68% 62%;
     --p1: 36 79% 57%;
     --p2: 45 85% 55%;
@@ -71,18 +101,153 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+  }
+  /* Kennzahlen sollen beim Hochzaehlen nicht springen. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
   }
 }
 
+/* ====================================================================
+   Micro-Animationen (Briefing §1)
+   Regel: ruhig und langsam (>= 1.6 s), niemals blinken.
+   prefers-reduced-motion wird ganz unten global respektiert.
+   ==================================================================== */
 @layer utilities {
+  @keyframes ue-breathe {
+    0%, 100% { transform: scale(1); opacity: 0.55; }
+    50%      { transform: scale(1.04); opacity: 0.9; }
+  }
+  @keyframes ue-dot-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 hsl(var(--emerald) / 0.55); }
+    50%      { opacity: 0.65; box-shadow: 0 0 0 6px hsl(var(--emerald) / 0); }
+  }
+  @keyframes ue-dot-pulse-amber {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 hsl(var(--amber) / 0.5); }
+    50%      { opacity: 0.65; box-shadow: 0 0 0 6px hsl(var(--amber) / 0); }
+  }
+  @keyframes ue-fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes ue-rise-in {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes ue-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes ue-slide-l {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes ue-grow-w {
+    from { width: 0%; }
+    to   { width: 100%; }
+  }
+  @keyframes ue-sheen {
+    0%        { transform: translateX(-120%); }
+    60%, 100% { transform: translateX(260%); }
+  }
+  @keyframes ue-draw {
+    from { stroke-dashoffset: var(--draw-length, 1000); }
+    to   { stroke-dashoffset: 0; }
+  }
+
+  .animate-breathe      { animation: ue-breathe 2.8s ease-in-out infinite; }
+  .animate-breathe-slow { animation: ue-breathe 3.4s ease-in-out infinite; }
+  .animate-dot-pulse    { animation: ue-dot-pulse 1.8s ease-in-out infinite; }
+  .animate-dot-pulse-amber { animation: ue-dot-pulse-amber 2.2s ease-in-out infinite; }
+  .animate-fade-up      { animation: ue-fade-up 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .animate-rise-in      { animation: ue-rise-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .animate-fade-in      { animation: ue-fade-in 0.6s ease-out both; }
+  .animate-slide-l      { animation: ue-slide-l 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .animate-grow-w       { animation: ue-grow-w 2.4s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .animate-draw {
+    stroke-dasharray: var(--draw-length, 1000);
+    animation: ue-draw 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  /* Gestaffelte Einstiege — auf das Kind setzen, nicht den Container */
+  .stagger-1 { animation-delay: 0.06s; }
+  .stagger-2 { animation-delay: 0.12s; }
+  .stagger-3 { animation-delay: 0.18s; }
+  .stagger-4 { animation-delay: 0.24s; }
+  .stagger-5 { animation-delay: 0.3s; }
+  .stagger-6 { animation-delay: 0.36s; }
+
+  /* Laufender Lichtstreifen ueber einer Flaeche (Login-CTA) */
+  .sheen { position: relative; overflow: hidden; }
+  .sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 40%;
+    background: linear-gradient(
+      100deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.28) 50%,
+      transparent 100%
+    );
+    animation: ue-sheen 2.8s ease-in-out 1s infinite;
+    pointer-events: none;
+  }
+}
+
+@layer components {
+  /* Karte: solide Flaeche mit sichtbarer Linie — kein Glas, kein Blur. */
   .glass-card {
-    /* Redesign: solide Karten mit sichtbarer Linie statt Glas/Blur */
-    @apply bg-card border border-border rounded-[var(--radius)] shadow-[0_8px_24px_rgba(0,0,0,0.22)];
+    @apply bg-card border border-border rounded-[var(--radius)] shadow-[0_10px_30px_-18px_rgba(0,0,0,0.9)];
   }
   .glass-card-hover {
-    @apply glass-card transition-all duration-200 hover:border-primary/40;
+    @apply glass-card transition-colors duration-200 hover:border-primary/40;
   }
+  /* Gehobene Karte (KPI, Detailspalte) */
+  .ue-card-raised {
+    @apply bg-[hsl(var(--card-raised))] border border-[hsl(var(--line-soft))] rounded-[var(--radius)];
+  }
+  /* Ruhige Flaeche 2. Ebene (Listenzeilen, Boot-Zeilen) */
+  .ue-surface {
+    @apply bg-[hsl(var(--surface))] border border-[hsl(var(--line-soft))] rounded-xl;
+  }
+  /* Kleiner Status-Punkt */
+  .ue-dot {
+    @apply inline-block w-[7px] h-[7px] rounded-full flex-shrink-0;
+  }
+  /* Kicker/Overline — 11px, uppercase, weit gesperrt */
+  .ue-kicker {
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-[hsl(var(--text-weak))];
+  }
+  /* Display-Akzent: Instrument Serif italic — sparsam (Login + Heute) */
+  .ue-serif {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  /* Eingabefeld im Entwurfs-Look (Focus = Emerald-Rand) */
+  .ue-input {
+    @apply w-full bg-muted border border-border rounded-[10px] px-[13px] py-[11px]
+           text-[14px] text-foreground placeholder:text-[hsl(var(--text-weak))]
+           outline-none transition-colors
+           focus:border-primary focus:ring-0;
+  }
+}
+
+/* Ruhe-Modus: alle Bewegung aus, Endzustand sofort. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .sheen::after { display: none; }
 }
 
 /* Druck: Reports (Capital/Foerder/Angebot/Rechnung) bleiben hell */

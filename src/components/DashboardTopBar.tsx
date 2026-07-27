@@ -98,14 +98,16 @@ export function DashboardTopBar() {
 
       {/* Left: Breadcrumb */}
       <div className="shrink-0 min-w-0">
-        <p className="text-[10px] leading-none text-muted-foreground/70">{crumb[0]}</p>
-        <p className="text-sm font-bold leading-tight truncate">{crumb[1]}</p>
+        <p className="text-[9.5px] leading-none font-semibold uppercase tracking-[0.14em] text-tx-weak">
+          {crumb[0]}
+        </p>
+        <p className="text-sm font-semibold leading-tight truncate mt-1">{crumb[1]}</p>
       </div>
 
       {/* Center: globale Suche (Cmd-K) */}
       <button
         onClick={() => window.dispatchEvent(new Event("ue:cmdk"))}
-        className="flex-1 max-w-md mx-auto hidden sm:flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-1.5 text-xs text-muted-foreground hover:border-primary/40 transition-colors"
+        className="flex-1 max-w-md mx-auto hidden sm:flex items-center gap-2 bg-muted border border-border rounded-[10px] px-3 py-1.5 text-xs text-muted-foreground hover:border-primary/50 transition-colors"
         aria-label="Suche öffnen"
       >
         <Search className="w-3.5 h-3.5" />

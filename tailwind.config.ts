@@ -15,6 +15,8 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        // Display-Akzent (Redesign 27.07.2026): sparsam auf Login + Heute.
+        serif: ["Instrument Serif", "Georgia", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -63,10 +65,30 @@ export default {
         emerald: {
           DEFAULT: "hsl(var(--emerald))",
           dark: "hsl(var(--emerald-dark))",
+          light: "hsl(var(--emerald-light))",
+          surface: "hsl(var(--emerald-surface))",
+          deep: "hsl(var(--emerald-deep))",
         },
+        amber: {
+          DEFAULT: "hsl(var(--amber))",
+          surface: "hsl(var(--amber-surface))",
+        },
+        danger: "hsl(var(--danger))",
         surface: {
           DEFAULT: "hsl(var(--surface))",
           hover: "hsl(var(--surface-hover))",
+          raised: "hsl(var(--card-raised))",
+        },
+        line: {
+          DEFAULT: "hsl(var(--border))",
+          soft: "hsl(var(--line-soft))",
+        },
+        // Redesign-Textstufen. weak/faint sind Deko-Stufen (a11y: kein
+        // Fliesstext, dafuer mindestens text-muted-foreground nutzen).
+        tx: {
+          secondary: "hsl(var(--text-secondary))",
+          weak: "hsl(var(--text-weak))",
+          faint: "hsl(var(--text-faint))",
         },
         p0: "hsl(var(--p0))",
         p1: "hsl(var(--p1))",
