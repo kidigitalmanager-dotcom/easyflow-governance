@@ -46,6 +46,10 @@ export default function WebsiteScanCard({ variant = "full" }: { variant?: "full"
   const [editing, setEditing] = useState(false);
 
   const scan = data?.website_scan;
+  // Die anzuzeigende Adresse: was der Kunde hinterlegt hat, sonst die, die der
+  // letzte Crawl tatsaechlich gelesen hat. Postfaecher bei gmail/gmx/web.de
+  // leiten keine Adresse ab - ohne diesen Rueckgriff staende hier nichts.
+  const shownUrl = scan?.website_url ?? scan?.last_crawl?.url ?? null;
 
   // Kein Backend-Feld (aeltere api-router-Version) oder Query kaputt: lieber gar
   // nichts zeigen als etwas Falsches behaupten.
@@ -69,7 +73,7 @@ export default function WebsiteScanCard({ variant = "full" }: { variant?: "full"
         onSuccess: () => {
           setEditing(false);
           setUrl("");
-          toast.success("Adresse gespeichert. Wir lesen Ihre Website jetzt, das dauert ein bis zwei Minuten.");
+          toast.success("Adresse gespeichert. Wir lesen Ihre Website jetzt. Das dauert ein bis zwei Minuten.");
         },
         onError: (e: Error) => toast.error(e.message || "Speichern fehlgeschlagen"),
       },
@@ -125,7 +129,7 @@ export default function WebsiteScanCard({ variant = "full" }: { variant?: "full"
     headline = "Wir lesen gerade Ihre Website";
     body = (
       <p className="text-[12.5px] text-muted-foreground">
-        {scan.website_url}, das dauert ein bis zwei Minuten. Danach finden Sie die gefundenen Angaben unter
+        {shownUrl}. Das dauert ein bis zwei Minuten. Danach finden Sie die gefundenen Angaben unter
         „Jana-Wissen“.
       </p>
     );
@@ -136,11 +140,11 @@ export default function WebsiteScanCard({ variant = "full" }: { variant?: "full"
       <div className="space-y-3">
         <p className="text-[12.5px] text-muted-foreground">
           {scan.last_crawl?.error === "robots.txt disallows crawling"
-            ? `${scan.website_url} erlaubt kein automatisches Lesen. Sie können die Angaben stattdessen unter „Jana-Wissen“ in Ruhe selbst eintragen.`
-            : `Unter ${scan.website_url} war kein lesbarer Text zu finden. Das passiert bei Seiten, die ihren Inhalt erst im Browser aufbauen. Prüfen Sie die Adresse oder tragen Sie die Angaben unter „Jana-Wissen“ selbst ein.`}
+            ? `${shownUrl} erlaubt kein automatisches Lesen. Sie können die Angaben stattdessen unter „Jana-Wissen“ in Ruhe selbst eintragen.`
+            : `Unter ${shownUrl} war kein lesbarer Text zu finden. Das passiert bei Seiten, die ihren Inhalt erst im Browser aufbauen. Prüfen Sie die Adresse oder tragen Sie die Angaben unter „Jana-Wissen“ selbst ein.`}
         </p>
         {editing ? inputRow : (
-          <Button size="sm" variant="outline" onClick={() => { setEditing(true); setUrl(scan.website_url ?? ""); }}>
+          <Button size="sm" variant="outline" onClick={() => { setEditing(true); setUrl(shownUrl ?? ""); }}>
             Andere Adresse eintragen
           </Button>
         )}
@@ -152,7 +156,7 @@ export default function WebsiteScanCard({ variant = "full" }: { variant?: "full"
     body = (
       <div className="space-y-3">
         <p className="text-[12.5px] text-muted-foreground">
-          Wir haben {scan.website_url} gelesen. Jede Angabe ist mit dem Satz belegt, auf dem sie beruht. Bitte
+          Wir haben {shownUrl} gelesen. Jede Angabe ist mit dem Satz belegt, auf dem sie beruht. Bitte
           einmal durchsehen und bestätigen, erst dann verwendet Jana sie.
         </p>
         {scan.categories_missing.length > 0 && (
@@ -174,9 +178,11 @@ export default function WebsiteScanCard({ variant = "full" }: { variant?: "full"
     body = (
       <div className="space-y-2">
         <p className="text-[12.5px] text-muted-foreground">
-          {scan.website_url}
-          {scan.facts.confirmed > 0 ? `, ${scan.facts.confirmed} bestätigte Angaben` : ""}
-          {scan.last_crawl?.chunks ? `, ${scan.last_crawl.chunks} Textabschnitte gelesen` : ""}.
+          {[
+            shownUrl,
+            scan.facts.confirmed > 0 ? `${scan.facts.confirmed} bestätigte Angaben` : null,
+            scan.last_crawl?.chunks ? `${scan.last_crawl.chunks} Textabschnitte gelesen` : null,
+          ].filter(Boolean).join(", ")}.
         </p>
         {scan.categories_missing.length > 0 && (
           <p className="text-[12.5px] text-muted-foreground">
@@ -184,7 +190,7 @@ export default function WebsiteScanCard({ variant = "full" }: { variant?: "full"
           </p>
         )}
         {editing ? inputRow : (
-          <Button size="sm" variant="ghost" className="px-0 text-[12px]" onClick={() => { setEditing(true); setUrl(scan.website_url ?? ""); }}>
+          <Button size="sm" variant="ghost" className="px-0 text-[12px]" onClick={() => { setEditing(true); setUrl(shownUrl ?? ""); }}>
             Andere Adresse verwenden
           </Button>
         )}
