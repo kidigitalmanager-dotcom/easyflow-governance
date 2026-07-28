@@ -2189,11 +2189,10 @@ export interface AutopilotPromotionPendingResponse {
   count: number;
   pending: AutopilotPromotionPending[];
 }
-export const fetchAutopilotPromotionPending = () =>
-  apiFetch<AutopilotPromotionPendingResponse>("/admin/ops/autopilot/promotion-pending".replace("/dashboard", ""));
-// Hinweis: apiFetch nutzt API_BASE = /v1/dashboard. Wir trick'sen via path-replace
-// auf /v1/admin/ops/... — apiFetch checkt path.startsWith("/v1/") nicht spezial,
-// also explizit absoluten URL bauen:
+// Hinweis: apiFetch haengt IMMER API_BASE (= /v1/dashboard) vor den Pfad. Fuer
+// /v1/admin/ops/... deshalb explizit die absolute URL bauen (siehe unten). Eine
+// fruehere apiFetch-Variante mit .replace("/dashboard","") war ein No-op und
+// haette /v1/dashboard/admin/... (404) getroffen; sie wurde entfernt (28.07.2026).
 
 export const fetchAutopilotPromotionPendingAdmin = async (): Promise<AutopilotPromotionPendingResponse> => {
   const token = await (async () => {

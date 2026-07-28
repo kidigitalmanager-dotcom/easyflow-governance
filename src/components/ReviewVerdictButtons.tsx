@@ -29,6 +29,13 @@ interface Props {
   openEditorSignal?: number;
   /** Wird nach erfolgreichem Verdict aufgerufen (z.B. weiter zum naechsten Vorgang). */
   onDone?: () => void;
+  /**
+   * Gesetzt, wenn der Entwurf nicht ins Postfach gelegt werden KANN (z.B. kein
+   * Absender an der Original-Mail erkennbar, Backend antwortet sonst 422
+   * recipient_unresolved). Sperrt "In Postfach" + "Bearbeiten" mit Begruendung,
+   * statt den Fehler erst nach dem Klick zu zeigen. Verwerfen bleibt moeglich.
+   */
+  mailboxBlockedReason?: string | null;
 }
 
 export default function ReviewVerdictButtons({
@@ -36,6 +43,7 @@ export default function ReviewVerdictButtons({
   originalBody = "",
   openEditorSignal = 0,
   onDone,
+  mailboxBlockedReason = null,
 }: Props) {
   const [editMode, setEditMode] = useState(false);
   const [editedBody, setEditedBody] = useState(originalBody);
@@ -89,13 +97,14 @@ export default function ReviewVerdictButtons({
   }
 
   return (
+    <div className="flex min-w-0 flex-col gap-1.5">
     <div className="flex flex-shrink-0 gap-1.5">
       <Button
         size="sm"
         variant="default"
         onClick={() => actions.approve(draftId, onDone)}
-        disabled={actions.isPending}
-        title={`${REVIEW.draftToBox} · Taste F`}
+        disabled={actions.isPending || !!mailboxBlockedReason}
+        title={mailboxBlockedReason ?? `${REVIEW.draftToBox} · Taste F`}
       >
         <Check className="mr-1 h-3.5 w-3.5" /> In Postfach
       </Button>
@@ -106,8 +115,8 @@ export default function ReviewVerdictButtons({
           setEditedBody(originalBody);
           setEditMode(true);
         }}
-        disabled={actions.isPending}
-        title="Entwurf bearbeiten · Taste E"
+        disabled={actions.isPending || !!mailboxBlockedReason}
+        title={mailboxBlockedReason ?? "Entwurf bearbeiten · Taste E"}
       >
         <Edit2 className="mr-1 h-3.5 w-3.5" /> Bearbeiten
       </Button>
@@ -120,6 +129,10 @@ export default function ReviewVerdictButtons({
       >
         <X className="mr-1 h-3.5 w-3.5" /> Verwerfen
       </Button>
+    </div>
+    {mailboxBlockedReason && (
+      <p className="max-w-md text-[11px] leading-snug text-muted-foreground">{mailboxBlockedReason}</p>
+    )}
     </div>
   );
 }

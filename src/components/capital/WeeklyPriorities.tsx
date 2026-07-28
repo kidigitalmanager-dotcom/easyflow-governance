@@ -54,7 +54,10 @@ function PriorityRow({ p }: { p: WeeklyPriority }) {
 
 // "Top-3 diese Woche" — deterministisch aus dem Alert-Feed (jana-chat, KEIN LLM).
 // Jede Prioritaet traegt ihre Handlung + den Beleg (KPI + Wert + Quelle).
-export function WeeklyPriorities() {
+// scoreLimited: Ehrlichkeits-Gate der Seite (honestScore) — ist der Health-Score
+// mangels Coverage/Historie nicht belastbar, darf hier kein rotes "kritisch (10)"
+// stehen, sondern dieselbe "im Aufbau"-Botschaft wie am Score selbst.
+export function WeeklyPriorities({ scoreLimited = false }: { scoreLimited?: boolean } = {}) {
   const q = useWeeklyPriorities();
   const mb = useMorningBriefing();
   if (q.isLoading) return <Skeleton className="h-28 w-full" />;
@@ -65,7 +68,7 @@ export function WeeklyPriorities() {
   // Index kritisch, aber der Wochen-Feed leer, spiegeln wir das ehrlich statt
   // "nichts Dringendes" zu behaupten. Bei duenner Datenlage: "im Aufbau".
   const band = mb.data?.health?.band ?? null;
-  const freshLimited = mb.data?.data_freshness?.level === "limited";
+  const freshLimited = mb.data?.data_freshness?.level === "limited" || scoreLimited;
   const healthNow = mb.data?.health?.now ?? null;
   const criticalNoData = items.length === 0 && band === "kritisch" && !freshLimited;
   return (

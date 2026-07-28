@@ -9,6 +9,7 @@ import {
   ChevronRight, ArrowRight, Sparkles, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { honestScore } from "@/lib/capital";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useMySignals, useCapAccountBySlug, useRecordConsent, useRevokeConsent } from "@/hooks/use-capital";
@@ -314,7 +315,18 @@ export default function Signale() {
   const anyIdle =
     listKnown && GROUPS.some((g) => g.sources.some((s) => !s.manual && sourceState(s) === "idle"));
 
-  const latestHealth = dash?.health?.length ? dash.health[dash.health.length - 1].health_score : null;
+  /* Health fuer den Sticky-Header: NICHT nur der rohe Score. Das Ehrlichkeits-
+     Gate (honestScore) entscheidet, ob "Kritisch" ueberhaupt belastbar ist —
+     bei zu duenner Coverage oder zu kurzer Historie zeigt der Badge sonst ein
+     grundloses Rot, waehrend die Health-Score-Karte weiter unten korrekt
+     "Eingeschraenkt bewertbar" sagt. Gleiche Quality-Daten wie die Karte. */
+  const latestHealthRow = dash?.health?.length ? dash.health[dash.health.length - 1] : null;
+  const latestHealth = latestHealthRow?.health_score ?? null;
+  const healthQuality = {
+    coverage: latestHealthRow?.coverage ?? null,
+    historyMonths: dash?.health?.length ?? null,
+  };
+  const healthLimited = honestScore({ score: latestHealth, ...healthQuality }).limited;
   const title = !account
     ? "Signale"
     : account.account_type === "demo"
@@ -381,7 +393,7 @@ export default function Signale() {
             {latestHealth != null && (
               <div className="hidden sm:flex items-center gap-1.5">
                 <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Health</span>
-                <ScoreBadge value={latestHealth} size="sm" />
+                <ScoreBadge value={latestHealth} size="sm" quality={healthQuality} />
               </div>
             )}
             <span
@@ -450,7 +462,7 @@ export default function Signale() {
             </div>
             <MorningBriefing />
             <RoiSavingsCard />
-            <div data-tour="weekly"><WeeklyPriorities /></div>
+            <div data-tour="weekly"><WeeklyPriorities scoreLimited={healthLimited} /></div>
             <UpsellSuggestionCard />
             <JanaKnowledgeProposalCard />
             <AccountDashboard account={account} data={dash} variant="tenant" onConnectSource={goConnect} />

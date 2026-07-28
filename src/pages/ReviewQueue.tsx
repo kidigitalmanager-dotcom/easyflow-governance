@@ -17,6 +17,12 @@ import { ShadowModePill, ShadowWouldDoLine } from "@/components/ShadowHint";
 import { LabelReasonLine } from "@/components/LabelReasonLine";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { REVIEW } from "@/data/strings.de";
+
+/* Begruendung fuer gesperrte Postfach-Aktionen bei Vorgaengen ohne erkennbare
+   Absender-Adresse. Wird an Buttons (Sperr-Hinweis) UND Tastatur-Flow gereicht,
+   damit F/E und Maus exakt gleich reagieren. */
+const NO_SENDER_HINT =
+  "Kein Absender an dieser E-Mail erkennbar. Der Entwurf kann nicht als Antwort ins Postfach gelegt werden. Vorgang verwerfen oder direkt im Postfach antworten.";
 import { humanizeCategory, responseType, prettyRedaction } from "@/data/humanize";
 import { deadlineSenderSet, isDeadlineItem, isMoneyItem } from "@/lib/review-facets";
 import { Inbox, Sparkles, Loader2, Info, X, Trash2, MailOpen, CheckCheck, Tag, Keyboard } from "lucide-react";
@@ -207,6 +213,8 @@ export default function ReviewQueue() {
       if (isTyping(ev.target)) return;
 
       const hasDraft = !!(selected && selected.has_draft && selected.draft_id);
+      // Gleiche Sperre wie an den Buttons: ohne Absender-Adresse kein Postfach-Verdict.
+      const mailboxBlocked = hasDraft && !(selected?.sender ?? "").includes("@");
 
       switch (ev.key) {
         case "ArrowDown":
@@ -225,7 +233,8 @@ export default function ReviewQueue() {
         case "F":
           if (!selected || actions.isPending) return;
           ev.preventDefault();
-          if (hasDraft) actions.approve(selected.draft_id!, stepAfterAction);
+          if (mailboxBlocked) toast.info(NO_SENDER_HINT);
+          else if (hasDraft) actions.approve(selected.draft_id!, stepAfterAction);
           else toast.info("Für diesen Vorgang gibt es noch keinen Entwurf — erst generieren.");
           return;
         case "a":
@@ -239,7 +248,8 @@ export default function ReviewQueue() {
         case "E":
           if (!selected || !hasDraft) return;
           ev.preventDefault();
-          setEditRequest((n) => n + 1);
+          if (mailboxBlocked) toast.info(NO_SENDER_HINT);
+          else setEditRequest((n) => n + 1);
           return;
         default:
           return;
@@ -266,7 +276,11 @@ export default function ReviewQueue() {
   // Routine-Entwuerfe (P3, Entwurf vorhanden) gesammelt freigeben. Nutzt denselben
   // Verdict-Endpunkt wie der Einzel-Button — kein Auto-Versand, die Entwuerfe
   // landen im Entwurfsordner des Postfachs.
-  const bulkEligible = items.filter((e) => e.priority === "P3" && e.has_draft && !!e.draft_id);
+  // Ohne Absender-Adresse wuerde jeder Verdict im 422 recipient_unresolved enden —
+  // solche Vorgaenge nehmen wir gar nicht erst in die Sammel-Freigabe.
+  const bulkEligible = items.filter(
+    (e) => e.priority === "P3" && e.has_draft && !!e.draft_id && (e.sender ?? "").includes("@"),
+  );
   const runBulkApprove = async () => {
     if (bulkEligible.length === 0 || bulkRunning) return;
     if (!window.confirm(`${bulkEligible.length} Routine-Entwurf/-Entwürfe (P3) freigeben? Sie werden als Entwürfe in dein Postfach gelegt — gesendet wird nichts.`)) return;
@@ -288,6 +302,12 @@ export default function ReviewQueue() {
 
   const rtSelected = selected ? responseType(selected) : null;
   const selectedHasRealDraft = !!(selected && selected.has_draft && selected.draft_id);
+  /* Ohne erkennbare Absender-Adresse kann das Backend den Entwurf nicht als
+     Antwort ins Postfach legen (422 recipient_unresolved). Wir sperren die
+     Postfach-Aktionen dann von vornherein mit Begruendung, statt den Fehler
+     erst nach dem Klick als Toast zu zeigen. Verwerfen bleibt moeglich. */
+  const selectedMailboxBlocked =
+    selectedHasRealDraft && !(selected?.sender ?? "").includes("@") ? NO_SENDER_HINT : null;
 
   return (
     <div className="space-y-6">
@@ -504,6 +524,7 @@ export default function ReviewQueue() {
                       originalBody={selected.draft_body ?? ""}
                       openEditorSignal={editRequest}
                       onDone={stepAfterAction}
+                      mailboxBlockedReason={selectedMailboxBlocked}
                     />
                   ) : rtSelected === "info" ? (
                     <>

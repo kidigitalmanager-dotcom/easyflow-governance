@@ -15,9 +15,21 @@ import { REVIEW } from "@/data/strings.de";
  * Gmail/Outlook in den ENTWUERFE-Ordner. UseEasy sendet nie selbst.
  */
 
+// Bekannte Backend-Fehlercodes in verstaendliches Deutsch uebersetzen. Der rohe
+// Code ("recipient_unresolved") hilft im Freigabe-Flow niemandem weiter.
+const VERDICT_ERROR_DE: Record<string, string> = {
+  recipient_unresolved:
+    "Kein Absender an der Original-E-Mail erkennbar. Der Entwurf wurde NICHT ins Postfach gelegt. Vorgang verwerfen oder direkt im Postfach antworten.",
+  draft_not_found:
+    "Dieser Entwurf existiert nicht mehr (vermutlich schon bearbeitet). Lade die Seite neu.",
+};
+
 // Modul-Ebene statt im Hook: der Fehler-Toast haengt an keinem State und waere
 // sonst bei jedem Render eine neue Funktion (und damit ein instabiles Callback).
-const onErr = (e: unknown) => toast.error("Fehler: " + (e instanceof Error ? e.message : String(e)));
+const onErr = (e: unknown) => {
+  const raw = e instanceof Error ? e.message : String(e);
+  toast.error(VERDICT_ERROR_DE[raw] ?? "Fehler: " + raw);
+};
 
 export function useReviewActions() {
   const submit = useSubmitReviewVerdict();
