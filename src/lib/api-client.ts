@@ -1737,6 +1737,31 @@ export interface NumberBuyResponse {
 export const buyNumber = (payload: { rep_id: string; phone_number: string; country?: string; inbound_forward_number?: string }) =>
   apiPost<NumberBuyResponse>("/voice/numbers/buy", payload);
 
+// ── v4.156.0: Bereitschaft des Sprachassistenten ──────────────────────────
+// Bis v4.155.0 endete ein Voice-Kauf bei einem Datenbankfeld, das kein
+// Anruf-Pfad liest; zwischen "bezahlt" und "telefoniert" lagen zehn Schritte
+// im Super-Admin. Der Kauf erledigt sie jetzt selbst. Diese beiden Aufrufe
+// sind fuer Bestandskunden und fuer den Fall, dass etwas ausgeschaltet wurde.
+export interface VoiceReadinessStep {
+  key: string;
+  ok: boolean;
+  label: string;
+  hint: string | null;
+  self_fixable: boolean;
+}
+export interface VoiceReadinessResponse {
+  ok: boolean;
+  ready: boolean;
+  blocking: number;
+  steps: VoiceReadinessStep[];
+  applied?: string[];
+  error?: string | null;
+}
+export const fetchVoiceReadiness = () =>
+  apiFetch<VoiceReadinessResponse>("/voice/readiness");
+export const runVoiceSetup = () =>
+  apiPost<VoiceReadinessResponse>("/voice/setup", {});
+
 // ════════════════════════════════════════════════════════════════════════════
 // Lead-Upload (Phase 3) — Backend: /v1/dashboard/leads/* (delegiert an leads-sync)
 // ════════════════════════════════════════════════════════════════════════════

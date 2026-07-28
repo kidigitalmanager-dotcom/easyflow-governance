@@ -28,6 +28,7 @@ import { useVoiceReps, useRecordingConsent, useAgentCatalog, useLeadLists, useCo
 import { ApiError } from "@/lib/api-client";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { PageHeader, Dot, type DotTone } from "@/components/ue/primitives";
+import { VoiceReadinessCard } from "@/components/voice/VoiceReadinessCard";
 import { cn } from "@/lib/utils";
 
 type AreaKey = "reps" | "calls" | "consent" | "copilot" | "agents" | "leads";
@@ -159,6 +160,11 @@ export default function VoiceCalls() {
         title="Voice & Calls"
         subtitle="Vertriebler-Telefonie, Anruf-Audit, KI-Agenten und die DSGVO-Aufzeichnungs-Einstellungen — jeder Bereich mit seinem aktuellen Zustand."
       />
+
+      {/* v4.156.0: Einrichtungsstand ganz oben. Blendet sich selbst aus, wenn
+          kein Sprachassistent gebucht ist, und verschwindet nicht, sobald alles
+          steht: "bereit" ist eine Antwort, die der Kunde sehen will. */}
+      <VoiceReadinessCard onGoToNumbers={() => openArea("reps")} />
 
       {/* ── Kacheln: je Agent/Bereich eine Karte ─────────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

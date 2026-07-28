@@ -33,6 +33,8 @@ import {
   listSharePointDrives,
   listSharePointFiles,
   fetchVoiceReps,
+  fetchVoiceReadiness,   // v4.156.0
+  runVoiceSetup,         // v4.156.0
   fetchCopilotVertriebler,
   createCopilotVertriebler,
   updateCopilotVertriebler,
@@ -1620,6 +1622,27 @@ import {
   fetchOwnAgentCalls, fetchAgentAdminOverview, adminRefillPool, adminImportNumber,
   adminAddPoolNumber,
 } from "@/lib/api-client";
+
+// v4.156.0: Einrichtungsstand des Sprachassistenten. 403 = kein Voice gebucht,
+// die Karte blendet sich dann selbst aus; deshalb hier kein Retry darauf.
+export function useVoiceReadiness() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["voice-readiness"],
+    queryFn: fetchVoiceReadiness,
+    enabled: !!session,
+    staleTime: 30_000,
+    retry: (count, err) => ((err as { status?: number })?.status === 403 ? false : count < 2),
+  });
+}
+
+export function useRunVoiceSetup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: runVoiceSetup,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["voice-readiness"] }); },
+  });
+}
 
 export function useAgentCatalog() {
   const { session } = useAuth();
