@@ -201,6 +201,7 @@ export function decisionTakeaway(e: Record<string, unknown>): string {
 // ── v4.18.4: Shadow-Transparenz (autopilot_log.decision → Deutsch) ──────────
 const SHADOW_LABELS: Record<string, string> = {
   shadow_would_send: "Hätte automatisch geantwortet",
+  shadow_would_qualify: "Hätte automatisch geantwortet, sobald ein Entwurf vorliegt",
   shadow_would_hold: "Hätte zurückgehalten (zur Prüfung)",
   queued_for_send: "Hätte automatisch versendet",
   sent: "Automatisch versendet",

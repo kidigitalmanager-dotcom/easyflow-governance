@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const DECISION_LABELS: Record<string, string> = {
   shadow_would_send:           "Shadow: Würde senden",
+  shadow_would_qualify:        "Shadow: Wäre geeignet",
   shadow_would_hold:           "Shadow: Würde halten",
   queued_for_send:             "Eingereiht",
   sent:                        "Auto-gesendet",
@@ -28,6 +29,7 @@ const DECISION_LABELS: Record<string, string> = {
 const DECISION_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   sent: "default",
   shadow_would_send: "secondary",
+  shadow_would_qualify: "outline",
   shadow_would_hold: "outline",
   killed: "destructive",
   send_failed_fallback_human: "destructive",

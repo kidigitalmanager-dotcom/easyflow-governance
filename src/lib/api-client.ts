@@ -379,6 +379,7 @@ export interface DashboardStatsResponse {
   // v4.43.0: Shadow-Aggregat (flat)
   shadow_would_send_today?: number;
   shadow_would_hold_today?: number;
+  shadow_would_qualify_today?: number; // v4.155.0
   autopilot_queued_today?: number;
   [key: string]: unknown;
 }
@@ -393,6 +394,10 @@ export interface DashboardStats {
   // v4.43.0: Shadow-Aggregat fuer die Uebersicht-Kachel ("Heute haette UseEasy autonom: N").
   shadow_would_send_today?: number;
   shadow_would_hold_today?: number;
+  // v4.155.0: Mails, bei denen jedes Autopilot-Gate gruen war und nur der
+  // Entwurf fehlte (Auto-Draft ist bewusst aus). Bewusst getrennt von
+  // shadow_would_send: gesendet haette UseEasy nichts, es gab keinen Text.
+  shadow_would_qualify_today?: number;
   autopilot_queued_today?: number;
 }
 
@@ -715,6 +720,7 @@ export const fetchStats = async (): Promise<DashboardStats> => {
     // v4.43.0 Shadow-Aggregat
     shadow_would_send_today: s?.shadow_would_send_today ?? raw.shadow_would_send_today ?? 0,
     shadow_would_hold_today: s?.shadow_would_hold_today ?? raw.shadow_would_hold_today ?? 0,
+    shadow_would_qualify_today: s?.shadow_would_qualify_today ?? raw.shadow_would_qualify_today ?? 0, // v4.155.0
     autopilot_queued_today: s?.autopilot_queued_today ?? raw.autopilot_queued_today ?? 0,
   };
 };

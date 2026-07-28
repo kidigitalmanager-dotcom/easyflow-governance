@@ -260,6 +260,15 @@ export default function Uebersicht() {
               <div className="flex flex-wrap items-start gap-6">
                 <MiniStat label="würde senden" value={stats?.shadow_would_send_today} tone="emerald" />
                 <MiniStat label="würde halten" value={stats?.shadow_would_hold_today} tone="amber" />
+                {/* v4.155.0: Ohne Entwurf kann UseEasy nicht behaupten, es haette
+                    gesendet. Alle anderen Kriterien kann es aber pruefen. Genau
+                    das zeigt diese Zahl: geeignet gewesen, nur der Entwurf fehlte. */}
+                <MiniStat
+                  label="wäre geeignet"
+                  value={stats?.shadow_would_qualify_today}
+                  tone="muted"
+                  hint="Alle Autopilot-Kriterien erfüllt, es lag nur kein Entwurf vor. Entwürfe entstehen aktuell auf Knopfdruck."
+                />
                 {Number(stats?.autopilot_queued_today ?? 0) > 0 && (
                   <MiniStat label="automatisch" value={stats?.autopilot_queued_today} tone="emerald" />
                 )}
@@ -303,15 +312,19 @@ function MiniStat({
   label,
   value,
   tone,
+  hint,
 }: {
   label: string;
   value: number | null | undefined;
-  tone: "emerald" | "amber";
+  tone: "emerald" | "amber" | "muted";
+  hint?: string;
 }) {
   const has = value !== null && value !== undefined;
+  const toneClass =
+    tone === "amber" ? "text-amber" : tone === "muted" ? "text-muted-foreground" : "text-primary";
   return (
-    <div>
-      <p className={"tabular text-[26px] font-semibold leading-none " + (tone === "amber" ? "text-amber" : "text-primary")}>
+    <div title={hint}>
+      <p className={"tabular text-[26px] font-semibold leading-none " + toneClass}>
         {has ? Number(value) : "–"}
       </p>
       <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
