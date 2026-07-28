@@ -2512,6 +2512,21 @@ export interface TenantSetup {
     admin_email: string | null; mailbox_profile: string | null; domain: string | null;
     active_pack_keys: string[]; gmail_enabled: boolean; outlook_enabled: boolean;
     protected?: boolean;
+    /** v4.158.0: Firmen-Website (Briefing C, Baustein 1). */
+    website_url?: string | null;
+    /** null/false = Migration v1.44 noch nicht eingespielt. */
+    website_url_available?: boolean | null;
+  };
+  /** v4.160.0: Website-Scan sichtbar machen (Briefing C). Fehlt bei aelterem Backend. */
+  website_scan?: {
+    website_url: string | null;
+    available: boolean | null;
+    state: "missing" | "not_scanned" | "running" | "failed" | "review_pending" | "done" | "unknown";
+    last_crawl: { upload_id: string; url: string | null; status: string | null; chunks: number; error: string | null; at: string | null } | null;
+    facts: { proposed: number; confirmed: number; rejected: number };
+    categories_covered: string[];
+    categories_missing: string[];
+    scanned_at: string | null;
   };
   mailboxes?: Array<{ provider: string | null; email: string | null; token_expiry: string | null; expired: boolean | null }>;
   flags?: {
@@ -2586,6 +2601,8 @@ export interface TenantSetupWriteBody {
     dunning_scan_enabled: boolean; einvoice_enabled: boolean; sales_pack_enabled: boolean;
     spam_rescue_enabled: boolean;
   }>;
+  /** v4.158.0: Firmen-Website (self + admin schreibbar). Leerer String setzt zurueck. */
+  website?: Partial<{ website_url: string }>;
   apply_voice_preset?: boolean;
 }
 export interface CreateTenantBody {

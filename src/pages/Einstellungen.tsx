@@ -25,6 +25,7 @@ import TelegramIntegration from "@/components/TelegramIntegration";
 import DhlTrackingCard from "@/components/DhlTrackingCard"; // v4.116.0 — Per-Tenant-DHL-Key
 import AssistantConfigCard from "@/components/AssistantConfigCard";
 import TenantSetupSelfCard from "@/components/TenantSetupSelfCard";
+import WebsiteScanCard from "@/components/WebsiteScanCard"; // v4.160.0: Website-Scan (Briefing C)
 import SpreadsheetConfigTab from "@/components/SpreadsheetConfigTab";
 import SecurityMfaCard from "@/components/SecurityMfaCard";
 import JanaAutopilotTab from "@/components/JanaAutopilotTab";
@@ -311,6 +312,10 @@ export default function Einstellungen() {
         <div className="min-w-0">
 
         <TabsContent value="general" className="space-y-6 mt-0">
+          {/* v4.160.0 (Briefing C): Website-Scan sichtbar machen. Bewusst ganz
+              oben: der Scan laeuft beim Onboarding automatisch, und der Kunde
+              soll sofort sehen, was daraus geworden ist bzw. was noch fehlt. */}
+          <WebsiteScanCard />
           {/* v4.130.0 — Auto-Angebot-Toggle (rendert nur wenn documents_enabled) */}
           <AutoOfferSettingsCard />
           {/* v4.134.0 — Automatische Zahlungserinnerungen / Mahn-Zyklus (rendert nur wenn documents_enabled) */}

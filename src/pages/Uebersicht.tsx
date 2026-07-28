@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { storeProviderTokens } from "@/lib/api-client";
 import { OnboardingNudges } from "@/components/onboarding/OnboardingNudges";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
+import WebsiteScanCard from "@/components/WebsiteScanCard"; // v4.160.0: Website-Scan (Briefing C)
 import { FristenBoard } from "@/components/FristenBoard";
 import { FristenStrip } from "@/components/ue/FristenStrip";
 import { AutopilotReifeWidget } from "@/components/AutopilotReifeWidget";
@@ -73,6 +74,11 @@ export default function Uebersicht() {
       />
 
       <OnboardingNudges />
+
+      {/* v4.160.0 (Briefing C): Website-Scan. Der Banner erscheint NUR, wenn der
+          Kunde etwas tun soll: Adresse fehlt, Lesen fehlgeschlagen, oder es
+          warten gefundene Angaben auf seine Bestaetigung. Sonst still. */}
+      <WebsiteScanCard variant="banner" />
 
       {/* v4.26.0 (3A): nicht-technische "System verbessern?"-Karte */}
       {improve?.suggestion && !improveDismissed && (
