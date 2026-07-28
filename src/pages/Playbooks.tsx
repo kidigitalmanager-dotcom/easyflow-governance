@@ -31,12 +31,20 @@ import { cn } from "@/lib/utils";
 
 // Plan-Limits werden vom Backend geliefert (plan_pack_limit). Wir cachen die
 // Beschreibung lokal fuer den Header-Hinweis.
+// v4.153.0 — die 2.0-Bundles ergaenzt. `team` ist der ALT-TARIF; das
+// 799-EUR-Bundle heisst bundle_team und bringt drei frei waehlbare
+// Branchen-Packs mit. Ohne den Eintrag stand im Header-Hinweis nichts, obwohl
+// das Backend das richtige Limit (plan_pack_limit) laengst geliefert hat.
 const PLAN_DESCRIPTIONS: Record<string, string> = {
   starter: "1 Pack",
   team: "3 Packs",
   scale: "5 Packs",
   pro: "7 Packs",
   enterprise: "unbegrenzt",
+  hv_complete: "1 Pack",
+  hv_voice: "1 Pack",
+  fullstack: "1 Pack",
+  bundle_team: "3 Packs",
 };
 
 export default function Playbooks() {

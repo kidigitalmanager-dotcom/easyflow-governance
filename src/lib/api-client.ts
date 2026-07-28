@@ -186,6 +186,38 @@ export interface PlanInfo {
   drafts_used: number;
   // v4.103.0 — Mailbox-Governance: Status des 30-Tage-Swap-Locks aus /me.
   mailbox_swap?: MailboxSwapInfo;
+  // v4.153.0 — Business-Komplett Team hat unbegrenzt viele Postfaecher. Das
+  // Limit kommt dann als -1 (siehe UNLIMITED_LIMIT); diese Booleans sagen es
+  // zusaetzlich explizit, damit keine Anzeige rechnen muss, um es zu erkennen.
+  mailbox_unlimited?: boolean;
+  email_unlimited?: boolean;
+  draft_unlimited?: boolean;
+}
+
+/**
+ * -1 heisst "unbegrenzt". (v4.153.0)
+ *
+ * Das ist keine neue Erfindung: Das Backend liefert fuer Enterprise seit immer
+ * `email_limit: -1`, und die Einstellungen-Seite rendert das als "unbegrenzt".
+ * Seit dem Team-Paket kann `mailbox_limit` denselben Wert haben. Die beiden
+ * Helfer unten sind da, damit nicht jede Anzeige ihre eigene Regel erfindet —
+ * genau der Fehler, der im Backend behoben wurde.
+ *
+ * `null` wird mitgefangen, weil JSON.stringify(Infinity) null ergibt: Sollte
+ * irgendwo doch ein rohes Infinity in eine Antwort geraten, zeigt die Konsole
+ * "unbegrenzt" statt einer stillen 0.
+ */
+export const UNLIMITED_LIMIT = -1;
+
+export function isUnlimitedLimit(limit?: number | null, flag?: boolean): boolean {
+  return flag === true || limit === UNLIMITED_LIMIT || limit === null;
+}
+
+/** Limit fuer die Anzeige. Bei unbegrenzt NIE eine Zahl. */
+export function formatLimit(limit?: number | null, flag?: boolean): string {
+  if (isUnlimitedLimit(limit, flag)) return "unbegrenzt";
+  const n = Number(limit ?? 0);
+  return n >= 99999 ? "∞" : String(n);
 }
 
 export interface UserInfo {
@@ -2707,8 +2739,17 @@ export interface BillingEntitlements {
   volume_packs: number; autopilot_mailboxes: number; erp_data_sources: number; branch_packs: number;
   phone_local: number; phone_mobile: number; voice_enabled: boolean;
   billing_status?: string | null; current_period_end?: string | null;
+  // v4.153.0 — Flags, die das Backend schon liefert (SELECT * auf
+  // governance.tenant_entitlements), hier aber nie typisiert waren.
+  // unlimited_mailboxes = Business-Komplett Team.
+  unlimited_mailboxes?: boolean;
+  compliance_radar?: boolean;
+  accounting_enabled?: boolean;
+  time_tracking_enabled?: boolean;
+  doc_quota?: number;
+  doc_packs?: number;
 }
-export interface BillingSummaryResponse { ok: boolean; entitlements: BillingEntitlements; derived: { total_mailboxes: number; mail_quota_total: number }; }
+export interface BillingSummaryResponse { ok: boolean; entitlements: BillingEntitlements; derived: { total_mailboxes: number; total_mailboxes_unlimited?: boolean; mail_quota_total: number }; }
 export interface BillingCheckoutResponse { ok: boolean; mode?: "checkout" | "subscription_updated" | "plan_changed"; url?: string; subscription?: string; error?: string; reason?: string; }
 
 const BILLING_BASE = API_BASE.replace("/dashboard", ""); // https://api.useeasy.ai/v1

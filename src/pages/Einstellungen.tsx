@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { PageHeader, SectionCard, Chip, EmptyState, Dot, type DotTone } from "@/components/ue/primitives";
-import { type MailboxHealth } from "@/lib/api-client";
+import { type MailboxHealth, formatLimit, isUnlimitedLimit } from "@/lib/api-client";
 import KnowledgeBaseTab from "@/components/KnowledgeBaseTab";
 import JanaKnowledgeTab from "@/components/JanaKnowledgeTab";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
@@ -205,10 +205,28 @@ export default function Einstellungen() {
       ) === i,
   );
 
+  // v4.153.0 — "unbegrenzt" kommt vom Server (-1 bzw. das *_unlimited-Boolean)
+  // und wird hier nicht mehr nachgerechnet. Betrifft die Postfaecher im
+  // Team-Paket und das Mail-Kontingent bei Enterprise.
   const limitItems = [
-    { label: "Mailboxen", used: plan?.active_mailboxes ?? 0, limit: plan?.mailbox_limit ?? 0 },
-    { label: "E-Mails / Monat", used: plan?.emails_used ?? 0, limit: plan?.email_limit ?? 0 },
-    { label: "Entwürfe / Monat", used: plan?.drafts_used ?? 0, limit: plan?.draft_limit ?? 0 },
+    {
+      label: "Mailboxen",
+      used: plan?.active_mailboxes ?? 0,
+      limit: plan?.mailbox_limit ?? 0,
+      unlimited: isUnlimitedLimit(plan?.mailbox_limit, plan?.mailbox_unlimited),
+    },
+    {
+      label: "E-Mails / Monat",
+      used: plan?.emails_used ?? 0,
+      limit: plan?.email_limit ?? 0,
+      unlimited: isUnlimitedLimit(plan?.email_limit, plan?.email_unlimited),
+    },
+    {
+      label: "Entwürfe / Monat",
+      used: plan?.drafts_used ?? 0,
+      limit: plan?.draft_limit ?? 0,
+      unlimited: isUnlimitedLimit(plan?.draft_limit, plan?.draft_unlimited),
+    },
   ];
 
   // Redesign Follow-up: Untersektion des verschmolzenen Email-Autopilot-Bereichs.
@@ -523,12 +541,13 @@ export default function Einstellungen() {
                       <div className="flex justify-between text-[13px]">
                         <span className="text-muted-foreground">{item.label}</span>
                         <span className="tabular font-medium">
-                          {item.limit === -1
-                            ? "unbegrenzt"
-                            : `${item.used} / ${item.limit >= 99999 ? "∞" : (item.limit || 0)}`}
+                          {item.unlimited
+                            ? `${item.used} · unbegrenzt`
+                            : `${item.used} / ${formatLimit(item.limit)}`}
                         </span>
                       </div>
-                      <Progress value={pct} className="h-2" />
+                      {/* Kein Fortschrittsbalken bei unbegrenzt — er wird nie voll. */}
+                      {!item.unlimited && <Progress value={pct} className="h-2" />}
                     </div>
                   );
                 })}

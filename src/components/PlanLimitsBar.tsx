@@ -2,6 +2,7 @@ import { useMe } from "@/hooks/use-api";
 import { Progress } from "@/components/ui/progress";
 import { ExternalLink } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatLimit, isUnlimitedLimit } from "@/lib/api-client";
 
 export function PlanLimitsBar() {
   const { data: me, isLoading } = useMe();
@@ -12,12 +13,20 @@ export function PlanLimitsBar() {
 
   const planName = plan?.name ?? (isActive ? "Team" : "Kein Plan aktiv");
 
+  // v4.153.0 — unbegrenzt (Team-Paket) ist ein eigener Zustand, keine grosse
+  // Zahl: kein Fortschrittsbalken, der nie voll wird, und keine "0" durch
+  // `limit ?? 0`, wenn das Backend -1 schickt.
   const items = isActive && plan
     ? [
-        { label: "Mailboxen", used: plan.active_mailboxes ?? 0, limit: plan.mailbox_limit ?? 0 },
+        {
+          label: "Mailboxen",
+          used: plan.active_mailboxes ?? 0,
+          limit: plan.mailbox_limit ?? 0,
+          unlimited: isUnlimitedLimit(plan.mailbox_limit, plan.mailbox_unlimited),
+        },
       ]
     : [
-        { label: "Mailboxen", used: 0, limit: 0 },
+        { label: "Mailboxen", used: 0, limit: 0, unlimited: false },
       ];
 
   if (isLoading) {
@@ -39,9 +48,11 @@ export function PlanLimitsBar() {
         return (
           <div key={item.label} className="flex items-center gap-2 min-w-0">
             <span className="text-muted-foreground shrink-0">{item.label}</span>
-            <Progress value={pct} className="w-16 h-1.5" />
+            {!item.unlimited && <Progress value={pct} className="w-16 h-1.5" />}
             <span className="text-foreground font-medium shrink-0">
-              {item.used >= 99999 ? "∞" : item.used} / {item.limit >= 99999 ? "∞" : (item.limit || 0)}
+              {item.unlimited
+                ? `${item.used} · unbegrenzt`
+                : `${item.used >= 99999 ? "∞" : item.used} / ${formatLimit(item.limit)}`}
             </span>
           </div>
         );

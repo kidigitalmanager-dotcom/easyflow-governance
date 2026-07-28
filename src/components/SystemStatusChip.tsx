@@ -4,6 +4,7 @@ import { useMe, usePlaybooks } from "@/hooks/use-api";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { formatLimit, isUnlimitedLimit } from "@/lib/api-client";
 
 // Aussenzahl des vollstaendigen Klassifikations-Regelkatalogs (alle Branchen-Pakete).
 const TOTAL_CATALOG_RULES = 193;
@@ -48,7 +49,11 @@ export function SystemStatusChip() {
 
   const mailboxUsed = plan?.active_mailboxes ?? 0;
   const mailboxLimit = plan?.mailbox_limit ?? 0;
-  const mailboxWarn = mailboxLimit > 0 && mailboxUsed > mailboxLimit;
+  // v4.153.0 — Bei unbegrenzten Postfaechern (Team-Paket) kann der Plan nicht
+  // ueberschritten werden. Explizit, damit die Ampel nicht davon abhaengt, dass
+  // `-1 > 0` zufaellig false ist.
+  const mailboxUnlimited = isUnlimitedLimit(plan?.mailbox_limit, plan?.mailbox_unlimited);
+  const mailboxWarn = !mailboxUnlimited && mailboxLimit > 0 && mailboxUsed > mailboxLimit;
 
   const setupComplete = setup?.complete === true;
   const setupStatus = setup?.status ?? (tenant?.status === "active" ? "ready" : "not_onboarded");
@@ -116,7 +121,9 @@ export function SystemStatusChip() {
           </div>
           <div className="flex items-center justify-between gap-2 py-2">
             <span className="text-muted-foreground">Postfächer im Plan</span>
-            <span className={cn("font-semibold", mailboxWarn && "text-p0")}>{mailboxUsed} von {mailboxLimit}</span>
+            <span className={cn("font-semibold", mailboxWarn && "text-p0")}>
+              {mailboxUnlimited ? `${mailboxUsed} · unbegrenzt` : `${mailboxUsed} von ${formatLimit(mailboxLimit)}`}
+            </span>
           </div>
         </div>
         <div className="flex gap-2 px-4 py-3 border-t border-border">

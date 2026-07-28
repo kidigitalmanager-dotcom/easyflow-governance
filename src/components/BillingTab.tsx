@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CreditCard, Loader2, Plus, Minus, Check, Lock, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { useBillingSummary, useBillingCheckout, useBillingPortal } from "@/hooks/use-api";
-import type { BillingEntitlements } from "@/lib/api-client";
+import { type BillingEntitlements, isUnlimitedLimit } from "@/lib/api-client";
 
 type Req = "base" | "voice" | null;
 interface Item { key: string; label: string; price: string; unit: string; kind: "qty" | "flag" | "plan"; requires: Req; min?: number; max?: number; desc: string; }
@@ -26,7 +26,21 @@ const ADDONS: Item[] = [
   { key: "ue2_phone_local_monthly", label: "Lokale DE-Nummer", price: "2,99 €", unit: "/ Monat", kind: "qty", requires: "voice", min: 1, max: 100, desc: "Festnetz-Nummer für Voice" },
   { key: "ue2_phone_mobile_monthly", label: "Mobile DE-Nummer", price: "30 €", unit: "/ Monat", kind: "qty", requires: "voice", min: 1, max: 100, desc: "Mobile Nummer für Voice" },
 ];
-const PLAN_LABEL: Record<string, string> = { starter: "E-Mail Starter", pro: "E-Mail Pro", hv_complete: "HV-Komplett", hv_voice: "HV-Komplett + Voice", fullstack: "Full-Stack" };
+// v4.153.0 — bundle_team ergaenzt. Ohne den Eintrag haette der Billing-Tab den
+// rohen Schluessel "bundle_team" als Plannamen angezeigt. `team` steht hier
+// bewusst NICHT: das ist der Alt-Tarif, nicht das 799-EUR-Bundle.
+const PLAN_LABEL: Record<string, string> = { starter: "E-Mail Starter", pro: "E-Mail Pro", hv_complete: "HV-Komplett", hv_voice: "HV-Komplett + Voice", fullstack: "Full-Stack", bundle_team: "Business-Komplett Team" };
+
+/**
+ * Postfach-Zeile der Plan-Karte. (v4.153.0)
+ *
+ * Vorher stand hier `${derived.total_mailboxes} Postfach/Postfächer` — bei
+ * unbegrenzten Postfaechern (Team) haette das "-1 Postfach/Postfächer" ergeben.
+ */
+function mailboxText(d: { total_mailboxes: number; total_mailboxes_unlimited?: boolean }): string {
+  if (isUnlimitedLimit(d.total_mailboxes, d.total_mailboxes_unlimited)) return "Unbegrenzt viele Postfächer";
+  return d.total_mailboxes === 1 ? "1 Postfach" : `${d.total_mailboxes} Postfächer`;
+}
 
 function hasBase(e?: BillingEntitlements | null) { return !!(e && e.base_plan); }
 function gate(item: Item, e?: BillingEntitlements | null): { ok: boolean; hint?: string } {
@@ -97,7 +111,7 @@ export default function BillingTab() {
           <div>
             <CardTitle className="flex items-center gap-2 text-lg"><CreditCard className="w-5 h-5" /> {planName}</CardTitle>
             <CardDescription className="mt-1">
-              {derived ? `${derived.total_mailboxes} Postfach/Postfächer · ${derived.mail_quota_total.toLocaleString("de-DE")} Mails/Monat` : "—"}
+              {derived ? `${mailboxText(derived)} · ${derived.mail_quota_total.toLocaleString("de-DE")} Mails/Monat` : "—"}
               {ent?.voice_enabled ? " · Voice aktiv" : ""}
               {ent?.copilot_seats ? ` · ${ent.copilot_seats} Co-Pilot-Sitz(e)` : ""}
             </CardDescription>
