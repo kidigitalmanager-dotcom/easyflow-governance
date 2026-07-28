@@ -69,7 +69,7 @@ export default function Uebersicht() {
         kicker={new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}
         title={`${greeting} —`}
         accent="dein Tagesbericht."
-        subtitle="Was über Nacht gelesen und entworfen wurde, was dich jetzt braucht und welche Fristen näherkommen."
+        subtitle="Was über Nacht gelesen und einsortiert wurde, was dich jetzt braucht und welche Fristen näherkommen. Entwürfe erstellst du mit einem Klick in den Freigaben."
       />
 
       <OnboardingNudges />

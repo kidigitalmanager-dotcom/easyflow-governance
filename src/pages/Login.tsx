@@ -319,7 +319,7 @@ export default function Login() {
       kicker="Willkommen zurück"
       title={<>Deine Vorgänge sind</>}
       accent="vorbereitet."
-      subtitle="UseEasy hat über Nacht gelesen, sortiert und entworfen. Freigeben bleibt deine Entscheidung."
+      subtitle="UseEasy hat über Nacht gelesen und sortiert, Antwort-Entwürfe holst du dir per Klick. Freigeben bleibt deine Entscheidung."
       head={
         <Helmet>
           <title>UseEasy — Login zur Console</title>
