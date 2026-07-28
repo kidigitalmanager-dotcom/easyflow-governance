@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LogOut, ChevronLeft, Shield } from "lucide-react";
 import { AREAS, COLLAPSE_KEY, areaForPath, isNavActive, type Area } from "@/lib/nav";
 import { cn } from "@/lib/utils";
+import { planLabel } from "@/lib/api-client";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
 import { MailboxHealthBanner } from "@/components/MailboxHealthBanner";
 import { OnboardingRunnerProvider } from "@/components/onboarding/OnboardingRunner";
@@ -74,7 +75,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const setupComplete = setup?.complete === true;
   const setupStatus = setup?.status ?? (tenant?.status === "active" ? "ready" : "not_onboarded");
   const isSetupReady = setupComplete || setupStatus === "ready";
-  const planName = me?.plan?.name ?? (isSetupReady ? "Team" : "–");
+  // v4.153.0: Klartext statt Datenbankwert. Vorher stand hier "bundle_team"
+  // in der Tenant-Kachel und "PLAN BUNDLE_TEAM" in der Verbrauchszeile.
+  const planName = me?.plan?.name ? planLabel(me.plan.name) : (isSetupReady ? "Team" : "–");
   const tenantLabel = isSetupReady
     ? (tenant?.tenant_name ?? tenant?.tenant_id ?? "Setup abgeschlossen")
     : (setupStatus === "needs_mailbox" ? "Mailbox verbinden"

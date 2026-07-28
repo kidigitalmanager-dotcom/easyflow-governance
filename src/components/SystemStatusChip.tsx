@@ -7,7 +7,17 @@ import { cn } from "@/lib/utils";
 import { formatLimit, isUnlimitedLimit } from "@/lib/api-client";
 
 // Aussenzahl des vollstaendigen Klassifikations-Regelkatalogs (alle Branchen-Pakete).
-const TOTAL_CATALOG_RULES = 193;
+//
+// 265 aktive Regeln in 14 Packs, Quelle der Wahrheit ist
+// `SELECT COUNT(*) FROM governance.pack_rules WHERE is_active = TRUE`
+// (Stand 28.07.2026, von Leon am 21.07. gezaehlt und bestaetigt).
+//
+// Hier stand bis zum 28.07.2026 die Zahl 193. Der Katalog ist seit dem
+// gewachsen (Bau, Finanzen, weitere Vertikalen), die Konstante nicht: Die
+// Konsole hat dem Kunden also weniger versprochen, als er bekommt. Diese Zahl
+// MUSS mitwandern, wenn ein Pack dazukommt. Nie einen Pack-Teilbestand
+// eintragen, immer die Gesamtsumme.
+const TOTAL_CATALOG_RULES = 265;
 
 function relTime(iso: string | null): string {
   if (!iso) return "nie";

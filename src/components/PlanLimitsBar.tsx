@@ -2,7 +2,7 @@ import { useMe } from "@/hooks/use-api";
 import { Progress } from "@/components/ui/progress";
 import { ExternalLink } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatLimit, isUnlimitedLimit } from "@/lib/api-client";
+import { formatLimit, isUnlimitedLimit, planLabel } from "@/lib/api-client";
 
 export function PlanLimitsBar() {
   const { data: me, isLoading } = useMe();
@@ -11,7 +11,7 @@ export function PlanLimitsBar() {
   const plan = me?.plan;
   const isActive = tenant && tenant.status !== "not_onboarded";
 
-  const planName = plan?.name ?? (isActive ? "Team" : "Kein Plan aktiv");
+  const planName = plan?.name ? planLabel(plan.name) : (isActive ? "Team" : "Kein Plan aktiv");
 
   // v4.153.0 — unbegrenzt (Team-Paket) ist ein eigener Zustand, keine grosse
   // Zahl: kein Fortschrittsbalken, der nie voll wird, und keine "0" durch

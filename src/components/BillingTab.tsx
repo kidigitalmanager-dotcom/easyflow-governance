@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CreditCard, Loader2, Plus, Minus, Check, Lock, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { useBillingSummary, useBillingCheckout, useBillingPortal } from "@/hooks/use-api";
-import { type BillingEntitlements, isUnlimitedLimit } from "@/lib/api-client";
+import { type BillingEntitlements, isUnlimitedLimit, planLabel } from "@/lib/api-client";
 
 type Req = "base" | "voice" | null;
 interface Item { key: string; label: string; price: string; unit: string; kind: "qty" | "flag" | "plan"; requires: Req; min?: number; max?: number; desc: string; }
@@ -26,10 +26,9 @@ const ADDONS: Item[] = [
   { key: "ue2_phone_local_monthly", label: "Lokale DE-Nummer", price: "2,99 €", unit: "/ Monat", kind: "qty", requires: "voice", min: 1, max: 100, desc: "Festnetz-Nummer für Voice" },
   { key: "ue2_phone_mobile_monthly", label: "Mobile DE-Nummer", price: "30 €", unit: "/ Monat", kind: "qty", requires: "voice", min: 1, max: 100, desc: "Mobile Nummer für Voice" },
 ];
-// v4.153.0 — bundle_team ergaenzt. Ohne den Eintrag haette der Billing-Tab den
-// rohen Schluessel "bundle_team" als Plannamen angezeigt. `team` steht hier
-// bewusst NICHT: das ist der Alt-Tarif, nicht das 799-EUR-Bundle.
-const PLAN_LABEL: Record<string, string> = { starter: "E-Mail Starter", pro: "E-Mail Pro", hv_complete: "HV-Komplett", hv_voice: "HV-Komplett + Voice", fullstack: "Full-Stack", bundle_team: "Business-Komplett Team" };
+// v4.153.0 — die Plan-Namen liegen jetzt in api-client.ts (planLabel), damit
+// nicht vier Anzeigen vier Wahrheiten haben. Vorher stand die Karte nur hier,
+// und Seitenleiste plus Topbar zeigten den rohen Schluessel.
 
 /**
  * Postfach-Zeile der Plan-Karte. (v4.153.0)
@@ -101,7 +100,7 @@ export default function BillingTab() {
 
   if (isLoading) return (<div className="space-y-4"><Skeleton className="h-28 w-full" /><Skeleton className="h-64 w-full" /></div>);
 
-  const planName = ent?.base_plan ? (PLAN_LABEL[ent.base_plan] ?? ent.base_plan) : "Kein Plan aktiv";
+  const planName = planLabel(ent?.base_plan, true); // true = aus entitlements.base_plan
   const statusBad = ent?.billing_status === "past_due" || ent?.billing_status === "canceled";
 
   return (

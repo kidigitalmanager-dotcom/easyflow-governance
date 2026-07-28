@@ -220,6 +220,57 @@ export function formatLimit(limit?: number | null, flag?: boolean): string {
   return n >= 99999 ? "∞" : String(n);
 }
 
+/**
+ * Plan-Schluessel zu einem Namen, den man einem Kunden zeigen kann. (v4.153.0)
+ *
+ * Bis zum 28.07.2026 lag diese Zuordnung NUR lokal in `BillingTab.tsx`. Drei
+ * andere Stellen rendern denselben Wert und zeigten deshalb den rohen
+ * Schluessel: die Tenant-Kachel oben links ("bundle_team · Betrieb"), die
+ * Verbrauchszeile unten in der Seitenleiste (per CSS zu "PLAN BUNDLE_TEAM"
+ * grossgeschrieben) und die Topbar. Ein Kunde, der 799 Euro im Monat zahlt,
+ * hat dort einen Datenbankwert gelesen.
+ *
+ * Zwei Karten, weil ein und derselbe String zwei Bedeutungen haben kann:
+ *  - `plan.name` aus /me kann ein ALT-TARIF sein (`pro` = 30.000 Mails) ODER
+ *    ein Preisstruktur-2.0-Plan (`pro` = "E-Mail Pro", 3.000 Mails). Nicht
+ *    unterscheidbar, also bleiben die Namen dort neutral ("Pro").
+ *  - `entitlements.base_plan` existiert nur nach einem 2.0-Kauf, dort sind die
+ *    genauen Produktnamen richtig ("E-Mail Pro").
+ */
+const PLAN_LABELS: Record<string, string> = {
+  // Preisstruktur-2.0-Bundles. Eindeutig, kein Alt-Tarif traegt diese Schluessel.
+  hv_complete: "HV-Komplett",
+  hv_voice: "HV-Komplett + Voice",
+  fullstack: "Full-Stack",
+  bundle_team: "Business-Komplett Team",
+  // Namen, die Alt-Tarif und 2.0-Plan teilen: bewusst neutral gehalten.
+  starter: "Starter",
+  pro: "Pro",
+  team: "Team",
+  scale: "Scale",
+  enterprise: "Enterprise",
+};
+
+const ENTITLEMENT_PLAN_LABELS: Record<string, string> = {
+  ...PLAN_LABELS,
+  starter: "E-Mail Starter",
+  pro: "E-Mail Pro",
+};
+
+/**
+ * @param key Plan-Schluessel (`plan.name` oder `entitlements.base_plan`)
+ * @param fromEntitlements true, wenn der Wert aus `entitlements.base_plan`
+ *        kommt. Dann sind die genauen 2.0-Produktnamen gemeint.
+ */
+export function planLabel(key?: string | null, fromEntitlements = false): string {
+  const k = String(key ?? "").trim().toLowerCase();
+  if (!k) return "Kein Plan aktiv";
+  const map = fromEntitlements ? ENTITLEMENT_PLAN_LABELS : PLAN_LABELS;
+  if (map[k]) return map[k];
+  // Unbekannter Schluessel: wenigstens lesbar machen statt "bundle_xy_z" zeigen.
+  return k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export interface UserInfo {
   user: {
     email: string;
