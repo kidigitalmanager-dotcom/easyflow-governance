@@ -15,7 +15,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useCreateJanaBriefing } from "@/hooks/use-api";
 import type { JanaKnowledgeFact } from "@/lib/api-client";
-import { getBriefingQuestions, domainLabel, type BriefingQuestion } from "@/data/briefing-questions";
+import { getBriefingQuestions, domainLabel, coarseCoveredByWebsite, type BriefingQuestion } from "@/data/briefing-questions";
 
 // ---------------------------------------------------------------------------
 // B3.1 Briefing-Wizard: gefuehrtes Unternehmens-Briefing (eine Frage pro Screen).
@@ -37,13 +37,31 @@ export default function JanaBriefingWizard({
   onOpenChange,
   domain,
   facts,
+  websiteCovered,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   domain?: string | null;
   facts: JanaKnowledgeFact[];
+  /** Kategorien, die der Website-Scan belegt hat (feine Namen aus Baustein 5). */
+  websiteCovered?: string[] | null;
 }) {
-  const questions = useMemo(() => getBriefingQuestions(domain), [domain]);
+  const allQuestions = useMemo(() => getBriefingQuestions(domain), [domain]);
+
+  // Briefing C, Baustein 5: was die Website schon hergibt, muss der Kunde nicht
+  // noch einmal tippen. Nur ganz abgedeckte Bereiche fallen weg, und der Kunde
+  // kann jederzeit auf den vollen Katalog umschalten.
+  const coveredCoarse = useMemo(() => coarseCoveredByWebsite(websiteCovered), [websiteCovered]);
+  const [showAll, setShowAll] = useState(false);
+  const openQuestions = useMemo(
+    () => allQuestions.filter((q) => !coveredCoarse.has(q.category)),
+    [allQuestions, coveredCoarse],
+  );
+  // Sicherheitsnetz: wenn die Website alles abdeckt, bleibt trotzdem der volle
+  // Katalog stehen, statt einen leeren Wizard zu zeigen.
+  const canShorten = openQuestions.length > 0 && openQuestions.length < allQuestions.length;
+  const questions = showAll || !canShorten ? allQuestions : openQuestions;
+  const skipped = allQuestions.length - questions.length;
   const createBriefing = useCreateJanaBriefing();
 
   // Vorbelegung: bestehender Briefing-Satz je Frage (fact_text).
@@ -146,6 +164,21 @@ export default function JanaBriefingWizard({
                 in ihre Antwortentwürfe einfließen. Jede Frage ist überspringbar.
               </DialogDescription>
             </DialogHeader>
+            {skipped > 0 && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 space-y-1">
+                <p className="text-xs text-foreground">
+                  {skipped} {skipped === 1 ? "Frage konnten wir" : "Fragen konnten wir"} aus Ihrer Website
+                  beantworten. Sie stehen als Vorschläge zur Bestätigung bereit.
+                </p>
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() => { setShowAll(true); setIdx(0); }}
+                >
+                  Trotzdem alle {allQuestions.length} Fragen durchgehen
+                </button>
+              </div>
+            )}
             {answeredCount > 0 && (
               <p className="text-xs text-muted-foreground">
                 {answeredCount} von {questions.length} Fragen sind bereits beantwortet und vorausgefüllt,

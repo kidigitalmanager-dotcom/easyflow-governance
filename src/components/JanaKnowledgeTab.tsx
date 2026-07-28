@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Brain, Check, X, Pencil, Plus, Loader2, Sparkles, BookOpen, Users, Timer, Scale, Package, Feather, Wand2, FileText } from "lucide-react";
+import { Brain, Check, X, Pencil, Plus, Loader2, Sparkles, BookOpen, Users, Timer, Scale, Package, Feather, Wand2, FileText, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useJanaKnowledge, useCreateJanaKnowledge, usePatchJanaKnowledge, useMe } from "@/hooks/use-api";
+import { useJanaKnowledge, useCreateJanaKnowledge, usePatchJanaKnowledge, useMe, useTenantSetupSelf } from "@/hooks/use-api";
 import type { JanaKnowledgeCategory, JanaKnowledgeFact } from "@/lib/api-client";
 import JanaBriefingWizard from "@/components/JanaBriefingWizard";
 
@@ -32,7 +32,35 @@ function categoryMeta(cat: string) {
   return CATEGORY_META[cat as JanaKnowledgeCategory] ?? { label: cat, icon: BookOpen };
 }
 
+// Briefing C, Baustein 4: die Herkunft "Website" wird beim Namen genannt.
+//
+// Bewusst wird auf evidence.kind geprueft und NICHT auf fact.source: Fakten, die
+// vor Migration v1.45 geschrieben wurden, tragen noch source="learned", obwohl
+// sie aus der Website stammen. Die Wahrheit steht immer in evidence.
+function isWebsiteFact(fact: JanaKnowledgeFact): boolean {
+  return fact.evidence?.kind === "website_scan";
+}
+
+// "https://firma.de/versand-und-lieferung" -> "Versand und Lieferung"
+function pageLabel(url?: string | null): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const seg = u.pathname.split("/").filter(Boolean).pop();
+    if (!seg) return "Startseite";
+    const name = decodeURIComponent(seg).replace(/\.(html?|php|aspx?)$/i, "").replace(/[-_]+/g, " ").trim();
+    if (!name) return "Startseite";
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  } catch {
+    return null;
+  }
+}
+
 function evidenceLine(fact: JanaKnowledgeFact): string {
+  if (isWebsiteFact(fact)) {
+    const page = pageLabel(fact.evidence?.source_url as string | undefined);
+    return page ? `Auf Ihrer Website gefunden: ${page}` : "Auf Ihrer Website gefunden";
+  }
   if (fact.source === "manual") return "Manuell hinzugefügt";
   if (fact.source === "briefing") return "Aus dem Unternehmens-Briefing";
   const ev = fact.evidence;
@@ -47,6 +75,37 @@ function evidenceLine(fact: JanaKnowledgeFact): string {
     return ev.title ? `Aus dem Dokument „${ev.title}“` : "Aus einem hochgeladenen Dokument";
   }
   return "Von Jana gelernt";
+}
+
+// Der woertliche Satz, auf dem ein Website-Fakt beruht, plus der Link auf die
+// Unterseite. Das ist der Unterschied zu "Von Jana gelernt": der Kunde kann
+// nachsehen, statt zu glauben. Fehlt der Beleg, wird nichts behauptet.
+function WebsiteEvidence({ fact }: { fact: JanaKnowledgeFact }) {
+  if (!isWebsiteFact(fact)) return null;
+  const quote = typeof fact.evidence?.quote === "string" ? fact.evidence.quote.trim() : "";
+  const url = typeof fact.evidence?.source_url === "string" ? fact.evidence.source_url : "";
+  const safeUrl = /^https?:\/\//i.test(url) ? url : "";
+  if (!quote && !safeUrl) return null;
+  return (
+    <div className="rounded-md border border-border/60 bg-background/60 px-3 py-2 space-y-1">
+      {quote && (
+        <p className="text-xs italic text-muted-foreground">
+          „{quote.length > 240 ? quote.slice(0, 240) + " ..." : quote}"
+        </p>
+      )}
+      {safeUrl && (
+        <a
+          href={safeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline break-all"
+        >
+          <Globe className="w-3 h-3 shrink-0" />
+          {safeUrl}
+        </a>
+      )}
+    </div>
+  );
 }
 
 function CategoryBadge({ category }: { category: string }) {
@@ -89,6 +148,8 @@ export default function JanaKnowledgeTab() {
   const [newText, setNewText] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
   const { data: me } = useMe();
+  // Baustein 5: welche Themen die Website belegt hat (fehlt der Block, aendert sich nichts).
+  const { data: setup } = useTenantSetupSelf();
   const [wizardOpen, setWizardOpen] = useState(false);
 
   const runPatch = (body: { id: number; action: "confirm" | "reject" | "update"; fact_text?: string }, okMsg: string) => {
@@ -177,6 +238,7 @@ export default function JanaKnowledgeTab() {
         onOpenChange={setWizardOpen}
         domain={me?.user?.domain}
         facts={data.facts}
+        websiteCovered={setup?.website_scan?.categories_covered ?? null}
       />
 
       {proposed.length > 0 && (
@@ -202,6 +264,7 @@ export default function JanaKnowledgeTab() {
               ) : (
                 <>
                   <p className="text-sm">{fact.fact_text}</p>
+                  <WebsiteEvidence fact={fact} />
                   <div className="flex items-center gap-2">
                     <Button size="sm" disabled={busyId === fact.id}
                       onClick={() => runPatch({ id: fact.id, action: "confirm" }, "Bestätigt — Jana nutzt diese Regel ab sofort.")}>
@@ -250,6 +313,7 @@ export default function JanaKnowledgeTab() {
               ) : (
                 <>
                   <p className="text-sm">{fact.fact_text}</p>
+                  <WebsiteEvidence fact={fact} />
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="ghost" onClick={() => setEditingId(fact.id)}>
                       <Pencil className="w-3.5 h-3.5" />

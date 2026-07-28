@@ -157,3 +157,40 @@ export function domainLabel(domain?: string | null): string {
   if (domain === "ecom") return "E-Commerce";
   return "";
 }
+
+// ---------------------------------------------------------------------------
+// Briefing C, Baustein 5: der Wizard fragt nur noch, was die Website offen laesst.
+//
+// Der Website-Scan meldet die FEINEN Kategorien zurueck (produkt, lieferung,
+// ruecknahme, ...). Der Fragenkatalog arbeitet mit den GROBEN aus
+// tenant_knowledge. Diese Tabelle ist die Umkehrung von CATEGORY_MAP in
+// website_facts.js und muss mit ihr zusammenpassen.
+export const WEBSITE_CATEGORY_TO_COARSE: Record<string, JanaKnowledgeCategory> = {
+  produkt: "product",
+  lieferung: "process",
+  zahlung: "process",
+  ruecknahme: "policy",
+  rechtliches: "policy",
+  erreichbarkeit: "sla",
+  ansprechpartner: "team",
+  standort: "team",
+};
+
+// Eine grobe Kategorie gilt nur dann als von der Website abgedeckt, wenn JEDE
+// feine Kategorie darunter belegt ist. Das ist die vorsichtige Richtung: lieber
+// eine Frage zu viel stellen als behaupten, die Website haette das Thema schon
+// beantwortet. "style" taucht hier nie auf, der Schreibstil kommt aus dem
+// Stil-Lerner und nicht aus der Website.
+export function coarseCoveredByWebsite(covered: string[] | null | undefined): Set<JanaKnowledgeCategory> {
+  const out = new Set<JanaKnowledgeCategory>();
+  if (!covered || covered.length === 0) return out;
+  const have = new Set(covered);
+  const groups = new Map<JanaKnowledgeCategory, string[]>();
+  for (const [fine, coarse] of Object.entries(WEBSITE_CATEGORY_TO_COARSE)) {
+    groups.set(coarse, [...(groups.get(coarse) ?? []), fine]);
+  }
+  for (const [coarse, fines] of groups) {
+    if (fines.every((f) => have.has(f))) out.add(coarse);
+  }
+  return out;
+}

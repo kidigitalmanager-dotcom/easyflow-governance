@@ -857,9 +857,9 @@ export interface JanaKnowledgeFact {
   fact_key: string;
   fact_text: string;
   status: JanaKnowledgeStatus;
-  source: "briefing" | "manual" | "learned";
+  source: "briefing" | "manual" | "learned" | "website";
   evidence: {
-    kind?: "correction_cluster" | "entity_focus" | "kb_extract";
+    kind?: "correction_cluster" | "entity_focus" | "kb_extract" | "website_scan";
     count?: number;
     correction_ids?: number[];
     entity_hashes?: string[];
@@ -870,6 +870,14 @@ export interface JanaKnowledgeFact {
     title?: string | null;
     chunk_ids?: number[];
     n_chunks?: number | null;
+    // Briefing C, Baustein 3: Fakt aus der Website des Kunden
+    website_category?: string | null;
+    quote?: string | null;
+    source_url?: string | null;
+    website_url?: string | null;
+    crawled_at?: string | null;
+    last_seen_at?: string | null;
+    extractor?: string | null;
     [key: string]: unknown;
   } | null;
   confidence: number | string | null;
