@@ -4,19 +4,30 @@
  * unbekannte Keys werden generisch „verschoenert" (kein Absturz, kein Roh-Key).
  */
 
+// Anzeigenamen der Regel-Pakete. Bewusst identisch zum Backend
+// (_packDisplayDe in index.js), damit Console und MiniUI dasselbe sagen.
 const PLAYBOOK_LABELS: Record<string, string> = {
-  ecom_core_v1: "E-Commerce (Standard)",
-  ecom_core: "E-Commerce (Standard)",
-  real_estate_core_v1: "Hausverwaltung",
-  bau_core_v1: "Bau & Handwerk",
-  hv_real_estate_v1: "Hausverwaltung",
-  global_core: "Allgemein",
-  coaching_core_v1: "Coaching",
+  ecom_core_v1: "E-Commerce-Paket",
+  ecom_core: "E-Commerce-Paket",
+  real_estate_core_v1: "Hausverwaltungs-Paket",
+  hv_real_estate_v1: "Hausverwaltungs-Paket",
+  bau_core_v1: "Bau & Handwerk-Paket",
+  global_core: "Basis-Paket",
+  global_core_v1: "Basis-Paket",
+  coaching_core_v1: "Coaching-Paket",
+  finanzen_core_v1: "Finanz-Paket",
+  telecom_core_v1: "Telekommunikations-Paket",
 };
 
 const DECISION_LABELS: Record<string, string> = {
   llm_judge: "KI-Einordnung",
+  llm_judge_none: "KI-Einordnung (ohne Regel-Treffer)",
+  llm_judge_fallback_deterministic: "KI unsicher, Regelwerk hat uebernommen",
+  llm_judge_fallback_force_review: "KI unsicher, zur Pruefung gegeben",
+  llm_judge_disabled: "Regelwerk (KI nicht befragt)",
   deterministic_match: "Eindeutiger Regel-Treffer",
+  deterministic_assisted: "Regel-Treffer mit Freigabe",
+  deterministic_force_review: "Regel-Treffer, zur Pruefung",
   normal_flow: "Standard-Verarbeitung",
   "normal flow": "Standard-Verarbeitung",
   risk_hard_escalate: "Eskalation (Risiko erkannt)",
@@ -41,6 +52,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   manual_review: "Manuelle Pruefung",
 };
 
+// audit_log.category traegt bei Label-Zeilen nur den AKTIONSTYP ("label"),
+// nicht den Kategorienamen. Diese Keys duerfen nie als Label ausgegeben werden.
+const ACTION_TYPE_KEYS = new Set(["label", "send", "reply", "draft", "noop", "read"]);
+
 // Bekannte Pack-Rule-Keys → Klartext. Fallback: Praefix weg + Title-Case.
 const RULE_LABELS: Record<string, string> = {
   E_noise_verification: "System-/Verifizierungs-Mail (i. d. R. keine Antwort noetig)",
@@ -61,12 +76,19 @@ function prettify(raw: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function humanizePlaybook(playbook?: string, version?: string): string {
+/** Paketname ohne Versions-Anhang (fuer die Story). */
+export function playbookName(playbook?: string): string {
   const key = String(playbook || "").trim();
-  if (!key || key === "—") return "—";
-  const name = PLAYBOOK_LABELS[key] || prettify(key);
+  if (!key || key === "—") return "";
+  return PLAYBOOK_LABELS[key] || prettify(key);
+}
+
+/** Paketname mit Regelwerk-Stand (fuer die technischen Details). */
+export function humanizePlaybook(playbook?: string, version?: string): string {
+  const name = playbookName(playbook);
+  if (!name) return "—";
   const v = String(version || "").trim();
-  return v && v !== "" ? `${name} · Regelstand ${v}` : name;
+  return v ? `${name} (Regelwerk-Stand ${v})` : name;
 }
 
 export function humanizeDecision(decision?: string): string {
@@ -81,10 +103,30 @@ export function humanizeCategory(category?: string): string {
   return CATEGORY_LABELS[key] || prettify(key);
 }
 
+/**
+ * Catch-all-/Default-Regeln (P9-Klasse) erkennen. Ein Treffer darauf ist KEIN
+ * "eindeutiger Regel-Treffer", sondern heisst nur, dass keine spezifische Regel
+ * gegriffen hat. Das als Treffer zu verkaufen war der Widerspruch im Verlauf.
+ */
+export function isDefaultRule(ruleKey?: string | null): boolean {
+  const k = String(ruleKey || "").toLowerCase();
+  if (!k) return false;
+  return /default|catch_?all|fallback/.test(k);
+}
+
+/** Zieht den Regel-Key aus einer Maschinen-Summary ("Deterministic match: X"). */
+export function extractRuleKey(reason?: string | null): string | null {
+  const r = String(reason || "").trim();
+  const m = r.match(/^(?:Deterministic match|Matched rule|Pack rule)\s*:\s*(.+)$/i);
+  return m ? m[1].trim() : null;
+}
+
 export function humanizeRule(ruleKey?: string): string {
   const key = String(ruleKey || "").trim();
   if (!key) return "";
-  return RULE_LABELS[key] || prettify(key);
+  if (RULE_LABELS[key]) return RULE_LABELS[key];
+  if (isDefaultRule(key)) return "Standard-Zuordnung (keine spezifische Regel)";
+  return prettify(key);
 }
 
 /**
@@ -95,10 +137,12 @@ export function humanizeRule(ruleKey?: string): string {
 export function humanizeReason(reason?: string): string {
   const r = String(reason || "").trim();
   if (!r) return "—";
-  const m = r.match(/^Deterministic match:\s*(.+)$/i);
-  if (m) return `Eindeutiger Regel-Treffer: ${humanizeRule(m[1])}`;
-  const m2 = r.match(/^Matched rule:\s*(.+)$/i);
-  if (m2) return `Regel-Treffer: ${humanizeRule(m2[1])}`;
+  const key = extractRuleKey(r);
+  if (key) {
+    return isDefaultRule(key)
+      ? "Keine spezifische Regel getroffen, es griff die Standard-Zuordnung des Pakets"
+      : `Regel-Treffer: ${humanizeRule(key)}`;
+  }
   return r;
 }
 
@@ -136,6 +180,21 @@ export function confidenceWord(c?: number | null): string {
   }
 }
 
+/**
+ * Das TATSAECHLICH im Postfach gesetzte Label (v4.21.0 applied_label).
+ * Faellt auf den Core-Key zurueck; `category` wird nur genutzt, wenn dort
+ * wirklich eine Kategorie steht und nicht der Aktionstyp.
+ */
+export function appliedLabelText(e: Record<string, unknown>): string {
+  const applied = String((e?.applied_label ?? "") as string).trim();
+  if (applied) return applied;
+  const coreKey = String((e?.applied_core_key ?? "") as string).trim();
+  if (coreKey) return humanizeCategory(coreKey);
+  const cat = String((e?.category ?? "") as string).trim();
+  if (cat && !ACTION_TYPE_KEYS.has(cat)) return humanizeCategory(cat);
+  return "";
+}
+
 export interface DecisionStep {
   icon: string;            // Key → Lucide-Icon in der Komponente
   title: string;
@@ -143,10 +202,92 @@ export interface DecisionStep {
   tone?: "default" | "good" | "warn" | "stop";
 }
 
+// ── Eine einzige, widerspruchsfreie Erklaerung des Entscheidungswegs ────────
+// Vorher standen hier zwei Quellen nebeneinander (decision_path vs. Roh-Summary)
+// und konnten sich widersprechen ("KI-Einordnung" + "Eindeutiger Regel-Treffer").
+// Jetzt gewinnt die Backend-Begruendung (label_reason, v4.57.0) und ein
+// Default-Regel-Treffer wird ehrlich als "keine spezifische Regel" benannt.
+export interface DecisionExplanation {
+  title: string;
+  text: string;
+  icon: string;
+  tone: "default" | "good" | "warn" | "stop";
+  source: string;
+}
+
+const KIND_TITLE: Record<string, string> = {
+  rule: "Feste Regel hat entschieden",
+  ki: "KI hat entschieden (keine feste Regel)",
+  risk: "Sicherheitsregel hat eingegriffen",
+  optout: "Opt-out-Schutz hat gestoppt",
+  noise: "Als automatische System-Mail erkannt",
+};
+const KIND_ICON: Record<string, string> = {
+  rule: "check", ki: "sparkles", risk: "alert", optout: "stop", noise: "stop",
+};
+const KIND_TONE: Record<string, DecisionExplanation["tone"]> = {
+  rule: "good", ki: "default", risk: "warn", optout: "stop", noise: "default",
+};
+const KIND_SOURCE: Record<string, string> = {
+  rule: "Feste Regel", ki: "KI-Einschätzung", risk: "Sicherheitsregel",
+  optout: "Schutzregel", noise: "Feste Regel",
+};
+
+export function explainDecision(e: Record<string, unknown>): DecisionExplanation {
+  const get = (k: string) => String((e?.[k] ?? "") as string).trim();
+  const path = get("decision");
+  const ruleKey = extractRuleKey(get("reason"));
+  const usedDefaultRule = isDefaultRule(ruleKey);
+  const pack = playbookName(get("playbook"));
+  const packPhrase = pack.endsWith("-Paket") ? ` des ${pack}s` : "";
+
+  // Art der Entscheidung: Backend-Feld gewinnt, sonst aus dem Pfad ableiten.
+  let kind = get("label_reason_kind");
+  if (!kind) {
+    if (/opt_out/.test(path)) kind = "optout";
+    else if (/code_noise/.test(path)) kind = "noise";
+    else if (/risk_hard/.test(path)) kind = "risk";
+    else if (/llm_judge/.test(path)) kind = "ki";
+    else if (path) kind = "rule";
+    else kind = "ki";
+  }
+  // Ein Default-Regel-Treffer ist kein echter Regel-Treffer.
+  if (kind === "rule" && usedDefaultRule) kind = "ki";
+
+  const parts: string[] = [];
+  const backendText = get("label_reason");
+  if (backendText) {
+    parts.push(backendText);
+  } else {
+    const label = appliedLabelText(e);
+    const lbl = label ? ` als „${label}"` : "";
+    if (kind === "rule" && ruleKey) parts.push(`Erkannt über die feste Regel „${humanizeRule(ruleKey)}"${packPhrase}${lbl ? `, einsortiert${lbl}` : ""}.`);
+    else if (kind === "rule") parts.push(`Erkannt über eine feste Regel${packPhrase}${lbl ? `, einsortiert${lbl}` : ""}.`);
+    else if (kind === "risk") parts.push("Eine Sicherheitsregel hat angeschlagen, deshalb ging die E-Mail zur manuellen Prüfung.");
+    else if (kind === "optout") parts.push("Abmelde- oder Widerspruchs-Hinweis erkannt, deshalb keine weitere automatische Verarbeitung.");
+    else if (kind === "noise") parts.push("Automatischer Verifizierungscode erkannt, bewusst kein Kategorie-Label gesetzt.");
+    else parts.push(`Keine feste Regel hat gegriffen, die KI hat den Inhalt${lbl ? ` ${lbl}` : ""} eingeordnet.`);
+  }
+
+  if (usedDefaultRule) {
+    parts.push(`Es griff nur die Standard-Zuordnung${packPhrase}, keine spezifische Regel.`);
+  }
+  if (kind === "ki" && confidenceTone(e?.confidence as number | null) === "low") {
+    parts.push("Die KI war sich dabei unsicher, eine kurze Kontrolle ist sinnvoll.");
+  }
+
+  return {
+    title: KIND_TITLE[kind] || KIND_TITLE.ki,
+    text: parts.join(" "),
+    icon: KIND_ICON[kind] || "sparkles",
+    tone: KIND_TONE[kind] || "default",
+    source: get("label_reason_source") || KIND_SOURCE[kind] || KIND_SOURCE.ki,
+  };
+}
+
 // Baut aus einem Audit-Eintrag eine verständliche Schritt-für-Schritt-Story.
 export function buildDecisionSteps(e: Record<string, unknown>): DecisionStep[] {
   const get = (k: string) => (e?.[k] as string) ?? "";
-  const decision = humanizeDecision(get("decision"));
   const steps: DecisionStep[] = [];
 
   steps.push({
@@ -155,22 +296,18 @@ export function buildDecisionSteps(e: Record<string, unknown>): DecisionStep[] {
     detail: get("mailbox") && get("mailbox") !== "—" ? `von ${get("mailbox")}` : undefined,
   });
 
+  // Schritt 2: das TATSAECHLICH gesetzte Postfach-Label, nicht der Aktionstyp.
+  const label = appliedLabelText(e);
+  const pack = playbookName(get("playbook"));
   steps.push({
     icon: "tag",
-    title: `Eingeordnet als „${humanizeCategory(get("category"))}"`,
-    detail: [humanizePlaybook(get("playbook"), get("playbook_version")), confidenceWord(e?.confidence as number)]
-      .filter(Boolean).join(" · "),
+    title: label ? `Einsortiert als „${label}"` : "Kein Kategorie-Label gesetzt",
+    detail: pack ? `Regelwerk: ${pack}` : undefined,
   });
 
-  let decIcon = "route";
-  let decTone: DecisionStep["tone"] = "default";
-  const dp = (get("decision") || "").toLowerCase();
-  if (dp.includes("opt") || /gestoppt/i.test(decision)) { decIcon = "stop"; decTone = "stop"; }
-  else if (/risiko|eskal/i.test(decision)) { decIcon = "alert"; decTone = "warn"; }
-  else if (/erledigt|geschlossen/i.test(decision)) { decIcon = "check"; decTone = "good"; }
-  else if (/pr[üu]fung/i.test(decision)) { decIcon = "user"; decTone = "warn"; }
-  const why = humanizeReason(get("reason"));
-  steps.push({ icon: decIcon, tone: decTone, title: decision, detail: why !== "—" ? why : undefined });
+  // Schritt 3: EIN widerspruchsfreier Entscheidungsweg.
+  const ex = explainDecision(e);
+  steps.push({ icon: ex.icon, tone: ex.tone, title: ex.title, detail: ex.text });
 
   const OUT: Record<string, { t: string; i: string; tone: DecisionStep["tone"] }> = {
     approved: { t: "Freigegeben & als Entwurf abgelegt", i: "check", tone: "good" },
@@ -188,13 +325,23 @@ export function buildDecisionSteps(e: Record<string, unknown>): DecisionStep[] {
   return steps;
 }
 
+/**
+ * Klartext-Fazit. Beruecksichtigt die Konfidenz: bei unsicherer Einordnung
+ * darf hier nicht "keine Aktion noetig" stehen, waehrend die Ampel rot ist.
+ */
 export function decisionTakeaway(e: Record<string, unknown>): string {
   const ua = (e?.user_action as string) ?? "";
   if (ua === "pending" || ua === "needs_review") return "Bitte prüfen und freigeben – oder verwerfen.";
   if (ua === "approved") return "Erledigt: liegt als Entwurf in deinem Postfach, du musst nur noch senden.";
   if (ua === "sent") return "Wurde versendet.";
   if (ua === "rejected" || ua === "dismissed") return "Wurde verworfen – keine weitere Aktion nötig.";
-  return "Automatisch eingeordnet – keine Aktion von dir nötig.";
+
+  const label = appliedLabelText(e);
+  const asLabel = label ? `als „${label}" ` : "";
+  if (confidenceTone(e?.confidence as number | null) === "low") {
+    return `Automatisch ${asLabel}einsortiert, aber die Einordnung ist unsicher. Bitte kurz prüfen und unten korrigieren, falls die Kategorie nicht passt.`;
+  }
+  return `Automatisch ${asLabel}einsortiert, keine Aktion von dir nötig.`;
 }
 
 
@@ -220,6 +367,102 @@ export function humanizeShadow(decision?: string | null): string {
   const k = String(decision || "").trim();
   if (!k) return "";
   return SHADOW_LABELS[k] || prettify(k);
+}
+
+/**
+ * Was der Autopilot-Vergleich konkret bedeutet. Die reine Zustandszeile
+ * ("Hätte zurückgehalten") sagt einem Nicht-Techniker nichts.
+ */
+export interface ShadowExplanation {
+  title: string;
+  text: string;
+  tone: "good" | "warn" | "neutral";
+  wouldSend: boolean;
+}
+export function shadowExplain(decision?: string | null): ShadowExplanation | null {
+  const k = String(decision || "").trim();
+  if (!k) return null;
+  const sendKeys = ["shadow_would_send", "queued_for_send", "sent"];
+  if (sendKeys.includes(k)) {
+    return {
+      title: "Hätte diese E-Mail selbst beantwortet",
+      text: "Mit aktivem Autopilot wäre die Antwort ohne Rückfrage rausgegangen. Weil du im Vorschau-Modus bist, ist es beim Entwurf geblieben.",
+      tone: "good",
+      wouldSend: true,
+    };
+  }
+  if (k === "shadow_would_qualify") {
+    return {
+      title: "Hätte automatisch geantwortet, sobald ein Entwurf vorliegt",
+      text: "Die Einordnung erfüllt alle Voraussetzungen für den Autopilot. Es fehlte nur der fertige Entwurf, weil UseEasy Entwürfe erst auf Anforderung schreibt.",
+      tone: "good",
+      wouldSend: false,
+    };
+  }
+  if (k === "killed") {
+    return { title: "Wurde abgebrochen", text: "Der Autopilot hat den Vorgang gestoppt.", tone: "warn", wouldSend: false };
+  }
+  if (k === "send_failed_fallback_human") {
+    return {
+      title: "Automatischer Versand ist fehlgeschlagen",
+      text: "Der Vorgang wurde an dich zurückgegeben, damit nichts verloren geht.",
+      tone: "warn",
+      wouldSend: false,
+    };
+  }
+  return {
+    title: "Hätte NICHT von allein geantwortet",
+    text: "Auch mit aktivem Autopilot wäre diese E-Mail bei dir gelandet. UseEasy hätte sie nicht ohne deine Freigabe beantwortet.",
+    tone: "warn",
+    wouldSend: false,
+  };
+}
+
+// Gruende, warum der Autopilot zurueckgehalten haette (autopilot_log.reasons).
+const SHADOW_REASON_LABELS: Record<string, string> = {
+  held_low_conf: "Die Einordnung war der KI nicht sicher genug",
+  held_risk_flag: "Ein Risiko-Signal wurde erkannt (z. B. Recht, Beschwerde, Zahlung)",
+  held_not_whitelisted: "Diese Kategorie ist für den Autopilot nicht freigegeben",
+  held_hard_block_intent: "Diese Kategorie darf grundsätzlich nie automatisch beantwortet werden",
+  held_hard_block_action_type: "Diese Aktionsart darf nie automatisch laufen",
+  held_unknown_action_type: "Unbekannte Aktionsart",
+  held_no_maturity: "UseEasy hat für diese Kategorie noch nicht genug gelernt",
+  held_high_mismatch: "In der Lernphase gab es zu viele Abweichungen",
+  held_high_edit_rate: "Du hast zuletzt zu viele Entwürfe nachbearbeitet",
+  held_disabled: "Der Autopilot ist für dieses Postfach ausgeschaltet",
+  held_kill_switch: "Der Not-Aus für den Autopilot ist aktiv",
+  held_no_policy: "Für dieses Postfach ist noch keine Autopilot-Regel hinterlegt",
+  held_legal_basis: "Die rechtliche Freigabe für den autonomen Versand fehlt noch",
+  held_no_need_reply: "Diese E-Mail braucht keine Antwort",
+  held_need_reply_fallback: "Es war nicht eindeutig, ob eine Antwort nötig ist",
+  held_no_body: "Es lag kein Entwurfstext vor",
+  held_body_too_short: "Der Entwurf war zu kurz für einen automatischen Versand",
+  held_no_confidence: "Es lag kein Sicherheitswert vor",
+  held_no_threshold: "Für diese Kategorie ist keine Schwelle hinterlegt",
+  held_no_core_key: "Die Kategorie konnte nicht eindeutig bestimmt werden",
+  held_daily_cap: "Das Tageslimit für automatische Antworten ist erreicht",
+  not_implemented_yet: "Diese Aktion kann der Autopilot noch nicht ausführen",
+};
+
+/** Nimmt autopilot_log.reasons (Array, JSON-String oder Objekt) und liefert Klartext. */
+export function shadowReasonList(raw: unknown): string[] {
+  let val: unknown = raw;
+  if (typeof val === "string") {
+    const s = val.trim();
+    if (!s) return [];
+    try { val = JSON.parse(s); } catch { return [SHADOW_REASON_LABELS[s] || s]; }
+  }
+  const arr = Array.isArray(val) ? val : val ? [val] : [];
+  const out: string[] = [];
+  for (const item of arr) {
+    let code = "";
+    if (typeof item === "string") code = item;
+    else if (item && typeof item === "object") code = String((item as Record<string, unknown>).code ?? "");
+    if (!code) continue;
+    const label = SHADOW_REASON_LABELS[code];
+    if (label && !out.includes(label)) out.push(label);
+  }
+  return out;
 }
 
 // ── v4.43.0: Autopilot-Modus → Klartext + Pille ("Would-Do"-Anzeige) ────────

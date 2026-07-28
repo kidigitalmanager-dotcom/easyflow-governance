@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { getCurrentPlan } from "@/data/plan";
 import { Download, X, Check, Send, Clock, ArrowRightLeft, User, Inbox, Loader2, RotateCcw, Ban, Tag, Bot, Search, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence, responseLabel, responseType, prettyRedaction } from "@/data/humanize";
+import { humanizePlaybook, humanizeDecision, humanizeCategory, humanizeReason, humanizeActor, humanizeConfidence, responseLabel, responseType, prettyRedaction, explainDecision, extractRuleKey } from "@/data/humanize";
 import DecisionStory from "@/components/DecisionStory";
 import { ContactDossier } from "@/components/ContactDossier";
 import { LabelReasonLine } from "@/components/LabelReasonLine";
@@ -797,15 +797,30 @@ export default function AuditTrail() {
                       </div>
                     )}
 
-                    <div>
-                      <span className="text-muted-foreground">Entscheidung:</span>
-                      <p className="mt-0.5 font-medium">{humanizeDecision(detail.decision)}</p>
-                    </div>
+                    {/* Entscheidungsweg + Begruendung kommen aus EINER Quelle
+                        (explainDecision). Vorher standen hier zwei unabhaengig
+                        gebaute Zeilen, die sich widersprechen konnten
+                        ("KI-Einordnung" vs. "Eindeutiger Regel-Treffer"). */}
+                    {(() => {
+                      const ex = explainDecision(detail);
+                      const ruleKey = extractRuleKey(detail.reason);
+                      return (
+                        <>
+                          <div>
+                            <span className="text-muted-foreground">Entscheidungsweg:</span>
+                            <p className="mt-0.5 font-medium">{ex.title}</p>
+                            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{ex.text}</p>
+                          </div>
 
-                    <div>
-                      <span className="text-muted-foreground">Warum:</span>
-                      <p className="mt-0.5">{humanizeReason(detail.reason)}</p>
-                    </div>
+                          <div>
+                            <span className="text-muted-foreground">Technische Kennung:</span>
+                            <p className="mt-0.5 break-all font-mono text-[11px] text-muted-foreground">
+                              {detail.decision || "—"}{ruleKey ? ` · ${ruleKey}` : ""}
+                            </p>
+                          </div>
+                        </>
+                      );
+                    })()}
 
                     <div>
                       <span className="text-muted-foreground">Akteur:</span>

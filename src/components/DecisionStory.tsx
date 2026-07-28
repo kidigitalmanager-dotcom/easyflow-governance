@@ -5,15 +5,16 @@
  */
 import {
   Mail, Tag, Check, X, Send, Clock, User, AlertTriangle, Ban, GitBranch, Bot,
+  Sparkles, ShieldCheck,
 } from "lucide-react";
 import {
   buildDecisionSteps, decisionTakeaway, confidenceTone, confidenceWord,
-  humanizeConfidence, humanizeShadow, type DecisionStep,
+  humanizeConfidence, shadowExplain, shadowReasonList, type DecisionStep,
 } from "@/data/humanize";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   mail: Mail, tag: Tag, check: Check, x: X, send: Send, clock: Clock,
-  user: User, alert: AlertTriangle, stop: Ban, route: GitBranch,
+  user: User, alert: AlertTriangle, stop: Ban, route: GitBranch, sparkles: Sparkles,
 };
 
 const TONE_TEXT: Record<string, string> = {
@@ -30,6 +31,16 @@ const PILL: Record<string, string> = {
   none: "text-muted-foreground border-border bg-muted/30",
 };
 
+// Autopilot-Vergleich: Farbe folgt der Aussage (haette gesendet / haette gehalten).
+const SHADOW_BOX: Record<string, string> = {
+  good: "border-emerald-500/25 bg-emerald-500/[0.06]",
+  warn: "border-amber-500/25 bg-amber-500/[0.06]",
+  neutral: "border-border bg-muted/40",
+};
+const SHADOW_ICON: Record<string, string> = {
+  good: "text-emerald-500", warn: "text-amber-500", neutral: "text-muted-foreground",
+};
+
 interface Props {
   entry: Record<string, unknown>;
 }
@@ -40,6 +51,8 @@ export default function DecisionStory({ entry }: Props) {
   const pct = tone === "none" ? 0 : Math.round((confidence as number) * 100);
   const steps: DecisionStep[] = buildDecisionSteps(entry);
   const evidence = Array.isArray(entry?.evidence) ? (entry.evidence as string[]) : [];
+  const shadow = shadowExplain(entry?.shadow_decision as string | null | undefined);
+  const shadowReasons = shadow && !shadow.wouldSend ? shadowReasonList(entry?.shadow_reasons) : [];
 
   return (
     <div className="space-y-5">
@@ -69,7 +82,7 @@ export default function DecisionStory({ entry }: Props) {
                 </span>
                 <div className="min-w-0 pt-0.5">
                   <p className="text-sm font-medium leading-snug">{s.title}</p>
-                  {s.detail && <p className="text-xs text-muted-foreground mt-0.5">{s.detail}</p>}
+                  {s.detail && <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{s.detail}</p>}
                 </div>
               </li>
             );
@@ -91,21 +104,48 @@ export default function DecisionStory({ entry }: Props) {
         </div>
       )}
 
-      {/* Shadow-Transparenz: was der Autopilot autonom getan hätte */}
-      {entry?.shadow_decision ? (
-        <div className="rounded-md bg-muted/40 border border-border p-3">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Bot className="w-3.5 h-3.5" /> Im Autopilot-Modus hätte UseEasy:
+      {/* Autopilot-Vergleich: was waere passiert, wenn der Autopilot schon
+          freigeschaltet waere. Vorher stand hier nur der Zustands-Key
+          ("Haette zurueckgehalten") ohne Bedeutung und ohne Gruende. */}
+      {shadow && (
+        <div className={`rounded-md border p-3 ${SHADOW_BOX[shadow.tone]}`}>
+          <div className="flex items-start gap-2">
+            <span className={`flex-shrink-0 mt-0.5 ${SHADOW_ICON[shadow.tone]}`}>
+              {shadow.wouldSend ? <Send className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                <Bot className="w-3 h-3" /> Autopilot-Vergleich
+              </p>
+              <p className="text-sm font-medium mt-0.5 leading-snug">{shadow.title}</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{shadow.text}</p>
+
+              {shadowReasons.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-[11px] text-muted-foreground">Gründe:</p>
+                  <ul className="mt-1 space-y-0.5">
+                    {shadowReasons.slice(0, 4).map((r, i) => (
+                      <li key={i} className="text-xs text-foreground/80 flex items-start gap-1.5">
+                        <span className="text-muted-foreground mt-0.5">·</span>
+                        <span className="leading-snug">{r}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <p className="text-[11px] text-muted-foreground mt-2 pt-2 border-t border-border/60">
+                Der Autopilot ist aus. UseEasy erstellt nur Entwürfe, gesendet wird nur durch dich.
+              </p>
+            </div>
           </div>
-          <p className="text-sm font-medium mt-0.5">{humanizeShadow(entry.shadow_decision as string)}</p>
-          <p className="text-[11px] text-muted-foreground mt-1">Aktuell nur Entwurf — du entscheidest.</p>
         </div>
-      ) : null}
+      )}
 
       {/* Takeaway */}
       <div className="rounded-md bg-primary/5 border border-primary/15 p-3">
         <p className="text-xs text-muted-foreground">Was heißt das für dich?</p>
-        <p className="text-sm font-medium mt-0.5">{decisionTakeaway(entry)}</p>
+        <p className="text-sm font-medium mt-0.5 leading-snug">{decisionTakeaway(entry)}</p>
       </div>
     </div>
   );
