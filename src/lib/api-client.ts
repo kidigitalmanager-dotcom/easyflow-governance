@@ -1762,6 +1762,47 @@ export const fetchVoiceReadiness = () =>
 export const runVoiceSetup = () =>
   apiPost<VoiceReadinessResponse>("/voice/setup", {});
 
+// ── v4.157.0: Messstand der Shadow-Messung (Reifegrad Sprachassistent) ────
+// Nach jedem Anruf rechnet der Server zusaetzlich aus, ob der Assistent den
+// Fall ohne Rueckfrage selbst abgeschlossen haette, und vergleicht das mit dem,
+// was der Mensch danach getan hat. Am Verhalten aendert sich nichts: es kommt
+// weiterhin nach jedem Anruf eine Rueckfrage. Ziel sind 50 bestaetigte Faelle
+// je Anliegen-Typ (nicht die 400 des E-Mail-Autopiloten - ein Anruf wiegt mehr).
+export interface VoiceShadowCoreKey {
+  core_key: string;
+  calls_measured: number;
+  samples: number;
+  samples_needed: number;
+  progress_pct: number;
+  would_close: number;
+  mismatches: number;
+  false_closes: number;
+  mismatch_rate: number | null;
+  false_close_rate: number | null;
+  threshold_reached: boolean;
+  last_call_at: string | null;
+}
+export interface VoiceShadowResponse {
+  ok: boolean;
+  mode: string;
+  note?: string;
+  pending_migration?: boolean;
+  min_samples: number;
+  totals: {
+    calls_measured: number;
+    samples: number;
+    would_close: number;
+    would_close_rate: number | null;
+    mismatches: number;
+    mismatch_rate: number | null;
+    keys_at_threshold: number;
+  };
+  core_keys: VoiceShadowCoreKey[];
+  hold_reasons: { reason: string; count: number }[];
+}
+export const fetchVoiceShadow = () =>
+  apiFetch<VoiceShadowResponse>("/voice/shadow");
+
 // ════════════════════════════════════════════════════════════════════════════
 // Lead-Upload (Phase 3) — Backend: /v1/dashboard/leads/* (delegiert an leads-sync)
 // ════════════════════════════════════════════════════════════════════════════

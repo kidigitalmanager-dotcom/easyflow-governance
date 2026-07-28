@@ -29,6 +29,7 @@ import { ApiError } from "@/lib/api-client";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { PageHeader, Dot, type DotTone } from "@/components/ue/primitives";
 import { VoiceReadinessCard } from "@/components/voice/VoiceReadinessCard";
+import { VoiceShadowCard } from "@/components/voice/VoiceShadowCard";
 import { cn } from "@/lib/utils";
 
 type AreaKey = "reps" | "calls" | "consent" | "copilot" | "agents" | "leads";
@@ -165,6 +166,11 @@ export default function VoiceCalls() {
           kein Sprachassistent gebucht ist, und verschwindet nicht, sobald alles
           steht: "bereit" ist eine Antwort, die der Kunde sehen will. */}
       <VoiceReadinessCard onGoToNumbers={() => openArea("reps")} />
+
+      {/* v4.157.0: Reifegrad direkt unter der Bereitschaft. Erst "kann er
+          telefonieren", dann "wie weit ist er". Blendet sich wie die Karte
+          darueber selbst aus, wenn kein Sprachassistent gebucht ist. */}
+      <VoiceShadowCard />
 
       {/* ── Kacheln: je Agent/Bereich eine Karte ─────────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

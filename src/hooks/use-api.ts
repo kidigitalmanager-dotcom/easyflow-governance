@@ -34,7 +34,8 @@ import {
   listSharePointFiles,
   fetchVoiceReps,
   fetchVoiceReadiness,   // v4.156.0
-  runVoiceSetup,         // v4.156.0
+  runVoiceSetup,
+  fetchVoiceShadow,      // v4.157.0
   fetchCopilotVertriebler,
   createCopilotVertriebler,
   updateCopilotVertriebler,
@@ -1641,6 +1642,17 @@ export function useRunVoiceSetup() {
   return useMutation({
     mutationFn: runVoiceSetup,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["voice-readiness"] }); },
+  });
+}
+
+export function useVoiceShadow() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["voice-shadow"],
+    queryFn: fetchVoiceShadow,
+    enabled: !!session,
+    staleTime: 60_000,
+    retry: (count, err) => ((err as { status?: number })?.status === 403 ? false : count < 2),
   });
 }
 
