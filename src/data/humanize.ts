@@ -35,6 +35,9 @@ const DECISION_LABELS: Record<string, string> = {
   pack_engine_human_review: "Zur manuellen Pruefung",
   opt_out_hard_stop: "Opt-out (gestoppt)",
   code_noise: "Verifizierungscode – kein Handlungsbedarf",
+  // v4.184.0 (Phase 1 Entlastung): achter Core-Key. Automaten-Absender/Bulk
+  // werden VOR dem Judge deterministisch abgelegt – Stufe 0 der Pyramide.
+  system_notification: "System-Benachrichtigung – automatisch abgelegt",
   tenant_resolve_error: "Zuordnungsfehler",
 };
 
@@ -50,6 +53,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   status_fulfillment: "Status & Abwicklung",
   returns_refund: "Rueckgabe & Erstattung",
   manual_review: "Manuelle Pruefung",
+  system_notification: "System & Benachrichtigung", // v4.184.0
 };
 
 // audit_log.category traegt bei Label-Zeilen nur den AKTIONSTYP ("label"),
@@ -221,16 +225,17 @@ const KIND_TITLE: Record<string, string> = {
   risk: "Sicherheitsregel hat eingegriffen",
   optout: "Opt-out-Schutz hat gestoppt",
   noise: "Als automatische System-Mail erkannt",
+  system: "Als System-Benachrichtigung erkannt", // v4.184.0
 };
 const KIND_ICON: Record<string, string> = {
-  rule: "check", ki: "sparkles", risk: "alert", optout: "stop", noise: "stop",
+  rule: "check", ki: "sparkles", risk: "alert", optout: "stop", noise: "stop", system: "check",
 };
 const KIND_TONE: Record<string, DecisionExplanation["tone"]> = {
-  rule: "good", ki: "default", risk: "warn", optout: "stop", noise: "default",
+  rule: "good", ki: "default", risk: "warn", optout: "stop", noise: "default", system: "good",
 };
 const KIND_SOURCE: Record<string, string> = {
   rule: "Feste Regel", ki: "KI-Einschätzung", risk: "Sicherheitsregel",
-  optout: "Schutzregel", noise: "Feste Regel",
+  optout: "Schutzregel", noise: "Feste Regel", system: "Automaten-Absender-Erkennung",
 };
 
 export function explainDecision(e: Record<string, unknown>): DecisionExplanation {
@@ -251,12 +256,17 @@ export function explainDecision(e: Record<string, unknown>): DecisionExplanation
     else if (path) kind = "rule";
     else kind = "ki";
   }
+  // v4.184.0: das System-Terminal ist ein eigener Entscheidungsweg und gewinnt
+  // vor dem generischen Backend-kind ("ki") – der Pfad ist deterministisch.
+  if (/system_notification/.test(path)) kind = "system";
   // Ein Default-Regel-Treffer ist kein echter Regel-Treffer.
   if (kind === "rule" && usedDefaultRule) kind = "ki";
 
   const parts: string[] = [];
   const backendText = get("label_reason");
-  if (backendText) {
+  if (kind === "system") {
+    parts.push("Automatische System- oder Benachrichtigungs-Mail erkannt (Absender- bzw. Verteiler-Merkmale). Einsortiert und abgelegt – eine Antwort ist nicht erforderlich.");
+  } else if (backendText) {
     parts.push(backendText);
   } else {
     const label = appliedLabelText(e);
@@ -269,7 +279,7 @@ export function explainDecision(e: Record<string, unknown>): DecisionExplanation
     else parts.push(`Keine feste Regel hat gegriffen, die KI hat den Inhalt${lbl ? ` ${lbl}` : ""} eingeordnet.`);
   }
 
-  if (usedDefaultRule) {
+  if (usedDefaultRule && kind !== "system") {
     parts.push(`Es griff nur die Standard-Zuordnung${packPhrase}, keine spezifische Regel.`);
   }
   if (kind === "ki" && confidenceTone(e?.confidence as number | null) === "low") {
@@ -281,7 +291,12 @@ export function explainDecision(e: Record<string, unknown>): DecisionExplanation
     text: parts.join(" "),
     icon: KIND_ICON[kind] || "sparkles",
     tone: KIND_TONE[kind] || "default",
-    source: get("label_reason_source") || KIND_SOURCE[kind] || KIND_SOURCE.ki,
+    // v4.184.0: beim System-Terminal gewinnt die eigene Quelle – das Backend
+    // stempelt dort generisch "KI-Einschätzung", entschieden hat aber die
+    // deterministische Absender-/Bulk-Erkennung.
+    source: kind === "system"
+      ? KIND_SOURCE.system
+      : (get("label_reason_source") || KIND_SOURCE[kind] || KIND_SOURCE.ki),
   };
 }
 

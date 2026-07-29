@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import {
   buildDecisionSteps, decisionTakeaway, confidenceTone, confidenceWord,
-  humanizeConfidence, shadowExplain, shadowReasonList, type DecisionStep,
+  humanizeConfidence, shadowExplain, shadowReasonList, extractRuleKey,
+  type DecisionStep,
 } from "@/data/humanize";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -50,7 +51,23 @@ export default function DecisionStory({ entry }: Props) {
   const tone = confidenceTone(confidence);
   const pct = tone === "none" ? 0 : Math.round((confidence as number) * 100);
   const steps: DecisionStep[] = buildDecisionSteps(entry);
-  const evidence = Array.isArray(entry?.evidence) ? (entry.evidence as string[]) : [];
+
+  // v4.184.0 (P1.3): Klartext-Inhalt der Mail. reason traegt seit v4.184.0 die
+  // echte Zusammenfassung des Judge bzw. des System-Terminals; Maschinen-Summaries
+  // ("Deterministic match: ...") erkennen wir am Regel-Key und zeigen sie NICHT
+  // doppelt (der Entscheidungsweg nennt die Regel schon).
+  const rawReason = String((entry?.reason as string) ?? "").trim();
+  const summaryText = rawReason && !extractRuleKey(rawReason) ? rawReason : "";
+
+  // v4.184.0 (P1.3): die "Empfehlung: ..."-Zeile aus den key_points kommt ueber
+  // das evidence-Feld mit — als eigener, prominenter naechster Schritt statt
+  // als gequetschter Chip.
+  const rawEvidence = Array.isArray(entry?.evidence) ? (entry.evidence as string[]) : [];
+  const empfehlung = rawEvidence
+    .map((x) => String(x))
+    .find((x) => x.startsWith("Empfehlung:"))
+    ?.replace(/^Empfehlung:\s*/, "") ?? "";
+  const evidence = rawEvidence.filter((x) => !String(x).startsWith("Empfehlung:"));
   const shadow = shadowExplain(entry?.shadow_decision as string | null | undefined);
   const shadowReasons = shadow && !shadow.wouldSend ? shadowReasonList(entry?.shadow_reasons) : [];
 
@@ -68,6 +85,14 @@ export default function DecisionStory({ entry }: Props) {
           <div className={`h-full rounded-full transition-all ${BAR[tone]}`} style={{ width: `${pct}%` }} />
         </div>
       </div>
+
+      {/* v4.184.0 (P1.3): Klartext — worum geht es in der Mail? */}
+      {summaryText && (
+        <div>
+          <span className="text-xs text-muted-foreground">Worum geht es?</span>
+          <p className="text-sm mt-1 leading-relaxed">{summaryText}</p>
+        </div>
+      )}
 
       {/* Story-Timeline */}
       <div>
@@ -89,6 +114,15 @@ export default function DecisionStory({ entry }: Props) {
           })}
         </ol>
       </div>
+
+      {/* v4.184.0 (P1.3): empfohlener naechster Schritt — die "Empfehlung: ..."-
+          Zeile aus den key_points, prominent statt als Chip. */}
+      {empfehlung && (
+        <div className="rounded-md border border-primary/25 bg-primary/[0.06] p-3">
+          <span className="text-xs text-muted-foreground">Empfohlener nächster Schritt</span>
+          <p className="text-sm mt-0.5 leading-relaxed">{empfehlung}</p>
+        </div>
+      )}
 
       {/* Evidenz-Chips */}
       {evidence.length > 0 && (
