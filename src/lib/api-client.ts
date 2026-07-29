@@ -496,6 +496,10 @@ export interface AuditLogEntry {
   response_type_reason?: string;               // v4.18.8
   applied_label?: string | null;               // v4.21.0: tatsächlich gesetztes UE-Label (Display)
   applied_core_key?: string | null;            // v4.21.0: Core-Key des gesetzten Labels (Picker-Markierung)
+  // A2 (2026-07-29): echter Antwortbedarf aus dem Backend (audit_log.compliance).
+  // null/undefined = unbekannt (Alt-Zeilen vor v4.185.0) und darf NICHT als
+  // "keine Antwort noetig" gelesen werden.
+  need_reply?: boolean | null;
   // v4.57.0 (J4): "Warum dieses Label?" — read-time Begründung (eine Backend-Quelle)
   label_reason?: string | null;
   label_reason_source?: string | null;

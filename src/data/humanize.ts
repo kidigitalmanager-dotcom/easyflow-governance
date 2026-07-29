@@ -300,6 +300,33 @@ export function explainDecision(e: Record<string, unknown>): DecisionExplanation
   };
 }
 
+/**
+ * Antwortbedarf laut Backend (A2, ab api-router v4.185.0).
+ * true = Antwort noetig, false = keine noetig, null = UNBEKANNT.
+ *
+ * 🔴 Bis v4.184.1 stand an dieser Stelle die Datenbank-Status-Zeile
+ * "processed", und die bedeutet im Backend NUR: es wurde kein Entwurf erzeugt
+ * (finalStatus = drafts.length > 0 ? 'pending' : 'processed'). Der Verlauf
+ * behauptete daraus "keine Antwort noetig" — bei jeder antwortbeduerftigen Mail
+ * also das Gegenteil der Wahrheit, solange gar keine Entwuerfe entstehen.
+ * Deshalb wird hier NUR das gelesen, was das Backend wirklich weiss.
+ */
+export function needsReply(e: Record<string, unknown> | null | undefined): boolean | null {
+  const v = e?.["need_reply"];
+  return v === true || v === false ? v : null;
+}
+
+function processedStep(e: Record<string, unknown>): { t: string; i: string; tone: DecisionStep["tone"] } {
+  const nr = needsReply(e);
+  if (nr === true) {
+    return { t: "Eingeordnet und gelabelt, deine Antwort steht noch aus", i: "clock", tone: "warn" };
+  }
+  if (nr === false) {
+    return { t: "Eingeordnet und gelabelt, keine Antwort nötig", i: "tag", tone: "default" };
+  }
+  return { t: "Eingeordnet und gelabelt", i: "tag", tone: "default" };
+}
+
 // Baut aus einem Audit-Eintrag eine verständliche Schritt-für-Schritt-Story.
 export function buildDecisionSteps(e: Record<string, unknown>): DecisionStep[] {
   const get = (k: string) => (e?.[k] as string) ?? "";
@@ -331,7 +358,7 @@ export function buildDecisionSteps(e: Record<string, unknown>): DecisionStep[] {
     pending: { t: "Wartet auf deine Freigabe", i: "clock", tone: "warn" },
     needs_review: { t: "Wartet auf deine Prüfung", i: "clock", tone: "warn" },
     dismissed: { t: "Aus der Queue entfernt", i: "x", tone: "default" },
-    processed: { t: "Eingeordnet & gelabelt – keine Antwort nötig", i: "tag", tone: "default" },
+    processed: processedStep(e),
   };
   const ua = get("user_action");
   const o = OUT[ua] || { t: humanizeCategory(ua) || "Verarbeitet", i: "tag", tone: "default" };
@@ -346,17 +373,25 @@ export function buildDecisionSteps(e: Record<string, unknown>): DecisionStep[] {
  */
 export function decisionTakeaway(e: Record<string, unknown>): string {
   const ua = (e?.user_action as string) ?? "";
-  if (ua === "pending" || ua === "needs_review") return "Bitte prüfen und freigeben – oder verwerfen.";
+  if (ua === "pending" || ua === "needs_review") return "Bitte prüfen und freigeben, oder verwerfen.";
   if (ua === "approved") return "Erledigt: liegt als Entwurf in deinem Postfach, du musst nur noch senden.";
   if (ua === "sent") return "Wurde versendet.";
-  if (ua === "rejected" || ua === "dismissed") return "Wurde verworfen – keine weitere Aktion nötig.";
+  if (ua === "rejected" || ua === "dismissed") return "Wurde verworfen, keine weitere Aktion nötig.";
 
   const label = appliedLabelText(e);
   const asLabel = label ? `als „${label}" ` : "";
   if (confidenceTone(e?.confidence as number | null) === "low") {
     return `Automatisch ${asLabel}einsortiert, aber die Einordnung ist unsicher. Bitte kurz prüfen und unten korrigieren, falls die Kategorie nicht passt.`;
   }
-  return `Automatisch ${asLabel}einsortiert, keine Aktion von dir nötig.`;
+  // A2: nur behaupten, was das Backend weiss.
+  const nr = needsReply(e);
+  if (nr === true) {
+    return `Automatisch ${asLabel}einsortiert. Diese Mail braucht noch eine Antwort von dir.`;
+  }
+  if (nr === false) {
+    return `Automatisch ${asLabel}einsortiert, keine Aktion von dir nötig.`;
+  }
+  return `Automatisch ${asLabel}einsortiert.`;
 }
 
 

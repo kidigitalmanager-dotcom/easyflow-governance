@@ -5,14 +5,35 @@
  * Datenquelle: governance.autopilot_maturity via GET /v1/dashboard/autopilot/policy
  * (maturity[] liegt seit v4.16 im Payload — 0 Backend-Touch).
  * Schwellen spiegeln die Backend-Konstanten (autopilot_engine/nightly):
- * MIN_SAMPLES=400, SHADOW_MISMATCH_RATE_MAX=0.05, EDIT_RATE_MAX=0.10.
+ * MIN_SAMPLES=100, SHADOW_MISMATCH_RATE_MAX=0.03, EDIT_RATE_MAX=0.10
+ * (Leon-Entscheid 29.07.2026, P2.2: 400 passte zu einem 10.000er-Postfach,
+ * nicht zu rund 300 Mails im Monat).
+ *
+ * 🔴 Diese Zahlen stehen an DREI Stellen: hier, in autopilot_engine.js und in
+ * nightly.js der Sender-Lambda. Seit api-router v4.185.0 liefert
+ * GET /v1/dashboard/autopilot/policy zusaetzlich `maturity_gate` — wer das
+ * durchreicht, kann nicht mehr gegen ein anderes Ziel rechnen als das Gate.
+ * Die Konstanten hier sind nur noch der Fallback fuer aeltere Backends.
  * promotion_ready wird NÄCHTLICH vom autopilot-sender berechnet — diese Anzeige
  * erfindet keine eigene Freigabe-Logik, sie visualisiert nur den DB-Stand.
  */
 
-export const MIN_SAMPLES = 400;
-export const MISMATCH_RATE_MAX = 0.05;
+export const MIN_SAMPLES = 100;
+export const MISMATCH_RATE_MAX = 0.03;
 export const EDIT_RATE_MAX = 0.1;
+
+/** Was das Backend als Reifegate meldet (api-router >= v4.185.0). */
+export interface MaturityGate {
+  min_samples?: number | null;
+  mismatch_rate_max?: number | null;
+  edit_rate_max?: number | null;
+}
+
+/** Backend-Wert wenn brauchbar, sonst die Konstante. Nie NaN, nie 0 als Ziel. */
+function gateNum(v: unknown, fallback: number): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
 
 export type MaturityMode = "shadow" | "assisted" | "autonomous";
 export const MODE_ORDER: MaturityMode[] = ["shadow", "assisted", "autonomous"];
@@ -42,9 +63,9 @@ export interface GateProgress {
   key: "samples" | "mismatch" | "edit";
   label: string;
   status: GateStatus;
-  /** Anzeigetext des Ist-Werts, z. B. "123 / 400" oder "3,2 %" oder "—" */
+  /** Anzeigetext des Ist-Werts, z. B. "23 / 100" oder "3,2 %" oder "noch offen" */
   valueText: string;
-  /** Zieltext, z. B. "Ziel: 400 Mails" oder "max. 5 %" */
+  /** Zieltext, z. B. "Ziel: 100 Mails" oder "max. 3 %" */
   targetText: string;
   /** Füllstand 0..100 für den Samples-Balken (Raten-Gates: 100=pass-Anteil rein informativ) */
   pct: number;
@@ -65,12 +86,19 @@ function fmtPct(rate: number): string {
   return (rate * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 }) + " %";
 }
 
-export function computeGates(row: MaturityRowLike | null | undefined): GateProgress[] {
+export function computeGates(
+  row: MaturityRowLike | null | undefined,
+  gate?: MaturityGate | null
+): GateProgress[] {
   const samples = toNum(row?.sample_count) ?? 0;
   const mismatch = toNum(row?.shadow_mismatch_rate);
   const edit = toNum(row?.edit_rate);
 
-  const samplesPct = Math.max(0, Math.min(100, Math.round((samples / MIN_SAMPLES) * 100)));
+  const minSamples = gateNum(gate?.min_samples, MIN_SAMPLES);
+  const mismatchMax = gateNum(gate?.mismatch_rate_max, MISMATCH_RATE_MAX);
+  const editMax = gateNum(gate?.edit_rate_max, EDIT_RATE_MAX);
+
+  const samplesPct = Math.max(0, Math.min(100, Math.round((samples / minSamples) * 100)));
 
   const rateGate = (
     key: "mismatch" | "edit",
@@ -81,7 +109,7 @@ export function computeGates(row: MaturityRowLike | null | undefined): GateProgr
     key,
     label,
     status: value === null ? "pending" : value <= max ? "pass" : "fail",
-    valueText: value === null ? "—" : fmtPct(value),
+    valueText: value === null ? "noch offen" : fmtPct(value),
     targetText: "max. " + fmtPct(max),
     pct: value === null ? 0 : value <= max ? 100 : 0,
   });
@@ -90,13 +118,13 @@ export function computeGates(row: MaturityRowLike | null | undefined): GateProgr
     {
       key: "samples",
       label: "Beobachtete Mails",
-      status: samples >= MIN_SAMPLES ? "pass" : "pending",
-      valueText: `${samples} / ${MIN_SAMPLES}`,
-      targetText: `Ziel: ${MIN_SAMPLES} Mails`,
+      status: samples >= minSamples ? "pass" : "pending",
+      valueText: `${samples} / ${minSamples}`,
+      targetText: `Ziel: ${minSamples} Mails`,
       pct: samplesPct,
     },
-    rateGate("mismatch", "Abweichung (Schatten vs. Mensch)", mismatch, MISMATCH_RATE_MAX),
-    rateGate("edit", "Bearbeitungs-Quote", edit, EDIT_RATE_MAX),
+    rateGate("mismatch", "Abweichung (Schatten vs. Mensch)", mismatch, mismatchMax),
+    rateGate("edit", "Bearbeitungs-Quote", edit, editMax),
   ];
 }
 
@@ -124,7 +152,7 @@ export function maturityStatus(row: MaturityRowLike | null | undefined): Maturit
     return {
       kind: "requested",
       label: "Promotion angefragt",
-      detail: at ? `Angefragt am ${at} — wird von UseEasy geprüft.` : "Wird von UseEasy geprüft.",
+      detail: at ? `Angefragt am ${at}, wird von UseEasy geprüft.` : "Wird von UseEasy geprüft.",
     };
   }
   if (row.promotion_ready) {
