@@ -119,17 +119,17 @@ export default function DhlTrackingCard() {
         </div>
         {!loading && settings && (
           settings.using === "tenant" ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800">
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald/25 bg-emerald-surface px-2.5 py-1 text-xs font-medium text-emerald-light">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Eigener Key aktiv ({settings.tenant_key_masked})
             </span>
           ) : settings.using === "platform" ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800">
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald/20 bg-emerald-surface/60 px-2.5 py-1 text-xs font-medium text-emerald-light">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Aktiv (UseEasy-Standard-Key)
             </span>
           ) : (
-            <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
+            <span className="inline-flex items-center rounded-full border border-amber/30 bg-amber-surface px-2.5 py-1 text-xs font-medium text-amber">
               Kein Key hinterlegt
             </span>
           )

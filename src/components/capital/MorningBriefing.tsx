@@ -121,7 +121,7 @@ export function MorningBriefing() {
         {fresh && fresh.note && (
           <div className={cn(
             "flex items-center gap-1.5 text-[11px] mb-3 leading-snug",
-            fresh.level === "limited" ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground",
+            fresh.level === "limited" ? "text-amber" : "text-muted-foreground",
           )}>
             <Database className="w-3 h-3 shrink-0" />
             <span>{fresh.note}</span>

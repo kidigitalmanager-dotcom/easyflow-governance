@@ -241,14 +241,26 @@ export default function JanaKnowledgeTab() {
         websiteCovered={setup?.website_scan?.categories_covered ?? null}
       />
 
+      {/* 2026-07-29 (Frontend-Befund 3): die Karten sahen "cremig gelb-grau" aus.
+          Ursache war keine Geschmacksfrage, sondern ein toter Klassenname:
+          tailwind laeuft auf darkMode:["class"], die dunkle Palette liegt aber
+          in :root und NIEMAND setzt die Klasse `dark` auf <html>. Damit griff
+          `dark:bg-amber-950/20` nie, und `bg-amber-50/50` — ein helles Creme —
+          lag halbtransparent ueber der dunklen Karte. Jetzt die echten Tokens
+          (--amber / --amber-surface) plus ein schmaler Akzentstreifen links,
+          damit die Vorschlaege als eigener Block lesbar sind statt als Fleck. */}
       {proposed.length > 0 && (
         <section className="space-y-3">
           <h3 className="text-sm font-medium flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-500" />
+            <Sparkles className="w-4 h-4 text-amber" />
             Jana hat etwas gelernt — stimmt das? ({proposed.length})
           </h3>
           {proposed.map((fact) => (
-            <div key={fact.id} className="rounded-lg border bg-amber-50/50 dark:bg-amber-950/20 p-4 space-y-2">
+            <div
+              key={fact.id}
+              className="relative overflow-hidden rounded-[var(--radius)] border border-amber/25 bg-amber-surface/70 p-4 pl-5 space-y-2.5 transition-colors hover:border-amber/45"
+            >
+              <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-amber/70" />
               <div className="flex items-start justify-between gap-3">
                 <CategoryBadge category={fact.category} />
                 <span className="text-xs text-muted-foreground">{evidenceLine(fact)}</span>

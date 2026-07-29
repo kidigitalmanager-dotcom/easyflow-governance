@@ -50,12 +50,12 @@ import { toast } from "sonner";
 
 const INTENT_LABELS: Record<string, string> = {
   request_order: "Anfrage & Auftrag",
-  support_issue: "Support & Stoerung",
+  support_issue: "Support & Störung",
   status_fulfillment: "Status & Abwicklung",
-  returns_refund: "Rueckgabe & Erstattung",
+  returns_refund: "Rückgabe & Erstattung",
   billing_payment: "Rechnung & Zahlung",
   contract_legal: "Vertrag & Recht",
-  manual_review: "Manuelle Pruefung",
+  manual_review: "Manuelle Prüfung",
 };
 
 const WEEKDAYS = [
@@ -79,7 +79,7 @@ const TIMEZONES = [
 const E164_REGEX = /^\+[1-9]\d{6,14}$/;
 
 const CTA_PREVIEW =
-  "Falls Sie es lieber telefonisch besprechen moechten, koennen wir Sie binnen 24 Stunden zurueckrufen — eine kurze Antwort auf diese E-Mail genuegt.";
+  "Falls Sie es lieber telefonisch besprechen möchten, können wir Sie binnen 24 Stunden zurückrufen. Eine kurze Antwort auf diese E-Mail genügt.";
 
 // ─────────────────────────── Default-Policy fuer leere Tenants ────────────
 
@@ -131,16 +131,47 @@ export default function JanaAutopilotTab() {
   useEffect(() => {
     if (data && (data as { ok: boolean }).ok && (data as { policy: AutonomyPolicy }).policy) {
       setDraft((data as { policy: AutonomyPolicy }).policy);
-    } else if (
-      data &&
-      !(data as { ok: boolean }).ok &&
-      (data as { error?: string }).error === "policy_not_found"
-    ) {
-      // Kein Eintrag fuer Tenant — wir zeigen Default-Draft
-      const d = data as { tenant_id?: string };
-      setDraft(emptyPolicyDraft(d.tenant_id || ""));
     }
   }, [data]);
+
+  /* 2026-07-29 (Frontend-Befund 1): "Lade Konfiguration ..." lief endlos.
+     Ursache: das Backend antwortet fuer einen Tenant OHNE Eintrag mit HTTP 404
+     und dem Rumpf { error: 'policy_not_found', tenant_id, hard_blocked_intents,
+     known_intents }. apiFetch wirft bei !ok — der Rumpf landete also NIE in
+     `data`, sondern (bis heute gar nicht) im Fehler. Der frueher hier stehende
+     Zweig `data.error === 'policy_not_found'` konnte deshalb nie greifen: toter
+     Code. Gleichzeitig blendet die Fehler-Karte 404 bewusst aus. Ergebnis:
+     kein draft, keine Fehlermeldung, ewiger Ladehinweis — und zwar fuer JEDEN
+     Kunden, der Jana Voice noch nie gespeichert hat.
+
+     Jetzt: 404 ist der erwartete Leer-Zustand und erzeugt den Default-Entwurf.
+     Die Sperrlisten kommen aus der Antwort, nicht aus der lokalen Kopie — der
+     Server ist die Wahrheit darueber, was niemals automatisch laufen darf. */
+  useEffect(() => {
+    if (!(error instanceof ApiError) || error.status !== 404) return;
+    const p = (error.payload || {}) as {
+      error?: string;
+      tenant_id?: string;
+      hard_blocked_intents?: unknown;
+      known_intents?: unknown;
+    };
+    // Nur der fachliche Leer-Zustand. Ein 404 vom Gateway (Route fehlt) hat
+    // keinen solchen Rumpf und muss ein Fehler bleiben, kein leeres Formular.
+    if (p.error !== "policy_not_found") return;
+    setDraft((prev) => {
+      if (prev) return prev;
+      const base = emptyPolicyDraft(p.tenant_id || "");
+      return {
+        ...base,
+        hard_blocked_intents: Array.isArray(p.hard_blocked_intents)
+          ? (p.hard_blocked_intents as string[])
+          : base.hard_blocked_intents,
+        known_intents: Array.isArray(p.known_intents)
+          ? (p.known_intents as string[])
+          : base.known_intents,
+      };
+    });
+  }, [error]);
 
   // Hard-blocked intent set fuer schnelle Lookups
   const hardBlocked = useMemo(
@@ -159,7 +190,16 @@ export default function JanaAutopilotTab() {
     );
   }
 
-  if (error && !(error instanceof ApiError && (error as ApiError).status === 404)) {
+  /* Nur der FACHLICHE 404 (policy_not_found) ist ein erwarteter Leer-Zustand.
+     Ein 404 vom Gateway (Route nicht deployt) sah vorher genauso aus und wurde
+     ebenfalls verschluckt — der Tab blieb dann stumm haengen, statt zu sagen,
+     dass etwas kaputt ist. */
+  const isEmptyPolicy404 =
+    error instanceof ApiError &&
+    error.status === 404 &&
+    (error.payload as { error?: string } | undefined)?.error === "policy_not_found";
+
+  if (error && !isEmptyPolicy404) {
     return (
       <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm">
         <div className="flex items-center gap-2 text-destructive">
@@ -177,8 +217,22 @@ export default function JanaAutopilotTab() {
   }
 
   if (!draft) {
-    // Fallback wenn data noch nicht reingekommen — sollte selten passieren
-    return <div className="text-sm text-muted-foreground">Lade Konfiguration ...</div>;
+    /* Letzte Reissleine. Vorher stand hier "Lade Konfiguration ..." — ein Satz,
+       der behauptet, es laufe noch etwas, obwohl die Abfrage laengst fertig
+       ist. Genau daran ist der Tab fuer den Kunden verstummt. Jetzt sagt die
+       Karte, was Sache ist, und bietet einen Weg zurueck. */
+    return (
+      <div className="rounded-md border border-border bg-muted/40 p-4 text-sm">
+        <p className="font-medium">Die Konfiguration ließ sich nicht aufbauen.</p>
+        <p className="text-muted-foreground mt-1">
+          Die Abfrage ist durchgelaufen, hat aber keine verwertbare Antwort geliefert. Bitte
+          einmal neu laden. Bleibt es dabei, hilft support@useeasy.ai weiter.
+        </p>
+        <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
+          Erneut versuchen
+        </Button>
+      </div>
+    );
   }
 
   // ── Field-Updaters ──────────────────────────────────────────────────

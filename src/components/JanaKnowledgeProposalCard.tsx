@@ -39,11 +39,19 @@ export function JanaKnowledgeProposalCard() {
   return (
     <div className="rounded-xl border bg-card p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <Sparkles className="w-4 h-4 text-amber-500" />
+        <Sparkles className="w-4 h-4 text-amber" />
         <h3 className="text-sm font-medium">Jana hat etwas gelernt — stimmt das?</h3>
       </div>
+      {/* 2026-07-29 (Frontend-Befund 3): identisch zum Jana-Wissen-Tab. Die
+          Klasse `dark:bg-amber-950/20` war wirkungslos (kein `dark` auf <html>),
+          uebrig blieb helles Creme auf dunkler Karte. Echte Tokens statt der
+          rohen Tailwind-Palette. */}
       {shown.map((fact) => (
-        <div key={fact.id} className="rounded-lg border bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-2">
+        <div
+          key={fact.id}
+          className="relative overflow-hidden rounded-[var(--radius)] border border-amber/25 bg-amber-surface/70 p-3 pl-4 space-y-2"
+        >
+          <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-amber/70" />
           <p className="text-sm">{fact.fact_text}</p>
           <div className="flex items-center gap-2">
             <Button size="sm" className="h-7" disabled={busyId === fact.id} onClick={() => decide(fact.id, "confirm")}>

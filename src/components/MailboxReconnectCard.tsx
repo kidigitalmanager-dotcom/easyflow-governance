@@ -114,7 +114,7 @@ export function MailboxReconnectCard() {
                   ) : null}
                 </div>
                 {degraded ? (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                  <p className="mt-1 flex items-center gap-1 text-xs text-amber">
                     <AlertTriangle className="h-3 w-3 shrink-0" />
                     Google-Anmeldung derzeit gestört — Neu-Verbinden ist vorübergehend nicht
                     möglich. Wir arbeiten daran.
@@ -128,7 +128,7 @@ export function MailboxReconnectCard() {
                 {isImap && m.send ? (
                   <p
                     className={`mt-1 flex items-start gap-1 text-xs ${
-                      m.send.verified ? "text-muted-foreground" : "text-amber-600 dark:text-amber-400"
+                      m.send.verified ? "text-muted-foreground" : "text-amber"
                     }`}
                   >
                     {m.send.verified ? (

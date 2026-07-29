@@ -8,9 +8,26 @@ async function getToken(): Promise<string | null> {
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  /**
+   * 2026-07-29 (Frontend-Befund 1): der geparste Antwort-Rumpf.
+   *
+   * apiFetch hat ihn bis hierher weggeworfen und nur "API Fehler 404" behalten.
+   * Das Backend antwortet aber auf GET /autonomy-policy ohne Eintrag mit
+   * 404 + { error: 'policy_not_found', tenant_id, hard_blocked_intents,
+   * known_intents } — also mit genau den Angaben, die die Oberflaeche braucht,
+   * um einen leeren Entwurf anzuzeigen. Weil der Rumpf verloren ging, war der
+   * "noch keine Policy"-Zweig im Jana-Voice-Tab toter Code und der Tab blieb
+   * fuer JEDEN Tenant ohne Eintrag auf "Lade Konfiguration ..." stehen.
+   *
+   * Optional und additiv: bestehende `new ApiError(status, msg)`-Aufrufe und
+   * jedes `error.message`/`error.status` bleiben unveraendert.
+   */
+  public payload?: unknown;
+
+  constructor(public status: number, message: string, payload?: unknown) {
     super(message);
     this.name = "ApiError";
+    this.payload = payload;
   }
 }
 
@@ -29,7 +46,18 @@ async function apiFetch<T>(path: string): Promise<T> {
   }
 
   if (!res.ok) {
-    throw new ApiError(res.status, `API Fehler ${res.status}`);
+    // Rumpf mitnehmen, wenn er lesbar ist. Ein Gateway-Fehler ohne JSON darf
+    // hier NICHT zu einem zweiten, unverstaendlichen Fehler fuehren.
+    // Die Meldung bleibt bewusst unveraendert: sie steht in mehreren
+    // Fehler-Karten direkt vor dem Kunden, und dort gehoert kein rohes
+    // `policy_not_found` hin. Wer den Code braucht, liest `payload`.
+    let payload: unknown;
+    try {
+      payload = await res.json();
+    } catch {
+      payload = undefined;
+    }
+    throw new ApiError(res.status, `API Fehler ${res.status}`, payload);
   }
 
   return res.json();

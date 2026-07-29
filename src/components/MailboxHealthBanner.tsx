@@ -60,7 +60,11 @@ export function MailboxHealthBanner() {
         "mx-8 mt-4 rounded-lg border px-4 py-3 text-sm",
         anyError
           ? "border-destructive/40 bg-destructive/10 text-destructive"
-          : "border-amber-400/50 bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+          // 2026-07-29 (Frontend-Befund 3): `dark:`-Varianten greifen in dieser
+          // Console nie (darkMode:["class"], aber keine `dark`-Klasse auf <html>).
+          // Uebrig blieb bg-amber-50 + text-amber-800: helles Creme mit braunem
+          // Text auf dunklem Grund. Echte Tokens.
+          : "border-amber/40 bg-amber-surface text-amber"
       )}
     >
       <div className="flex items-start gap-2.5">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useMe, useDisconnectMailbox } from "@/hooks/use-api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -63,6 +63,31 @@ function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<Reac
     localStorage.setItem(key, JSON.stringify(state));
   }, [key, state]);
   return [state, setState];
+}
+
+/* Deep-Link-Aufloesung (?tab=…) — bewusst als reine Funktionen ausserhalb der
+   Komponente, damit dieselbe Regel fuer den Erst-Aufruf UND fuer jede spaetere
+   Navigation innerhalb der Seite gilt. Vorher lag die Logik in einem
+   useState-Initialisierer und lief deshalb genau einmal. */
+const KNOWN_TABS = [
+  "general", "email-autopilot", "autopilot", "jana-wissen", "knowledge",
+  "spreadsheet", "integrations", "billing", "ki-transparenz",
+] as const;
+
+function tabFromParam(raw: string | null): string {
+  const t = raw || "";
+  if (t === "excel") return "spreadsheet";           // Chrome-Extension Deep-Link Alias (?tab=excel)
+  if (t === "jana" || t === "autopilot") return "autopilot"; // Phase 3C Alias
+  // Redesign Follow-up: die frueheren Einzel-Tabs Audit/Stichproben leben als
+  // Untersektionen im verschmolzenen Email-Autopilot-Bereich weiter.
+  if (t === "email-autopilot-audit" || t === "email-autopilot-samples") return "email-autopilot";
+  return (KNOWN_TABS as readonly string[]).includes(t) ? t : "general";
+}
+
+function apSectionFromParam(raw: string | null): "reife" | "audit" | "samples" {
+  if (raw === "email-autopilot-audit") return "audit";
+  if (raw === "email-autopilot-samples") return "samples";
+  return "reife";
 }
 
 // v4.102.0: Anzeigename je Provider fuer die serverseitige Postfach-Liste.
@@ -129,6 +154,7 @@ type ApprovalRules = Record<ApprovalRuleKey, boolean> & { betragThreshold: strin
 
 export default function Einstellungen() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   // 2026-07-27: isError/refetch mitnehmen — ein /me-Fehler darf nicht wie
   // "kein Postfach verbunden" bzw. "Plan 0 / 0" aussehen (Fehler ≠ leer).
   const { data: me, isLoading, isError, isSuccess, refetch, isFetching } = useMe();
@@ -167,6 +193,12 @@ export default function Einstellungen() {
   // auf die Tenant-Flags, falls die Poller-Health-Migration (noch) fehlt (mailbox_health=[]).
   const mailboxLimit = plan?.mailbox_limit ?? 0;
   const activeMailboxes = plan?.active_mailboxes ?? 0;
+  // 2026-07-29 (Frontend-Befund 5): hier stand "{activeMailboxes} / {mailboxLimit}"
+  // ohne den Unbegrenzt-Check. Im Team-Paket liefert /me mailbox_limit = -1 als
+  // Sentinel, und der Kunde las woertlich "1 / -1 verbunden". isUnlimitedLimit()
+  // gibt es in api-client.ts genau dafuer; SystemStatusChip und PlanLimitsBar
+  // benutzen es laengst, diese Anzeige hatte es als einzige nicht.
+  const mailboxUnlimited = isUnlimitedLimit(plan?.mailbox_limit, plan?.mailbox_unlimited);
 
   // v4.103.0 — Mailbox-Governance: Postfach trennen (Inline-Confirm statt Dialog)
   // + 30-Tage-Swap-Lock-Anzeige aus /me (plan.mailbox_swap). Der Wechsel-Schutz
@@ -234,28 +266,43 @@ export default function Einstellungen() {
     },
   ];
 
-  // Redesign Follow-up: Untersektion des verschmolzenen Email-Autopilot-Bereichs.
-  const [apSection, setApSection] = useState<"reife" | "audit" | "samples">(() => {
-    if (typeof window === "undefined") return "reife";
-    const t = new URLSearchParams(window.location.search).get("tab");
-    if (t === "email-autopilot-audit") return "audit";
-    if (t === "email-autopilot-samples") return "samples";
-    return "reife";
-  });
+  const rawTab = searchParams.get("tab");
+  const urlTab = tabFromParam(rawTab);
 
-  const initialTab = (() => {
-    if (typeof window === "undefined") return "general";
-    const t = new URLSearchParams(window.location.search).get("tab");
-    if (t === "excel") return "spreadsheet"; // Chrome-Extension Deep-Link Alias (?tab=excel)
-    if (t === "jana" || t === "autopilot") return "autopilot"; // Phase 3C alias
-    // Redesign Follow-up: die frueheren Einzel-Tabs Audit/Stichproben leben als
-    // Untersektionen im verschmolzenen Email-Autopilot-Bereich weiter.
-    if (t === "email-autopilot-audit" || t === "email-autopilot-samples") return "email-autopilot";
-    return t === "knowledge" || t === "jana-wissen" || t === "integrations" || t === "spreadsheet" || t === "autopilot" || t === "billing" || t === "email-autopilot" || t === "ki-transparenz" ? t : "general";
-  })();
+  // Redesign Follow-up: Untersektion des verschmolzenen Email-Autopilot-Bereichs.
+  const [apSection, setApSection] = useState<"reife" | "audit" | "samples">(() =>
+    apSectionFromParam(rawTab),
+  );
+
+  // 2026-07-29 (Frontend-Befund 4): der Tab lag in <Tabs defaultValue>, und
+  // defaultValue liest React nur EINMAL beim Mounten. Jeder Link von der
+  // Einstellungs-Seite auf die Einstellungs-Seite ("Angaben durchsehen" ->
+  // /einstellungen?tab=jana-wissen) ist aber eine Navigation OHNE Unmount: die
+  // Adresszeile wechselte, der Tab blieb stehen, und fuer den Kunden war der
+  // Knopf schlicht kaputt. Jetzt kontrolliert: die URL ist die Wahrheit, ein
+  // Klick auf einen Tab schreibt sie zurueck (replace, damit der Zurueck-Knopf
+  // nicht durch zehn Tab-Wechsel laufen muss).
+  //
+  // Abhaengigkeit ist bewusst der ROHE Parameter, nicht das searchParams-Objekt:
+  // sonst wuerde jede andere Query-Aenderung die Unter-Sektion des
+  // Email-Autopilot-Bereichs zurueck auf "reife" schieben, waehrend der Kunde
+  // gerade im Audit steht.
+  const [tab, setTab] = useState(urlTab);
+  useEffect(() => {
+    setTab(tabFromParam(rawTab));
+    setApSection(apSectionFromParam(rawTab));
+  }, [rawTab]);
+
+  const handleTabChange = (next: string) => {
+    setTab(next);
+    const params = new URLSearchParams(searchParams);
+    if (next === "general") params.delete("tab");
+    else params.set("tab", next);
+    setSearchParams(params, { replace: true });
+  };
 
   // Umbau 2026-07-27: der fruehere Mitarbeiter-Tab ist jetzt /mitarbeiter.
-  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "team") {
+  if (searchParams.get("tab") === "team") {
     return <Navigate to="/mitarbeiter" replace />;
   }
 
@@ -267,7 +314,7 @@ export default function Einstellungen() {
         subtitle="Postfächer, Freigabe-Regeln, Wissen und Konto — alles, was UseEasy für deinen Betrieb konfiguriert."
       />
 
-      <Tabs defaultValue={initialTab} className="w-full md:grid md:grid-cols-[230px_minmax(0,1fr)] md:gap-6 md:items-start">
+      <Tabs value={tab} onValueChange={handleTabChange} className="w-full md:grid md:grid-cols-[230px_minmax(0,1fr)] md:gap-6 md:items-start">
         {/* Redesign 07.07.2026: vertikale Navigation in 4 Gruppen statt 11 horizontaler Tabs.
             Tab-Werte und Deep-Links (?tab=…) bleiben identisch. */}
         <TabsList className="md:sticky md:top-20 w-full !flex flex-col !h-auto items-stretch justify-start gap-0.5 bg-card border border-border rounded-[var(--radius)] p-2 mb-6 md:mb-0">
@@ -334,14 +381,20 @@ export default function Einstellungen() {
                  Fehlermeldung, es sei nichts verbunden — eine erfundene Zahl aus
                  `?? 0`. Zahl nur bei erfolgreicher Query, sonst gar nichts. */
               isSuccess ? (
-                <span className="text-[11.5px] text-muted-foreground">
-                  <span className="tabular">{activeMailboxes}</span> / <span className="tabular">{mailboxLimit}</span> verbunden
-                </span>
+                mailboxUnlimited ? (
+                  <span className="text-[11.5px] text-muted-foreground">
+                    <span className="tabular">{activeMailboxes}</span> verbunden, unbegrenzt möglich
+                  </span>
+                ) : (
+                  <span className="text-[11.5px] text-muted-foreground">
+                    <span className="tabular">{activeMailboxes}</span> / <span className="tabular">{formatLimit(plan?.mailbox_limit, plan?.mailbox_unlimited)}</span> verbunden
+                  </span>
+                )
               ) : null
             }
             bodyClassName="p-4 space-y-3"
           >
-            {mailboxLimit > 0 && activeMailboxes > mailboxLimit && (
+            {!mailboxUnlimited && mailboxLimit > 0 && activeMailboxes > mailboxLimit && (
               <div className="flex items-center gap-2 rounded-md border border-amber/25 bg-amber-surface px-3 py-2 text-[12px] text-amber">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                 Mehr Postfächer verbunden als der Plan erlaubt. Plan upgraden für mehr Mailboxen.

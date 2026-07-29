@@ -158,7 +158,7 @@ export function FoerderRadarCard() {
         ) : (
           <>
             {!hasProfile && (
-              <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700">
+              <div className="flex items-start gap-2 rounded-lg border border-amber/30 bg-amber-surface px-3 py-2 text-xs text-amber">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                 <span>Firmenprofil unvollständig — dadurch werden Programme aus ganz Deutschland gezeigt. Ergänzen Sie Bundesland, Stadt und Gründungsjahr für einen regionalen, exakten Abgleich.</span>
               </div>

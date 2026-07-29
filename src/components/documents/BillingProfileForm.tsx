@@ -52,7 +52,7 @@ export function BillingProfileForm({ onSaved }: { onSaved?: () => void }) {
 
   return (
     <div className="space-y-4">
-      <div className={"flex items-start gap-2 rounded-lg border p-3 text-sm " + (complete ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-amber-300 bg-amber-50 text-amber-800")}>
+      <div className={"flex items-start gap-2 rounded-lg border p-3 text-sm " + (complete ? "border-emerald/30 bg-emerald-surface text-emerald-light" : "border-amber/30 bg-amber-surface text-amber")}>
         {complete ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />}
         <span>{complete
           ? "Stammdaten vollständig - Rechnungen können finalisiert werden."

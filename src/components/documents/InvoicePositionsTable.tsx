@@ -122,7 +122,7 @@ export function InvoicePositionsTable({
                         inputMode="decimal"
                         onChange={(e) => updatePos(i, { einzelpreis_netto: e.target.value === "" ? null : e.target.value })}
                         placeholder={needsPrice ? "Preis eintragen" : "0,00"}
-                        className={"h-8 " + (needsPrice ? "border-amber-400 bg-amber-50 placeholder:text-amber-600" : "")}
+                        className={"h-8 " + (needsPrice ? "border-amber/60 bg-amber-surface placeholder:text-amber" : "")}
                         title={needsPrice && p.preis_vorschlag != null ? `Unverbindlicher Vorschlag: ${fmtEUR(p.preis_vorschlag as number)}` : undefined}
                       />
                       {needsPrice && p.preis_vorschlag != null && (
@@ -229,7 +229,7 @@ export function InvoicePositionsTable({
 
       {/* Unvollstaendig-Banner */}
       {computed.incomplete && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="flex items-start gap-2 rounded-lg border border-amber/30 bg-amber-surface p-3 text-sm text-amber">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>Mindestens eine Position hat noch keinen Preis. Tragen Sie die offenen Preise ein - vorher lässt sich die Rechnung nicht finalisieren.</span>
         </div>
