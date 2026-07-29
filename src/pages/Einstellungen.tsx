@@ -21,6 +21,7 @@ import JanaKnowledgeTab from "@/components/JanaKnowledgeTab";
 import HubSpotIntegration from "@/components/HubSpotIntegration";
 import MicrosoftIntegration from "@/components/MicrosoftIntegration";
 import MailboxReconnectCard from "@/components/MailboxReconnectCard";
+import ImapMailboxConnectCard from "@/components/ImapMailboxConnectCard"; // D4 (Briefing D): Postfach per IMAP verbinden
 import TelegramIntegration from "@/components/TelegramIntegration";
 import DhlTrackingCard from "@/components/DhlTrackingCard"; // v4.116.0 — Per-Tenant-DHL-Key
 import AssistantConfigCard from "@/components/AssistantConfigCard";
@@ -68,6 +69,9 @@ function useLocalState<T>(key: string, defaultValue: T): [T, React.Dispatch<Reac
 const PROVIDER_LABEL: Record<string, string> = {
   gmail: "Gmail",
   outlook: "Outlook / Microsoft 365",
+  // D4 (Briefing D): ohne diesen Eintrag stand in der Postfach-Liste roh "imap",
+  // sobald das erste IMAP-Postfach verbunden ist.
+  imap: "Eigener Anbieter (IMAP)",
 };
 
 // v4.102.0: Postfach-Status-Chip. Semantik gespiegelt aus MailboxReconnectCard
@@ -585,6 +589,11 @@ export default function Einstellungen() {
 
         <TabsContent value="integrations" className="mt-0 space-y-6">
           <MailboxReconnectCard />
+          {/* D4 (Briefing D): der Weg für alle Anbieter ohne OAuth. Bewusst
+              direkt neben den bestehenden Postfach-Connects und VOR Microsoft:
+              Gmail deckt in Deutschland 3,8 Prozent der Firmendomains ab,
+              IONOS allein 34 Prozent. */}
+          <ImapMailboxConnectCard />
           <MicrosoftIntegration />
           <HubSpotIntegration />
           <TelegramIntegration />
