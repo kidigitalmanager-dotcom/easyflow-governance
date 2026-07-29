@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Brain, Check, X, Pencil, Plus, Loader2, Sparkles, BookOpen, Users, Timer, Scale, Package, Feather, Wand2, FileText, Globe } from "lucide-react";
+import { Brain, Check, X, Pencil, Plus, Loader2, Sparkles, BookOpen, Users, Timer, Scale, Package, Feather, Wand2, FileText, Globe, ChevronDown, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useJanaKnowledge, useCreateJanaKnowledge, usePatchJanaKnowledge, useMe, useTenantSetupSelf } from "@/hooks/use-api";
 import type { JanaKnowledgeCategory, JanaKnowledgeFact } from "@/lib/api-client";
 import JanaBriefingWizard from "@/components/JanaBriefingWizard";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  gruppiere, istUngeprueft, angabenZahl, auswahl, sammelMeldung,
+  type WissensGruppe,
+} from "@/lib/wissen-gruppierung";
 
 // ---------------------------------------------------------------------------
 // B3 Jana-Wissen: Tenant-Wissensmodell mit Confirm-Loop (memory-engine v1.5.0).
@@ -119,6 +124,113 @@ function CategoryBadge({ category }: { category: string }) {
   );
 }
 
+// Von der Website uebernommen, aber vom Kunden noch nicht angesehen.
+// Seit dem 29.07. gelten Angaben ohne Rechtsfolge sofort. Damit daraus keine
+// stille Behauptung wird, sagt die Karte offen, woher der Satz kommt und dass
+// ihn noch niemand geprueft hat. Das Zitat steht ohnehin darunter.
+function UngeprueftBadge() {
+  return (
+    <Badge variant="outline" className="gap-1 font-normal border-amber/40 text-muted-foreground">
+      <Globe className="w-3 h-3" />
+      Von Ihrer Website, noch nicht geprüft
+    </Badge>
+  );
+}
+
+// Eine Karte je Thema statt einer Zeile je Angabe (Paket 2, Weg A).
+// Zugeklappt zeigt sie das Thema und die Anzahl, ein Klick auf "Stimmt so"
+// nimmt die ganze Gruppe. Wer genauer hinsehen will, klappt auf und kann
+// einzelne Angaben abwaehlen oder ablehnen.
+function ThemenKarte({
+  gruppe, offen, onToggle, abgewaehlt, onAbwahl,
+  onGruppeBestaetigen, onEinzeln, editingId, setEditingId, busyId, gruppeBusy,
+}: {
+  gruppe: WissensGruppe;
+  offen: boolean;
+  onToggle: () => void;
+  abgewaehlt: Set<number>;
+  onAbwahl: (id: number, aus: boolean) => void;
+  onGruppeBestaetigen: () => void;
+  onEinzeln: (body: { id: number; action: "confirm" | "reject" | "update"; fact_text?: string }, okMsg: string) => void;
+  editingId: number | null;
+  setEditingId: (id: number | null) => void;
+  busyId: number | null;
+  gruppeBusy: boolean;
+}) {
+  const gewaehlt = auswahl(gruppe.facts, abgewaehlt).length;
+  return (
+    <div className="relative overflow-hidden rounded-[var(--radius)] border border-amber/25 bg-amber-surface/70 transition-colors hover:border-amber/45">
+      <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-amber/70" />
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 pl-5">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={offen}
+          className="flex flex-1 items-center gap-2 text-left"
+        >
+          <ChevronDown className={"w-4 h-4 shrink-0 transition-transform " + (offen ? "rotate-180" : "")} />
+          <span className="text-sm font-medium">{gruppe.label}</span>
+          <span className="text-xs text-muted-foreground">
+            {angabenZahl(gruppe.facts.length)} gefunden
+          </span>
+        </button>
+        <Button size="sm" disabled={gewaehlt === 0 || gruppeBusy} onClick={onGruppeBestaetigen} className="shrink-0">
+          {gruppeBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+          Stimmt so{gewaehlt !== gruppe.facts.length ? " (" + gewaehlt + ")" : ""}
+        </Button>
+      </div>
+
+      {offen && (
+        <div className="border-t border-amber/20 divide-y divide-amber/15">
+          {gruppe.facts.map((fact) => (
+            <div key={fact.id} className="p-4 pl-5 space-y-2.5">
+              {editingId === fact.id ? (
+                <FactEditor
+                  initial={fact.fact_text}
+                  saving={busyId === fact.id}
+                  saveLabel="Bestätigen"
+                  onSave={(text) => onEinzeln({ id: fact.id, action: "confirm", fact_text: text }, "Übernommen.")}
+                  onCancel={() => setEditingId(null)}
+                />
+              ) : (
+                <>
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id={"fakt-" + fact.id}
+                      checked={!abgewaehlt.has(fact.id)}
+                      onCheckedChange={(v) => onAbwahl(fact.id, v !== true)}
+                      className="mt-0.5 shrink-0"
+                      aria-label={"Diese Angabe mit bestätigen: " + fact.fact_text}
+                    />
+                    <label htmlFor={"fakt-" + fact.id} className="text-sm cursor-pointer">
+                      {fact.fact_text}
+                    </label>
+                  </div>
+                  <WebsiteEvidence fact={fact} />
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setEditingId(fact.id)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                      Anpassen
+                    </Button>
+                    <Button
+                      size="sm" variant="ghost" className="text-muted-foreground"
+                      disabled={busyId === fact.id}
+                      onClick={() => onEinzeln({ id: fact.id, action: "reject" }, "Abgelehnt, Jana schlägt das nicht erneut vor.")}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Stimmt nicht
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FactEditor({
   initial, onSave, onCancel, saving, saveLabel,
 }: { initial: string; onSave: (text: string) => void; onCancel: () => void; saving: boolean; saveLabel: string }) {
@@ -151,6 +263,11 @@ export default function JanaKnowledgeTab() {
   // Baustein 5: welche Themen die Website belegt hat (fehlt der Block, aendert sich nichts).
   const { data: setup } = useTenantSetupSelf();
   const [wizardOpen, setWizardOpen] = useState(false);
+  // Alles ist vorausgewaehlt; hier stehen nur die AUSNAHMEN (Leon-Entscheid:
+  // Sammelklick mit Abwahl). Eine leere Menge heisst also "alles nehmen".
+  const [abgewaehlt, setAbgewaehlt] = useState<Set<number>>(new Set());
+  const [offeneKarten, setOffeneKarten] = useState<Set<string>>(new Set());
+  const [sammelBusy, setSammelBusy] = useState<string | null>(null);
 
   const runPatch = (body: { id: number; action: "confirm" | "reject" | "update"; fact_text?: string }, okMsg: string) => {
     setBusyId(body.id);
@@ -159,6 +276,55 @@ export default function JanaKnowledgeTab() {
       onError: (e: Error) => toast.error(e.message || "Aktion fehlgeschlagen"),
       onSettled: () => setBusyId(null),
     });
+  };
+
+  const setzeAbwahl = (id: number, aus: boolean) => {
+    setAbgewaehlt((alt) => {
+      const neu = new Set(alt);
+      if (aus) neu.add(id); else neu.delete(id);
+      return neu;
+    });
+  };
+
+  const toggleKarte = (key: string) => {
+    setOffeneKarten((alt) => {
+      const neu = new Set(alt);
+      if (neu.has(key)) neu.delete(key); else neu.add(key);
+      return neu;
+    });
+  };
+
+  // Mehrere Angaben auf einmal bestaetigen.
+  //
+  // Bewusst ueber die bestehende Einzel-Route statt ueber einen neuen
+  // Stapel-Endpunkt: nach der Klassen-Trennung sind es typisch rund vier bis
+  // acht Angaben, und ein zweiter Lambda-Deploy waere dafuer zu teuer erkauft.
+  // Hoechstens vier gleichzeitig, damit die Datenbank nicht unnoetig viele
+  // Verbindungen auf einmal bekommt.
+  //
+  // Ein Teilerfolg wird als Teilerfolg gemeldet. Wer sechs von acht durchbekommt
+  // und "alles uebernommen" liest, sucht die uebrigen zwei nie wieder.
+  const bestaetigeViele = async (ids: number[], schluessel: string) => {
+    if (!ids.length) return;
+    setSammelBusy(schluessel);
+    let ok = 0, fehler = 0;
+    try {
+      const rest = ids.slice();
+      const arbeiter = Array.from({ length: Math.min(4, rest.length) }, async () => {
+        for (;;) {
+          const id = rest.shift();
+          if (id === undefined) return;
+          try { await patchMutation.mutateAsync({ id, action: "confirm" }); ok += 1; }
+          catch { fehler += 1; }
+        }
+      });
+      await Promise.all(arbeiter);
+    } finally {
+      setSammelBusy(null);
+    }
+    if (fehler === 0) toast.success(sammelMeldung(ok, fehler));
+    else if (ok === 0) toast.error(sammelMeldung(ok, fehler));
+    else toast.warning(sammelMeldung(ok, fehler));
   };
 
   const handleCreate = () => {
@@ -200,8 +366,12 @@ export default function JanaKnowledgeTab() {
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
           Was Jana über euer Unternehmen weiß: Produkte, Prozesse, Reaktionszeiten, Regeln, Team.
-          Bestätigtes Wissen fließt in Janas Antwortentwürfe ein. Jana lernt aus euren Korrekturen
-          und schlägt neue Einträge vor — nichts wird ohne eure Bestätigung wirksam.
+          Dieses Wissen fließt in Janas Antwortentwürfe ein.
+        </p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Angaben von eurer Website übernimmt Jana direkt, jede mit dem wörtlichen Zitat daneben
+          und jederzeit änderbar. Was euch rechtlich bindet, also Widerruf, Lieferung, Zahlung und
+          Rechtliches, wartet dagegen auf euren Klick. Was Jana aus euren Korrekturen lernt, ebenso.
         </p>
       </div>
 
@@ -249,53 +419,52 @@ export default function JanaKnowledgeTab() {
           lag halbtransparent ueber der dunklen Karte. Jetzt die echten Tokens
           (--amber / --amber-surface) plus ein schmaler Akzentstreifen links,
           damit die Vorschlaege als eigener Block lesbar sind statt als Fleck. */}
+      {/* Paket 2, Weg A + Sammelklick (Leon-Entscheid 29.07.).
+          Vorher stand hier jede Angabe als eigene Zeile: bei 25 Angaben waren
+          das 25 Entscheidungen. Jetzt eine Karte je Thema (im Median 5 statt
+          25), darueber ein Sammelklick, und in der Karte laesst sich einzeln
+          abwaehlen. Die Hard Line bleibt: nichts gilt ohne einen Klick, der
+          Klick ist nur nicht mehr fuenfundzwanzigmal derselbe. */}
       {proposed.length > 0 && (
         <section className="space-y-3">
-          <h3 className="text-sm font-medium flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber" />
-            Jana hat etwas gelernt — stimmt das? ({proposed.length})
-          </h3>
-          {proposed.map((fact) => (
-            <div
-              key={fact.id}
-              className="relative overflow-hidden rounded-[var(--radius)] border border-amber/25 bg-amber-surface/70 p-4 pl-5 space-y-2.5 transition-colors hover:border-amber/45"
-            >
-              <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-amber/70" />
-              <div className="flex items-start justify-between gap-3">
-                <CategoryBadge category={fact.category} />
-                <span className="text-xs text-muted-foreground">{evidenceLine(fact)}</span>
-              </div>
-              {editingId === fact.id ? (
-                <FactEditor
-                  initial={fact.fact_text}
-                  saving={busyId === fact.id}
-                  saveLabel="Bestätigen"
-                  onSave={(text) => runPatch({ id: fact.id, action: "confirm", fact_text: text }, "Bestätigt — Jana nutzt diese Regel ab sofort.")}
-                  onCancel={() => setEditingId(null)}
-                />
-              ) : (
-                <>
-                  <p className="text-sm">{fact.fact_text}</p>
-                  <WebsiteEvidence fact={fact} />
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" disabled={busyId === fact.id}
-                      onClick={() => runPatch({ id: fact.id, action: "confirm" }, "Bestätigt — Jana nutzt diese Regel ab sofort.")}>
-                      {busyId === fact.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                      Stimmt
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setEditingId(fact.id)}>
-                      <Pencil className="w-3.5 h-3.5" />
-                      Anpassen
-                    </Button>
-                    <Button size="sm" variant="ghost" className="text-muted-foreground" disabled={busyId === fact.id}
-                      onClick={() => runPatch({ id: fact.id, action: "reject" }, "Abgelehnt — Jana schlägt das nicht erneut vor.")}>
-                      <X className="w-3.5 h-3.5" />
-                      Stimmt nicht
-                    </Button>
-                  </div>
-                </>
-              )}
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+            <div className="flex-1 space-y-1">
+              <h3 className="text-sm font-medium flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber" />
+                Bitte einmal ansehen ({proposed.length})
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Diese Angaben binden euch rechtlich oder Jana hat sie aus eurem Postfach gelernt.
+                Deshalb fragen wir hier nach. Aufklappen zeigt jede Angabe samt Beleg.
+              </p>
             </div>
+            <Button
+              className="shrink-0"
+              disabled={auswahl(proposed, abgewaehlt).length === 0 || sammelBusy !== null}
+              onClick={() => bestaetigeViele(auswahl(proposed, abgewaehlt), "alle")}
+            >
+              {sammelBusy === "alle"
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <ShieldCheck className="w-4 h-4" />}
+              Passt alles ({auswahl(proposed, abgewaehlt).length})
+            </Button>
+          </div>
+
+          {gruppiere(proposed).map((g) => (
+            <ThemenKarte
+              key={g.key}
+              gruppe={g}
+              offen={offeneKarten.has(g.key)}
+              onToggle={() => toggleKarte(g.key)}
+              abgewaehlt={abgewaehlt}
+              onAbwahl={setzeAbwahl}
+              gruppeBusy={sammelBusy === g.key}
+              onGruppeBestaetigen={() => bestaetigeViele(auswahl(g.facts, abgewaehlt), g.key)}
+              onEinzeln={runPatch}
+              editingId={editingId}
+              setEditingId={setEditingId}
+              busyId={busyId}
+            />
           ))}
         </section>
       )}
@@ -311,7 +480,10 @@ export default function JanaKnowledgeTab() {
           confirmed.map((fact) => (
             <div key={fact.id} className="rounded-lg border p-4 space-y-2">
               <div className="flex items-start justify-between gap-3">
-                <CategoryBadge category={fact.category} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <CategoryBadge category={fact.category} />
+                  {istUngeprueft(fact) && <UngeprueftBadge />}
+                </div>
                 <span className="text-xs text-muted-foreground">{evidenceLine(fact)}</span>
               </div>
               {editingId === fact.id ? (
