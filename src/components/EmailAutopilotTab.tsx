@@ -176,6 +176,7 @@ export default function EmailAutopilotTab() {
         intents={hardCeiling.intents}
         whitelist={(local?.intent_whitelist as string[]) || []}
         legalAck={policy?.legal_basis_ack === true}
+        gate={data?.maturity_gate}
       />
 
       <div className="glass-card p-6 space-y-4">

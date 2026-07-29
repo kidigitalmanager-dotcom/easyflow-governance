@@ -84,7 +84,7 @@ type FormState = {
   // Voice policy
   active_hours_start: string; active_hours_end: string; active_days: number[]; timezone: string; daily_cap: number;
   // Tenant meta (v4.33.0)
-  status: string; plan: string;
+  status: string; plan: string; legal_basis_default: string;
   // Pack/Branche (v4.33.0)
   mailbox_profile: string;
   // Flags (v4.33.0)
@@ -116,6 +116,7 @@ function initForm(s: TenantSetup): FormState {
     daily_cap: s.voice_policy.daily_cap ?? 10,
     status: s.tenant.status ?? "active",
     plan: s.tenant.plan ?? "",
+    legal_basis_default: s.tenant.legal_basis_default ?? "unknown",
     mailbox_profile: s.tenant.mailbox_profile ?? "",
     spreadsheet_enabled: s.flags?.spreadsheet_enabled ?? false,
     autopilot_kill_switch: s.flags?.autopilot_kill_switch ?? false,
@@ -130,6 +131,7 @@ function initForm(s: TenantSetup): FormState {
     einvoice_enabled: s.flags?.einvoice_enabled ?? false,
     sales_pack_enabled: s.flags?.sales_pack_enabled ?? false,
     spam_rescue_enabled: s.flags?.spam_rescue_enabled ?? false,
+    auto_draft_enabled: s.flags?.auto_draft_enabled ?? false,
   };
 }
 
@@ -171,6 +173,16 @@ function mergePackOptions(packs?: { pack_key: string; label: string; domain: str
   const known = new Set(base.map((p) => p.pack_key));
   return [...base, ...EXTRA_PACK_OPTIONS.filter((p) => !known.has(p.pack_key))];
 }
+
+// v4.186.0 — Klartext fuer die Rechtsgrundlagen. Die Schluessel spiegeln
+// LEGAL_BASIS_OPTIONS in admin_tenant_setup.js; unbekannte Werte zeigt die Seite
+// im Rohtext an, statt sie zu verschlucken.
+const LEGAL_BASIS_LABELS: Record<string, string> = {
+  contract: "Vertragserfuellung",
+  consent: "Einwilligung",
+  legitimate_interest: "Berechtigtes Interesse",
+  unknown: "— noch nicht erklaert —",
+};
 
 export default function AdminTenantSetup() {
   const meQ = useMe();
@@ -250,7 +262,11 @@ export default function AdminTenantSetup() {
       consent: { recording_consent_enabled: form.recording_consent_enabled, recording_consent_banner_text: form.recording_consent_banner_text || null },
       assistant: { enabled: form.assistant_enabled, allowed_actions: form.allowed_actions, timeout_preset: form.timeout_preset },
       voice_policy: { active_hours_start: form.active_hours_start, active_hours_end: form.active_hours_end, active_days: form.active_days, timezone: form.timezone, daily_cap: form.daily_cap },
-      tenant: { status: form.status, plan: form.plan || undefined },
+      tenant: {
+        status: form.status,
+        plan: form.plan || undefined,
+        legal_basis_default: form.legal_basis_default || undefined,
+      },
       pack: form.mailbox_profile ? { mailbox_profile: form.mailbox_profile } : undefined,
       flags: {
         autopilot_kill_switch: form.autopilot_kill_switch,
@@ -472,6 +488,26 @@ export default function AdminTenantSetup() {
                 </select>
               </label>
             </div>
+            <label className={`${LABEL_CLASS} mt-3 block`}>
+              <span className="flex items-center gap-1">
+                Rechtsgrundlage der Verarbeitung
+                <InfoTip text="Auf welcher Grundlage nach DSGVO Art. 6 dieser Kunde E-Mails verarbeitet. Solange hier nichts erklaert ist, haelt der Autopilot jede Mail zurueck und meldet, die rechtliche Freigabe fehle. Das Setzen ersetzt keine Pruefung — es haelt die Entscheidung des Kunden fest." />
+              </span>
+              <select
+                className={FIELD_CLASS}
+                value={form.legal_basis_default}
+                onChange={(e) => upd({ legal_basis_default: e.target.value })}
+              >
+                {(setup.tenant.legal_basis_options ?? ["contract", "consent", "legitimate_interest", "unknown"]).map((o) => (
+                  <option key={o} value={o}>{LEGAL_BASIS_LABELS[o] ?? o}</option>
+                ))}
+              </select>
+              {form.legal_basis_default === "unknown" && (
+                <span className="mt-1 block text-xs text-amber-600">
+                  Nicht erklaert — der Autopilot sendet fuer diesen Kunden nichts von allein.
+                </span>
+              )}
+            </label>
           </SectionCard>
 
           {/* B) Pack/Branche & Domain */}

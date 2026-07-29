@@ -10,7 +10,10 @@ import {
 const ALL_ON = Object.fromEntries(TENANT_FLAG_ROWS.map((r) => [r.key, true])) as Record<TenantFlagKey, boolean>;
 
 describe("TENANT_FLAG_ROWS", () => {
-  it("kennt genau die acht Gates der Server-Whitelist", () => {
+  // Der Test haelt die Reihenfolge UND die Menge fest — laeuft die Liste von der
+  // Server-Whitelist (TENANT_BOOL_FLAGS in admin_tenant_setup.js) weg, faellt es
+  // hier auf. v4.186.0: neunter Schalter auto_draft_enabled dazugekommen.
+  it("kennt genau die neun Gates der Server-Whitelist", () => {
     expect(TENANT_FLAG_ROWS.map((r) => r.key)).toEqual([
       "documents_enabled",
       "accounting_ap_enabled",
@@ -20,6 +23,7 @@ describe("TENANT_FLAG_ROWS", () => {
       "sales_pack_enabled",
       "spam_rescue_enabled",
       "spreadsheet_enabled",
+      "auto_draft_enabled",
     ]);
   });
 
@@ -37,8 +41,8 @@ describe("TENANT_FLAG_ROWS", () => {
 
 describe("visibleTenantFlags", () => {
   it("zeigt bei unbekannter DB-Lage alle Schalter", () => {
-    expect(visibleTenantFlags(null)).toHaveLength(8);
-    expect(visibleTenantFlags(undefined)).toHaveLength(8);
+    expect(visibleTenantFlags(null)).toHaveLength(9);
+    expect(visibleTenantFlags(undefined)).toHaveLength(9);
   });
 
   it("blendet Gates aus, die die Datenbank nicht hat", () => {
@@ -84,7 +88,7 @@ describe("buildTenantFlagPayload", () => {
     const rows = visibleTenantFlags(null);
     const payload = buildTenantFlagPayload(rows, ALL_ON);
     expect(Object.values(payload).every((v) => typeof v === "boolean")).toBe(true);
-    expect(Object.keys(payload)).toHaveLength(8);
+    expect(Object.keys(payload)).toHaveLength(9);
   });
 });
 

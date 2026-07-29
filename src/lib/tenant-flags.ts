@@ -1,7 +1,7 @@
 /**
  * tenant-flags.ts — v4.149.0
  *
- * Die acht Feature-Gates aus `public.tenants`. Bis zum 27.07.2026 liessen sie
+ * Die neun Feature-Gates aus `public.tenants`. Bis zum 27.07.2026 liessen sie
  * sich NUR per SQL setzen; ohne sie bleibt bei einem neuen Kunden die halbe
  * Buchhaltung stumm („Scan uebersprungen: tenant_disabled").
  *
@@ -18,7 +18,8 @@ export type TenantFlagKey =
   | "einvoice_enabled"
   | "sales_pack_enabled"
   | "spam_rescue_enabled"
-  | "spreadsheet_enabled";
+  | "spreadsheet_enabled"
+  | "auto_draft_enabled";
 
 export type TenantFlagRow = { key: TenantFlagKey; label: string; hint: string };
 
@@ -31,6 +32,7 @@ export const TENANT_FLAG_ROWS: ReadonlyArray<TenantFlagRow> = [
   { key: "sales_pack_enabled", label: "Vertriebs-Paket", hint: "Co-Pilot-Funktionen fuer Angebote und Nachfassen." },
   { key: "spam_rescue_enabled", label: "Spam-Rettung", hint: "Holt faelschlich aussortierte Kundenmails aus dem Junk." },
   { key: "spreadsheet_enabled", label: "Excel Live-Sync", hint: "Erlaubt das automatische Aktualisieren verbundener Tabellen." },
+  { key: "auto_draft_enabled", label: "Antwort-Entwuerfe", hint: "Bereitet zu passenden Mails automatisch einen Antwort-Entwurf vor. Gesendet wird nie ohne Freigabe." },
 ];
 
 /**

@@ -2362,6 +2362,12 @@ export interface AutopilotPolicyResponse {
   ok: boolean;
   policy: AutopilotPolicy;
   maturity: AutopilotMaturityRow[];
+  /**
+   * v4.185.0: das Reifegate kommt jetzt vom Server, damit das Frontend das Ziel
+   * nicht mehr hartkodiert (die Zahl ist Governance, nicht Kosmetik). Fehlt es,
+   * faellt die Anzeige auf die Konstanten in autopilot-maturity.ts zurueck.
+   */
+  maturity_gate?: { min_samples: number; mismatch_rate_max: number; edit_rate_max: number };
   hard_ceiling: { intents: string[]; intent_modes: Record<string, string> };
 }
 export const fetchAutopilotPolicy = () =>
@@ -2576,6 +2582,14 @@ export interface TenantSetup {
     website_url?: string | null;
     /** null/false = Migration v1.44 noch nicht eingespielt. */
     website_url_available?: boolean | null;
+    /**
+     * v4.186.0: Rechtsgrundlage nach DSGVO Art. 6. Stand bisher bei jedem Tenant
+     * auf 'unknown' und war nur per SQL aenderbar — genau daran scheiterte jede
+     * Autopilot-Eignungspruefung. Fehlt das Feld (aelteres Backend), behandelt
+     * die Seite es wie 'unknown'.
+     */
+    legal_basis_default?: string | null;
+    legal_basis_options?: string[];
   };
   /** v4.160.0: Website-Scan sichtbar machen (Briefing C). Fehlt bei aelterem Backend. */
   website_scan?: {
@@ -2615,6 +2629,8 @@ export interface TenantSetup {
     auto_offer_enabled?: boolean; dunning_scan_enabled?: boolean;
     einvoice_enabled?: boolean; sales_pack_enabled?: boolean;
     spam_rescue_enabled?: boolean;
+    /** v4.186.0 — Auto-Antwort-Entwurf. Fehlt bei aelterem Backend. */
+    auto_draft_enabled?: boolean;
   };
   /** v4.149.0 — welche Gates die DB wirklich kennt. null = unbekannt (keine Tenant-Zeile). */
   flags_available?: string[] | null;
@@ -2666,7 +2682,7 @@ export interface TenantSetupWriteBody {
   consent?: Partial<{ recording_consent_enabled: boolean; recording_consent_banner_text: string | null }>;
   assistant?: Partial<{ enabled: boolean; timeout_preset: string; default_max_steps: number; allowed_actions: string[] }>;
   voice_policy?: Partial<{ enabled: boolean; active_hours_start: string; active_hours_end: string; active_days: number[]; timezone: string; daily_cap: number; per_contact_cooldown_days: number }>;
-  tenant?: Partial<{ status: string; plan: string }>;
+  tenant?: Partial<{ status: string; plan: string; legal_basis_default: string }>;
   pack?: Partial<{ mailbox_profile: string; domain: string; active_pack_keys: string[] }>;
   flags?: Partial<{
     spreadsheet_enabled: boolean; autopilot_kill_switch: boolean; auto_consent_on_inquiry: boolean;
@@ -2675,6 +2691,8 @@ export interface TenantSetupWriteBody {
     documents_enabled: boolean; accounting_ap_enabled: boolean; auto_offer_enabled: boolean;
     dunning_scan_enabled: boolean; einvoice_enabled: boolean; sales_pack_enabled: boolean;
     spam_rescue_enabled: boolean;
+    // v4.186.0 — Auto-Antwort-Entwurf (Scanner cron.auto-draft-scan).
+    auto_draft_enabled: boolean;
   }>;
   /** v4.158.0: Firmen-Website (self + admin schreibbar). Leerer String setzt zurueck. */
   website?: Partial<{ website_url: string }>;

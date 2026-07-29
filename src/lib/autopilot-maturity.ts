@@ -134,7 +134,15 @@ export interface MaturityStatusInfo {
   detail?: string;
 }
 
-export function maturityStatus(row: MaturityRowLike | null | undefined): MaturityStatusInfo {
+/**
+ * v4.186.0: nimmt das Ziel jetzt aus dem Server-Gate statt aus den Konstanten.
+ * Ohne uebergebenes Gate bleibt das Verhalten exakt wie vorher — aeltere
+ * Backends liefern `maturity_gate` nicht.
+ */
+export function maturityStatus(
+  row: MaturityRowLike | null | undefined,
+  gate?: MaturityGate | null
+): MaturityStatusInfo {
   if (!row) {
     return {
       kind: "no_data",
@@ -162,11 +170,14 @@ export function maturityStatus(row: MaturityRowLike | null | undefined): Maturit
       detail: "Alle drei Kriterien erfüllt.",
     };
   }
+  const minSamples = gateNum(gate?.min_samples, MIN_SAMPLES);
   const samples = toNum(row.sample_count) ?? 0;
-  if (samples < MIN_SAMPLES) {
+  if (samples < minSamples) {
+    const pct = Math.max(0, Math.min(100, Math.round((samples / minSamples) * 100)));
     return {
       kind: "collecting",
-      label: `Noch ${MIN_SAMPLES - samples} Mails bis zur Bewertung`,
+      label: `Noch ${minSamples - samples} Mails bis zur Bewertung`,
+      detail: `${samples} von ${minSamples} gesammelt (${pct} %).`,
     };
   }
   // Samples voll, aber (noch) nicht promotion_ready → entweder Quality-Gate verfehlt
@@ -174,8 +185,8 @@ export function maturityStatus(row: MaturityRowLike | null | undefined): Maturit
   const fails: string[] = [];
   const mismatch = toNum(row.shadow_mismatch_rate);
   const edit = toNum(row.edit_rate);
-  if (mismatch !== null && mismatch > MISMATCH_RATE_MAX) fails.push("Abweichung zu hoch");
-  if (edit !== null && edit > EDIT_RATE_MAX) fails.push("Bearbeitungs-Quote zu hoch");
+  if (mismatch !== null && mismatch > gateNum(gate?.mismatch_rate_max, MISMATCH_RATE_MAX)) fails.push("Abweichung zu hoch");
+  if (edit !== null && edit > gateNum(gate?.edit_rate_max, EDIT_RATE_MAX)) fails.push("Bearbeitungs-Quote zu hoch");
   if (fails.length > 0) {
     return { kind: "quality", label: "Quality-Gate verfehlt", detail: fails.join(" · ") };
   }

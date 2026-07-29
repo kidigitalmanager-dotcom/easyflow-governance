@@ -22,6 +22,7 @@ import {
   MODE_SHORT_LABELS,
   computeGates,
   maturityStatus,
+  type MaturityGate,
   nextMode,
   type GateProgress,
   type MaturityStatusInfo,
@@ -115,6 +116,12 @@ interface AutopilotMaturityCardProps {
   intents: string[];
   whitelist: string[];
   legalAck: boolean;
+  /**
+   * v4.186.0: Das Reifegate kommt jetzt vom Server (`maturity_gate` in
+   * /autopilot/policy). Fehlt es (aelteres Backend), fallen die Helfer auf die
+   * Konstanten in autopilot-maturity.ts zurueck — deshalb optional.
+   */
+  gate?: MaturityGate | null;
 }
 
 export default function AutopilotMaturityCard({
@@ -122,6 +129,7 @@ export default function AutopilotMaturityCard({
   intents,
   whitelist,
   legalAck,
+  gate,
 }: AutopilotMaturityCardProps) {
   const requestPromotion = useRequestAutopilotPromotion();
 
@@ -155,8 +163,8 @@ export default function AutopilotMaturityCard({
         {intents.map((ck) => {
           const row = maturity.find((m) => m.core_key === ck) ?? null;
           const enabled = whitelist.includes(ck);
-          const info = maturityStatus(row);
-          const gates = computeGates(row);
+          const info = maturityStatus(row, gate);
+          const gates = computeGates(row, gate);
           const target = nextMode(row?.mode);
           const canRequest =
             !!row && row.promotion_ready && !row.promotion_requested && target !== null;
