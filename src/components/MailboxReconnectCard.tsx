@@ -13,7 +13,7 @@
 // gezeigt. Bei IMAP heisst "neu verbinden" schlicht: Passwort erneut eintragen,
 // derselbe Dialog wie beim ersten Verbinden (der Endpunkt aktualisiert die Zeile).
 import { useState } from "react";
-import { RefreshCw, AlertTriangle, CheckCircle2, Mail, KeyRound } from "lucide-react";
+import { RefreshCw, AlertTriangle, CheckCircle2, Mail, KeyRound, Send } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -49,6 +49,8 @@ export function MailboxReconnectCard() {
   const [busy, setBusy] = useState<string | null>(null);
   // D4: Adresse des IMAP-Postfachs, fuer das der Passwort-Dialog offen ist.
   const [imapEmail, setImapEmail] = useState<string | null>(null);
+  // D5: derselbe Dialog, aber nur fuer den Versand-Zugang.
+  const [smtpEmail, setSmtpEmail] = useState<string | null>(null);
   const health = (me?.mailbox_health ?? []) as MailboxHealth[];
 
   const onReconnect = async (provider: "gmail" | "outlook") => {
@@ -118,16 +120,47 @@ export function MailboxReconnectCard() {
                     möglich. Wir arbeiten daran.
                   </p>
                 ) : null}
+                {/* D5 (Briefing D): der Versand ist ein eigener Zustand. Ein Postfach
+                    kann tadellos empfangen und trotzdem nicht senden koennen; das faellt
+                    sonst erst auf, wenn der Autopilot zum ersten Mal wirklich antworten
+                    soll. Der Text kommt aus dem Backend (message_de), damit hier keine
+                    zweite Wahrheit entsteht. */}
+                {isImap && m.send ? (
+                  <p
+                    className={`mt-1 flex items-start gap-1 text-xs ${
+                      m.send.verified ? "text-muted-foreground" : "text-amber-600 dark:text-amber-400"
+                    }`}
+                  >
+                    {m.send.verified ? (
+                      <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                    )}
+                    <span>
+                      {m.send.message_de ??
+                        (m.send.verified ? "Versand ist eingerichtet." : "Der Versand ist noch offen.")}
+                      {m.send.last_error ? <span className="block opacity-80">{m.send.last_error}</span> : null}
+                    </span>
+                  </p>
+                ) : null}
               </div>
               {isImap ? (
-                <Button
-                  variant={m.status === "ok" ? "outline" : "default"}
-                  size="sm"
-                  onClick={() => setImapEmail(m.email ?? "")}
-                >
-                  <KeyRound className="mr-1.5 h-3.5 w-3.5" />
-                  Passwort erneut eingeben
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {m.send && !m.send.verified ? (
+                    <Button variant="default" size="sm" onClick={() => setSmtpEmail(m.email ?? "")}>
+                      <Send className="mr-1.5 h-3.5 w-3.5" />
+                      Versand einrichten
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant={m.status === "ok" ? "outline" : "default"}
+                    size="sm"
+                    onClick={() => setImapEmail(m.email ?? "")}
+                  >
+                    <KeyRound className="mr-1.5 h-3.5 w-3.5" />
+                    Passwort erneut eingeben
+                  </Button>
+                </div>
               ) : (
                 <Button
                   variant={m.status === "ok" ? "outline" : "default"}
@@ -153,6 +186,12 @@ export function MailboxReconnectCard() {
         open={imapEmail !== null}
         onOpenChange={(v) => { if (!v) setImapEmail(null); }}
         initialEmail={imapEmail ?? ""}
+      />
+      <ImapConnectDialog
+        open={smtpEmail !== null}
+        onOpenChange={(v) => { if (!v) setSmtpEmail(null); }}
+        initialEmail={smtpEmail ?? ""}
+        mode="smtp"
       />
     </Card>
   );

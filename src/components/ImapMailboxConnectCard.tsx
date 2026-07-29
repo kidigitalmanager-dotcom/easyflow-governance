@@ -115,9 +115,17 @@ const providerLabel = (cfg?: ImapPublicConfig | null): string => {
 
 /* --------------------------------------------------------------- Transport */
 
-async function postImapConnect(
-  body: Record<string, unknown>,
-): Promise<{ status: number; data: ImapApiResponse; networkError?: boolean }> {
+export type ImapTransportResult = { status: number; data: ImapApiResponse; networkError?: boolean };
+export type ImapTransport = (body: Record<string, unknown>) => Promise<ImapTransportResult>;
+
+// D4.1 (Briefing D, 29.07.2026): der Dialog bekommt seinen Transportweg jetzt
+// als Prop herein. Grund: /connect laeuft PRE-LOGIN, dort gibt es kein
+// Supabase-Token und keinen Dashboard-Endpunkt, sondern einen Onboarding-Token
+// und /v1/onboarding/connect/imap. Eine zweite Kopie dieses Dialogs waere bei
+// der ersten Aenderung an den Fehlertexten oder den Passwort-Hard-Lines still
+// auseinandergelaufen; die Transport-Funktion ist das einzige, was sich
+// zwischen Konsole und Onboarding wirklich unterscheidet.
+async function postImapConnect(body: Record<string, unknown>): Promise<ImapTransportResult> {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token ?? null;
   if (!token) return { status: 401, data: { ok: false, error: "not_authenticated" } };
@@ -229,14 +237,30 @@ function ServerFields({
 /* ----------------------------------------------------------------- Dialog */
 
 export function ImapConnectDialog({
-  open, onOpenChange, initialEmail = "",
+  open, onOpenChange, initialEmail = "", transport, mode = "connect", invalidateMe = true,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   /** Vorbelegte Adresse, wenn ein bestehendes Postfach neu verbunden wird. */
   initialEmail?: string;
+  /**
+   * D4.1: Weg zum Backend. Ohne Angabe der Dashboard-Endpunkt mit
+   * Supabase-Token (Konsole); /connect reicht seinen eigenen herein.
+   */
+  transport?: ImapTransport;
+  /**
+   * D5: "smtp" richtet einen fehlgeschlagenen Versand-Zugang nach, ohne dass
+   * der Kunde das Gefuehl bekommt, sein ganzes Postfach neu verbinden zu
+   * muessen. Technisch ist es derselbe action=connect, der die bestehende
+   * Zeile aktualisiert - nur die Texte und der Einstieg sind andere.
+   */
+  mode?: "connect" | "smtp";
+  /** Pre-login gibt es keine ["me"]-Abfrage, die man invalidieren koennte. */
+  invalidateMe?: boolean;
 }) {
   const queryClient = useQueryClient();
+  const post = transport ?? postImapConnect;
+  const smtpMode = mode === "smtp";
 
   const [step, setStep] = useState<"provider" | "form" | "result">("provider");
   const [hint, setHint] = useState<string | null>(null);
@@ -281,8 +305,11 @@ export function ImapConnectDialog({
   useEffect(() => {
     resetAll(initialEmail);
     if (open && initialEmail) setStep("form");
+    // D5: beim Nachreichen des Versand-Zugangs stehen die Serverfelder offen -
+    // meistens ist genau der SMTP-Server der Grund, warum es nicht ging.
+    if (open && smtpMode) { setStep("form"); setManualOpen(true); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialEmail]);
+  }, [open, initialEmail, smtpMode]);
 
   const cfg = auto?.ok ? auto.config : null;
   const needsManual = auto != null && !auto.ok;
@@ -303,7 +330,7 @@ export function ImapConnectDialog({
     if (autoForEmail === value) return;
     setAutoBusy(true);
     setTopError(null);
-    const { status, data, networkError } = await postImapConnect({ action: "autoconfig", email: value });
+    const { status, data, networkError } = await post({ action: "autoconfig", email: value });
     setAutoBusy(false);
     setAutoForEmail(value);
 
@@ -357,7 +384,7 @@ export function ImapConnectDialog({
 
     setConnecting(true);
     setTopError(null);
-    const { status, data, networkError } = await postImapConnect(body);
+    const { status, data, networkError } = await post(body);
     setConnecting(false);
     // Hard Line: das Passwort verlässt den State, sobald die Antwort da ist.
     setPassword("");
@@ -374,8 +401,8 @@ export function ImapConnectDialog({
     setResult(data);
     setStep("result");
     if (data.saved) {
-      void queryClient.invalidateQueries({ queryKey: ["me"] });
-      toast.success(`Postfach ${addr} verbunden`);
+      if (invalidateMe) void queryClient.invalidateQueries({ queryKey: ["me"] });
+      toast.success(smtpMode ? `Versand für ${addr} gespeichert` : `Postfach ${addr} verbunden`);
     }
   };
 
@@ -390,11 +417,13 @@ export function ImapConnectDialog({
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-[15px]">
-            <Mail className="h-4 w-4 text-primary" /> Postfach verbinden
+            <Mail className="h-4 w-4 text-primary" />
+            {smtpMode ? "Versand einrichten" : "Postfach verbinden"}
           </DialogTitle>
           <DialogDescription className="text-[12.5px]">
-            UseEasy meldet sich mit den Zugangsdaten Ihres Postfachs an, so wie es ein
-            E-Mail-Programm tut. Wir lesen und entwerfen. Gesendet wird nichts ohne Ihre Freigabe.
+            {smtpMode
+              ? "Nur der Postausgang wird neu geprüft. Ihr Postfach bleibt verbunden, Empfang und Entwürfe laufen unverändert weiter."
+              : "UseEasy meldet sich mit den Zugangsdaten Ihres Postfachs an, so wie es ein E-Mail-Programm tut. Wir lesen und entwerfen. Gesendet wird nichts ohne Ihre Freigabe."}
           </DialogDescription>
         </DialogHeader>
 
@@ -575,18 +604,31 @@ export function ImapConnectDialog({
 
             {result.saved ? (
               <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
-                <p className="font-medium text-foreground">Das Postfach ist verbunden.</p>
+                <p className="font-medium text-foreground">
+                  {smtpMode ? "Der Versand ist eingerichtet." : "Das Postfach ist verbunden."}
+                </p>
                 <p className="mt-1">
                   UseEasy holt neue E-Mails alle zwei Minuten ab, sortiert sie in Ordner unterhalb
                   von „UE“ ein und legt Antwort-Entwürfe in Ihrem Entwürfe-Ordner ab. Die Ordner
                   entstehen beim ersten Mal von selbst. Versendet wird nichts ohne Ihre Freigabe.
                 </p>
-                {result.smtp?.ok === false ? (
+                {/* D5 (Briefing D): der Versand ist ab jetzt ein eigener Zustand. Solange
+                    der Autopilot in shadow oder assisted läuft, entstehen nur Entwürfe;
+                    sobald er wirklich sendet, geht das über genau diesen SMTP-Zugang. Wer
+                    das erst beim ersten autonomen Versand erfährt, erfährt es zu spät. */}
+                {result.smtp?.ok === true ? (
+                  <p className="mt-1.5 flex items-start gap-1.5 text-emerald-light">
+                    <Check className="mt-0.5 h-3 w-3 shrink-0" />
+                    Versand ist eingerichtet. Sobald Sie den Autopiloten auf automatisches
+                    Antworten stellen, gehen die Antworten über Ihren eigenen Postausgang raus
+                    und liegen danach in Ihrem Gesendet-Ordner.
+                  </p>
+                ) : (
                   <p className="mt-1.5">
                     Der Versand ist noch offen. Für den Empfang und die Entwürfe spielt das keine
-                    Rolle, Sie können es später nachholen.
+                    Rolle, Sie können es später nachholen, ohne das Postfach neu zu verbinden.
                   </p>
-                ) : null}
+                )}
               </div>
             ) : (
               <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">

@@ -12,6 +12,7 @@ import { Helmet } from "react-helmet-async";
 import { AlertTriangle, Check, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dot, type DotTone } from "@/components/ue/primitives";
+import { ImapConnectDialog, type ImapTransport } from "@/components/ImapMailboxConnectCard";
 import logo from "@/assets/useeasy-logo.jpg";
 
 
@@ -24,6 +25,7 @@ import logo from "@/assets/useeasy-logo.jpg";
  *   2) Branche/Pack auswählen (GET /v1/onboarding/packs, vorausgewählt aus Tenant-Domain)
  *   3) Auswahl speichern (POST /v1/onboarding/connect/set-domain {token, pack_key})
  *   4) Postfach verbinden — Redirect auf /v1/onboarding/connect/{google|outlook}/start?token=…
+ *      ODER (D4.1, 29.07.2026) IMAP direkt hier: POST /v1/onboarding/connect/imap
  *
  * PRE-LOGIN: keine Supabase-Auth, kein apiFetch — direkter fetch zur api.useeasy.ai.
  *
@@ -46,6 +48,43 @@ import logo from "@/assets/useeasy-logo.jpg";
  */
 
 const API_BASE = "https://api.useeasy.ai";
+
+/**
+ * D4.1 (Briefing D, 29.07.2026): IMAP direkt im Onboarding.
+ *
+ * Warum das hier stehen MUSS und nicht erst in der Konsole: IONOS hostet 34
+ * Prozent der deutschen Firmen-Postfaecher, Google 3,8 Prozent. Wer sich selbst
+ * registriert und bei IONOS liegt, kam auf dieser Seite bis heute nicht weiter
+ * und musste den Weg ueber Einstellungen, Integrationen finden. Das ist der
+ * falsche Trichter fuer die Mehrheit der Zielkunden.
+ *
+ * 🔴 HARD LINE: der Onboarding-Token steht in der Adresszeile dieser Seite (so
+ * ist sie gebaut), das Postfach-Passwort geht ausschliesslich im POST-Rumpf
+ * raus. Beides darf NIE in derselben URL landen, weil Query-Strings in
+ * Browser-Verlauf, Referrer und Gateway-Zugriffslogs stehen. Deshalb wandert
+ * hier auch der Token in den Rumpf: eine Anfrage, kein Query-String, fertig.
+ *
+ * Der Dialog ist DERSELBE wie in der Konsole (ImapConnectDialog). Nur der
+ * Transportweg wird ausgetauscht - eine zweite Kopie waere bei der ersten
+ * Aenderung an den Fehlertexten still auseinandergelaufen.
+ */
+export function makeOnboardingImapTransport(token: string): ImapTransport {
+  return async (body) => {
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/v1/onboarding/connect/imap`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...body, token }),
+      });
+    } catch {
+      return { status: 0, data: { ok: false }, networkError: true };
+    }
+    let data = {};
+    try { data = await res.json(); } catch { data = {}; }
+    return { status: res.status, data };
+  };
+}
 
 type ValidateResp = {
   ok: boolean;
@@ -86,6 +125,9 @@ export default function Connect() {
   // solange GMAIL_OAUTH_ENABLED=false (GCP-Billing-Sperre). Beim Laden ohne Token
   // proben (enabled = 400 token_required, disabled = 503); fail-open bei Netzfehlern.
   const [gmailAvailable, setGmailAvailable] = useState<boolean>(true);
+  // D4.1: IMAP-Dialog (derselbe wie in der Konsole, anderer Transportweg).
+  const [imapOpen, setImapOpen] = useState(false);
+  const imapTransport = useMemo(() => makeOnboardingImapTransport(token), [token]);
 
   // Beim Laden: Token validieren + Pack-Liste holen.
   useEffect(() => {
@@ -229,7 +271,9 @@ export default function Connect() {
     },
     {
       title: "Postfach verbinden",
-      hint: gmailAvailable ? "Gmail oder Outlook" : "derzeit nur Outlook",
+      // D4.1: IMAP ist ab jetzt ein gleichwertiger dritter Weg und steht deshalb
+      // auch in der Schritt-Uebersicht, nicht nur als Fussnote.
+      hint: gmailAvailable ? "Gmail, Outlook oder IMAP" : "Outlook oder IMAP",
       state: "open",
     },
   ];
@@ -241,12 +285,14 @@ export default function Connect() {
         {/* 29.07.2026: „keine Passwörter" ist seit dem IMAP-Pfad (Briefing D) nicht
             mehr wahr. IONOS, Strato, GMX und die anderen bieten kein OAuth an, dort
             speichert UseEasy ein verschlüsseltes Postfach-Passwort. Die Aussage gilt
-            nur noch für Google und Microsoft und steht deshalb nicht mehr pauschal da. */}
-        <meta name="description" content="Verbinde dein Gmail- oder Outlook-Postfach per OAuth mit UseEasy. Sichere Verbindung, jederzeit widerrufbar." />
+            nur noch für Google und Microsoft und steht deshalb nicht mehr pauschal da.
+            D4.1 (29.07.2026): seit IMAP hier wirklich angeboten wird, wäre „Gmail oder
+            Outlook" auch in der Beschreibung eine Untertreibung. */}
+        <meta name="description" content="Verbinde dein Postfach mit UseEasy: Gmail und Microsoft 365 per Anmeldung beim Anbieter, IONOS, Strato, GMX, WEB.DE, T-Online und jeder andere Anbieter per IMAP. Jederzeit widerrufbar." />
         <link rel="canonical" href="https://app.useeasy.ai/connect" />
         <meta property="og:url" content="https://app.useeasy.ai/connect" />
         <meta property="og:title" content="Postfach verbinden — UseEasy" />
-        <meta property="og:description" content="Verbinde dein Gmail- oder Outlook-Postfach per OAuth mit UseEasy." />
+        <meta property="og:description" content="Verbinde dein Postfach mit UseEasy: Gmail, Microsoft 365 oder jeder Anbieter mit IMAP." />
       </Helmet>
 
       <div className="mx-auto w-full max-w-lg">
@@ -390,15 +436,44 @@ export default function Connect() {
                     Google und Microsoft laufen über eine sichere OAuth-2.0-Anmeldung. Den Zugriff
                     können Sie jederzeit widerrufen.
                   </p>
-                  {/* Ehrlicher Hinweis statt einer Sackgasse: die 1-Klick-Anmeldung gibt es
-                      nur bei Google und Microsoft. Alle anderen Anbieter laufen über IMAP,
-                      und dieser Weg liegt heute in der Konsole (Briefing D, D4). Ein
-                      pre-login-IMAP-Schritt hier wäre ein eigener Backend-Endpunkt (D4.1). */}
-                  <p className="text-center text-[11.5px] leading-relaxed text-muted-foreground">
-                    Anderer Anbieter, etwa IONOS, Strato, GMX, WEB.DE oder T-Online? Diese
-                    Postfächer verbinden Sie nach dem Anmelden in der Konsole unter
-                    Einstellungen, Integrationen.
-                  </p>
+                  {/* D4.1 (Briefing D, 29.07.2026): kein Verweis mehr in die Konsole,
+                      sondern der Weg selbst. Die 1-Klick-Anmeldung gibt es nur bei Google
+                      und Microsoft; alle anderen Anbieter laufen über IMAP mit Adresse und
+                      Passwort, und das ist bei 34 Prozent IONOS gegen 3,8 Prozent Google
+                      nicht der Sonderfall, sondern der Regelfall. */}
+                  <div className="pt-2">
+                    <div className="mb-2 flex items-center gap-3">
+                      <span className="h-px flex-1 bg-border" aria-hidden />
+                      <span className="text-[11px] uppercase tracking-[0.06em] text-tx-weak">oder</span>
+                      <span className="h-px flex-1 bg-border" aria-hidden />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!selectedPack) {
+                          toast({
+                            title: "Bitte zuerst Branche wählen",
+                            description:
+                              "Damit UseEasy Ihre E-Mails korrekt kategorisiert, wählen Sie bitte Ihre Branche aus.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        void persistPackSelection(selectedPack).then((okPack) => {
+                          if (okPack) setImapOpen(true);
+                        });
+                      }}
+                      disabled={saving || !selectedPack}
+                      className="w-full rounded-[10px] border border-border bg-muted px-4 py-[11px] text-[13.5px] font-medium text-tx-secondary transition-colors hover:border-primary/40 hover:text-foreground disabled:opacity-60"
+                    >
+                      Anderer Anbieter verbinden (IONOS, Strato, GMX, WEB.DE, T-Online …)
+                    </button>
+                    <p className="mt-2 text-center text-[11.5px] leading-relaxed text-tx-weak">
+                      Diese Anbieter bieten keine 1-Klick-Anmeldung an. UseEasy meldet sich dort
+                      mit Adresse und Passwort Ihres Postfachs an, so wie ein E-Mail-Programm.
+                      Das Passwort wird verschlüsselt gespeichert und nie angezeigt.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -413,6 +488,16 @@ export default function Connect() {
           Bei Fragen: support@useeasy.ai · Verarbeitung in Frankfurt (eu-central-1)
         </p>
       </div>
+
+      {/* D4.1: derselbe Dialog wie in der Konsole, nur mit dem pre-login-Transportweg.
+          invalidateMe={false}, weil es hier noch gar keine ["me"]-Abfrage gibt. */}
+      <ImapConnectDialog
+        open={imapOpen}
+        onOpenChange={setImapOpen}
+        initialEmail={tenant?.email ?? ""}
+        transport={imapTransport}
+        invalidateMe={false}
+      />
     </main>
   );
 }

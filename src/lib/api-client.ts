@@ -313,6 +313,20 @@ export function fetchReconnectUrl(provider: "gmail" | "outlook"): Promise<Reconn
   return apiFetch<ReconnectUrlResponse>(`/reconnect/${provider}`);
 }
 
+// D5 (Briefing D, 29.07.2026): fuer IMAP-Zeilen liefert das Backend zusaetzlich
+// den Zustand des VERSANDS. Gmail und Outlook senden ueber dieselbe
+// OAuth-Verbindung wie sie lesen, dort gibt es keinen getrennten Zugang, der
+// ausfallen koennte - deshalb ist `send` nur bei provider === 'imap' gesetzt.
+export interface MailboxSendHealth {
+  configured: boolean;
+  verified: boolean;
+  last_error: string | null;
+  last_error_at: string | null;
+  last_ok_at: string | null;
+  provider_limit?: { limit: number; window_minutes: number; source: string };
+  message_de?: string;
+}
+
 export interface MailboxHealth {
   provider: string;
   email: string | null;
@@ -320,6 +334,7 @@ export interface MailboxHealth {
   last_success_at: string | null;
   last_poll_at: string | null;
   last_error: string | null;
+  send?: MailboxSendHealth;
 }
 
 // v4.103.0 — Mailbox-Governance: Kunden-Disconnect + 30-Tage-Swap-Lock.
