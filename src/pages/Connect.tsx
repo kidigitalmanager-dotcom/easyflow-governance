@@ -238,7 +238,11 @@ export default function Connect() {
     <main className="min-h-screen bg-background px-4 py-10 sm:py-14">
       <Helmet>
         <title>Postfach verbinden — UseEasy</title>
-        <meta name="description" content="Verbinde dein Gmail- oder Outlook-Postfach per OAuth mit UseEasy. Sichere Verbindung, keine Passwörter, jederzeit widerrufbar." />
+        {/* 29.07.2026: „keine Passwörter" ist seit dem IMAP-Pfad (Briefing D) nicht
+            mehr wahr. IONOS, Strato, GMX und die anderen bieten kein OAuth an, dort
+            speichert UseEasy ein verschlüsseltes Postfach-Passwort. Die Aussage gilt
+            nur noch für Google und Microsoft und steht deshalb nicht mehr pauschal da. */}
+        <meta name="description" content="Verbinde dein Gmail- oder Outlook-Postfach per OAuth mit UseEasy. Sichere Verbindung, jederzeit widerrufbar." />
         <link rel="canonical" href="https://app.useeasy.ai/connect" />
         <meta property="og:url" content="https://app.useeasy.ai/connect" />
         <meta property="og:title" content="Postfach verbinden — UseEasy" />
@@ -383,7 +387,17 @@ export default function Connect() {
                     </p>
                   )}
                   <p className="pt-1 text-center text-[11.5px] leading-relaxed text-tx-weak">
-                    Sichere OAuth 2.0-Verbindung. Keine Passwörter — Sie können den Zugriff jederzeit widerrufen.
+                    Google und Microsoft laufen über eine sichere OAuth-2.0-Anmeldung. Den Zugriff
+                    können Sie jederzeit widerrufen.
+                  </p>
+                  {/* Ehrlicher Hinweis statt einer Sackgasse: die 1-Klick-Anmeldung gibt es
+                      nur bei Google und Microsoft. Alle anderen Anbieter laufen über IMAP,
+                      und dieser Weg liegt heute in der Konsole (Briefing D, D4). Ein
+                      pre-login-IMAP-Schritt hier wäre ein eigener Backend-Endpunkt (D4.1). */}
+                  <p className="text-center text-[11.5px] leading-relaxed text-muted-foreground">
+                    Anderer Anbieter, etwa IONOS, Strato, GMX, WEB.DE oder T-Online? Diese
+                    Postfächer verbinden Sie nach dem Anmelden in der Konsole unter
+                    Einstellungen, Integrationen.
                   </p>
                 </div>
               </div>
