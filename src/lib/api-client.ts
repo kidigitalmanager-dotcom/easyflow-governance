@@ -2530,7 +2530,22 @@ export interface TenantSetup {
     website_url: string | null;
     available: boolean | null;
     state: "missing" | "not_scanned" | "running" | "failed" | "review_pending" | "done" | "unknown";
-    last_crawl: { upload_id: string; url: string | null; status: string | null; chunks: number; error: string | null; at: string | null } | null;
+    last_crawl: {
+      upload_id: string; url: string | null; status: string | null; chunks: number;
+      error: string | null; at: string | null;
+      /** v4.167.0: Ursache aus der Marke `[ursache|versuch]`. null bei aelteren Zeilen. */
+      cause?: string | null;
+      attempt?: number;
+    } | null;
+    /**
+     * v4.167.0 (Paket A): der zweite Anlauf nach einem gescheiterten Crawl.
+     * null = kein Fehlschlag oder Ursache unbekannt. `planned` heisst, dass WIR
+     * es noch einmal versuchen - dann bekommt der Kunde keinen Handlungsaufruf.
+     */
+    retry?: {
+      cause: string | null; attempt: number; planned: boolean;
+      not_before: string | null; final: boolean;
+    } | null;
     facts: { proposed: number; confirmed: number; rejected: number };
     categories_covered: string[];
     categories_missing: string[];

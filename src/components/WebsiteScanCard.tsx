@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Globe, Loader2, Check, AlertTriangle, ArrowRight } from "lucide-react";
+import { Globe, Loader2, Check, AlertTriangle, ArrowRight, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SectionCard } from "@/components/ue/primitives";
 import { useTenantSetupSelf, useSaveTenantSetupSelf } from "@/hooks/use-api";
+import { describeWebsiteScanFailure } from "@/lib/website-scan-failure";
 
 // ---------------------------------------------------------------------------
 // Website-Scan (Briefing C, Baustein 1 bis 5).
@@ -106,6 +107,9 @@ export default function WebsiteScanCard({ variant = "full" }: { variant?: "full"
   let tone: "action" | "running" | "ok" | "problem" = "ok";
   let headline = "";
   let body: React.ReactNode = null;
+  // Wir warten auf den zweiten Anlauf: das ist kein Problem und auch nichts,
+  // was gerade laeuft. Ein Kreisel, der sechs Stunden dreht, waere gelogen.
+  let waitingForRetry = false;
 
   if (!scan.available) {
     // Migration v1.44 fehlt: ehrlich benennen statt eine leere Karte zeigen.
@@ -134,20 +138,30 @@ export default function WebsiteScanCard({ variant = "full" }: { variant?: "full"
       </p>
     );
   } else if (scan.state === "failed") {
-    tone = "problem";
-    headline = "Wir konnten Ihre Website nicht lesen";
+    // Was hier steht, entscheidet website-scan-failure.ts an EINER Stelle aus
+    // `retry`. Bis v4.168.0 stand hier ein Zeichenvergleich auf der
+    // Fehlermeldung mit genau zwei Ausgaengen - beide meistens falsch, und der
+    // Kunde wurde selbst dann zur Adresspruefung aufgefordert, wenn wir es
+    // sechs Stunden spaeter ohnehin noch einmal versuchen.
+    const view = describeWebsiteScanFailure({
+      url: shownUrl,
+      retry: scan.retry ?? null,
+      cause: scan.last_crawl?.cause ?? null,
+      legacyError: scan.last_crawl?.error ?? null,
+    });
+    tone = view.kind === "waiting" ? "running" : "problem";
+    waitingForRetry = view.kind === "waiting";
+    headline = view.headline;
     body = (
       <div className="space-y-3">
         <p className="text-[12.5px] text-muted-foreground">
-          {scan.last_crawl?.error === "robots.txt disallows crawling"
-            ? `${shownUrl} erlaubt kein automatisches Lesen. Sie können die Angaben stattdessen unter „Jana-Wissen“ in Ruhe selbst eintragen.`
-            : `Unter ${shownUrl} war kein lesbarer Text zu finden. Das passiert bei Seiten, die ihren Inhalt erst im Browser aufbauen. Prüfen Sie die Adresse oder tragen Sie die Angaben unter „Jana-Wissen“ selbst ein.`}
+          {view.reason} {view.next}
         </p>
-        {editing ? inputRow : (
+        {view.showAddressAction && (editing ? inputRow : (
           <Button size="sm" variant="outline" onClick={() => { setEditing(true); setUrl(shownUrl ?? ""); }}>
             Andere Adresse eintragen
           </Button>
-        )}
+        ))}
       </div>
     );
   } else if (scan.state === "review_pending") {
@@ -198,9 +212,11 @@ export default function WebsiteScanCard({ variant = "full" }: { variant?: "full"
     );
   }
 
-  const Icon = tone === "running" ? Loader2 : tone === "problem" ? AlertTriangle : tone === "ok" ? Check : Globe;
+  const Icon = waitingForRetry ? Clock
+    : tone === "running" ? Loader2 : tone === "problem" ? AlertTriangle : tone === "ok" ? Check : Globe;
   const iconCls =
-    tone === "running" ? "h-4 w-4 animate-spin text-muted-foreground"
+    waitingForRetry ? "h-4 w-4 text-muted-foreground"
+    : tone === "running" ? "h-4 w-4 animate-spin text-muted-foreground"
     : tone === "problem" ? "h-4 w-4 text-amber"
     : tone === "ok" ? "h-4 w-4 text-emerald-light"
     : "h-4 w-4 text-primary";
