@@ -38,6 +38,7 @@ import AiTransparencyTab from "@/components/AiTransparencyTab";
 import AutoOfferSettingsCard from "@/components/AutoOfferSettingsCard"; // v4.130.0
 import DunningSettingsCard from "@/components/DunningSettingsCard"; // v4.134.0
 import PriceListsCard from "@/components/PriceListsCard"; // v4.130.0
+import TicketingWriteCard from "@/components/TicketingWriteCard"; // F1: schreibender Ticket-Zugriff
 
 /* Einstellungen — Redesign 27.07.2026.
 
@@ -649,6 +650,10 @@ export default function Einstellungen() {
           <ImapMailboxConnectCard />
           <MicrosoftIntegration />
           <HubSpotIntegration />
+          {/* F1 (29.07.2026): der schreibende Ticket-Zugriff. Bewusst direkt
+              unter HubSpot — dort liegt der OAuth-Zugang, auf den die Karte
+              verweist, wenn der Kunde HubSpot als Ticketsystem nutzt. */}
+          <TicketingWriteCard />
           <TelegramIntegration />
           <DhlTrackingCard />
           <AssistantConfigCard />

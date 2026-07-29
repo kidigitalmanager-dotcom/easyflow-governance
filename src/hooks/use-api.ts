@@ -1798,3 +1798,33 @@ export function useAssignLeadList() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lead-lists"] }),
   });
 }
+
+// ── Schreibender Ticket-Zugriff (Briefing B / Schnitt F1) ───────────────────
+import {
+  fetchTicketingReadiness,
+  saveTicketingSettings,
+} from "@/lib/api-client";
+import type { TicketingSettingsInput } from "@/lib/api-client";
+
+export function useTicketingReadiness() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["ticketing-readiness"],
+    queryFn: fetchTicketingReadiness,
+    enabled: !!session,
+    staleTime: 30_000,
+    // 403 heisst hier "kein Tarif fuer diesen Zugang". Das aendert sich nicht
+    // dadurch, dass man es dreimal fragt.
+    retry: (count, err) => ((err as { status?: number })?.status === 403 ? false : count < 2),
+  });
+}
+
+export function useSaveTicketingSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: TicketingSettingsInput) => saveTicketingSettings(input),
+    // Die Antwort traegt die frische Bereitschaft schon mit; die Invalidierung
+    // sorgt nur dafuer, dass ein zweiter Leser dieselbe Wahrheit sieht.
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["ticketing-readiness"] }); },
+  });
+}

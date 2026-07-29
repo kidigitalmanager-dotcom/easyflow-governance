@@ -69,8 +69,12 @@ async function apiPost<T>(path: string, body: Record<string, unknown>): Promise<
   const token = await getToken();
   if (!token) throw new ApiError(401, "Nicht authentifiziert");
 
-  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital") || path.startsWith("/v1/memory")
-    ? "https://api.useeasy.ai"   // knowledge + spreadsheet + capital + memory endpoints sit outside /dashboard
+  // 29.07.2026: /v1/ticketing ergaenzt (schreibender Ticket-Zugriff, Briefing B).
+  // Ohne den Eintrag greift der else-Zweig, und der baut aus API_BASE
+  // ".../v1/dashboard" die Basis ".../v1" -> URL ".../v1/v1/ticketing/..." (404).
+  // Derselbe Fehler wie bei /v1/tenant zwei Tage vorher.
+  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital") || path.startsWith("/v1/memory") || path.startsWith("/v1/ticketing")
+    ? "https://api.useeasy.ai"   // knowledge + spreadsheet + capital + memory + ticketing endpoints sit outside /dashboard
     : API_BASE.replace("/dashboard", "");
 
   const url = path.startsWith("/v1/") ? `${baseUrl}${path}` : `${API_BASE}${path}`;
@@ -136,7 +140,8 @@ async function apiGetV1<T>(path: string): Promise<T> {
 
   // 27.07.2026: /v1/tenant ergaenzt. Ohne den Eintrag baut die else-Zweig-Formel
   // API_BASE.replace("/dashboard","") = ".../v1" -> URL ".../v1/v1/tenant/..." (404).
-  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital") || path.startsWith("/v1/memory") || path.startsWith("/v1/tenant")
+  // 29.07.2026: /v1/ticketing ergaenzt — gleiche Falle wie /v1/tenant.
+  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital") || path.startsWith("/v1/memory") || path.startsWith("/v1/tenant") || path.startsWith("/v1/ticketing")
     ? "https://api.useeasy.ai"
     : API_BASE.replace("/dashboard", "");
   const url = path.startsWith("/v1/") ? `${baseUrl}${path}` : `${API_BASE}${path}`;
@@ -3893,3 +3898,75 @@ export const adminPutTenantJana = (tenantId: string, payload: { mode: string; sl
 
 export const fetchAdminTenantCalls = (tenantId: string) =>
   apiFetch<{ ok: boolean; calls: AgentCallItem[] }>(`/voice/agents/admin/tenants/${encodeURIComponent(tenantId)}/calls`);
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  Schreibender Ticket-Zugriff (Briefing B, api-router v4.180.0 / v4.181.0)
+//  Getrennt vom lesenden Kennzahlen-Pfad `/v1/capital/ticketing/*`: gleiche
+//  Domaene, anderer Zweck. Der hier legt Tickets an und kommentiert sie.
+// ══════════════════════════════════════════════════════════════════════════════
+
+export interface TicketingOperationState {
+  state: string;                        // yes | conditional | scope_missing | unknown
+  gemessen: boolean;                    // gemessen schlaegt behauptet
+  hinweis?: string | null;              // fertiger deutscher Satz vom Server
+  fehlende_berechtigung?: string | null; // Klartext-Name der fehlenden Berechtigung
+}
+
+export interface TicketingStage {
+  id: string;
+  label: string;
+  /** true = schliesst ab, false = offen, null = das System sagt es nicht. */
+  schliesst: boolean | null;
+}
+
+export interface TicketingPipeline {
+  id: string;
+  label: string;
+  stufen: TicketingStage[];
+}
+
+export interface TicketingReadiness {
+  ok: boolean;
+  provider: string | null;
+  tenant_id: string | null;
+  connected: boolean;
+  entitled: boolean;
+  operations: Record<string, TicketingOperationState>;
+  pipelines: TicketingPipeline[];
+  status_map: Record<string, { id: string; label: string } | null>;
+  /** Alle erklaerenden Saetze, fertig auf Deutsch. Werden woertlich angezeigt. */
+  hinweise: string[];
+  naechster_schritt: string | null;
+  hard_line: string;
+  pipeline_id?: string;
+  fehlende_berechtigungen?: string[];
+  /** Schritte, fuer die es keine eigene Sonde gibt (Connector 2). */
+  nicht_gemessen?: string[];
+  /** Bekannte Grenzen des Anbieters, ein Satz vom Server. */
+  grenzen?: string;
+  /** Stufen, deren Verhalten das Zielsystem nicht preisgibt. */
+  stufen_ohne_auskunft?: { id: string; label: string }[];
+}
+
+export interface TicketingSettingsInput {
+  provider: "hubspot" | "freshdesk";
+  enabled?: boolean;
+  default_pipeline?: string | null;
+  field_map?: Record<string, unknown> | null;
+  /** Nur Freshdesk. Geht hin und kommt nie zurueck. */
+  freshdesk?: { domain: string; api_key: string };
+}
+
+export interface TicketingSettingsResponse {
+  ok: boolean;
+  saved?: boolean;
+  readiness?: TicketingReadiness;
+  error?: string;
+  message_de?: string;
+}
+
+export const fetchTicketingReadiness = () =>
+  apiGetV1<TicketingReadiness>("/v1/ticketing/readiness");
+
+export const saveTicketingSettings = (input: TicketingSettingsInput) =>
+  apiPost<TicketingSettingsResponse>("/v1/ticketing/settings", input as unknown as Record<string, unknown>);
