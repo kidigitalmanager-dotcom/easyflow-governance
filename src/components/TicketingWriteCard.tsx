@@ -71,6 +71,10 @@ export function TicketingWriteCard() {
   const [apiKey, setApiKey] = useState("");
   const [zugangOffen, setZugangOffen] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
+  // 29.07. nach Leons Test: ohne diese Rueckmeldung sah ein erfolgreicher
+  // Speichervorgang aus wie ein toter Knopf — die Karte stand schon auf
+  // "bereit", also aenderte sich sichtbar nichts.
+  const [bestaetigung, setBestaetigung] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -95,11 +99,27 @@ export function TicketingWriteCard() {
   const r: TicketingReadiness = data;
   const s = summarize(r);
   const name = providerLabel(r.provider);
+  const hubspotSchonEingetragen = r.connected && r.provider === "hubspot";
+
+  // Eine Antwort, ein Umgang damit — fuer JEDEN Speicherweg. Vorher hatte nur
+  // der Freshdesk-Weg einen `onSuccess`; der HubSpot-Knopf schrieb still und
+  // liess das Formular offen stehen. Fuer den Kunden war das ein toter Knopf.
+  const nachSpeichern = (res: { ok?: boolean; message_de?: string } | undefined, gutText: string) => {
+    if (res && res.ok === false) {
+      setFehler(res.message_de || "Die Einstellung wurde nicht übernommen.");
+      setBestaetigung(null);
+      return;
+    }
+    setFehler(null);
+    setZugangOffen(false);
+    setBestaetigung(gutText);
+  };
 
   // Freshdesk-Zugang absenden. Der Schluessel geht hin und kommt nie zurueck —
   // die Antwort traegt nur die frische Bereitschaft.
   const zugangSpeichern = () => {
     setFehler(null);
+    setBestaetigung(null);
     const d = normalizeFreshdeskDomain(domain);
     if (!d.ok) {
       setFehler("Diese Adresse ergibt keine Freshdesk-Kennung. Erwartet wird etwa firma oder firma.freshdesk.com.");
@@ -117,8 +137,7 @@ export function TicketingWriteCard() {
           // ausging. Ein Feld, in dem er stehen bleibt, ist ein Feld, aus dem
           // ihn jemand mitliest.
           setApiKey("");
-          if (res && res.ok === false) setFehler(res.message_de || "Der Zugang wurde nicht übernommen.");
-          else { setZugangOffen(false); setFehler(null); }
+          nachSpeichern(res, "Freshdesk-Zugang gespeichert und geprüft.");
         },
         onError: () => {
           setApiKey("");
@@ -128,9 +147,16 @@ export function TicketingWriteCard() {
     );
   };
 
-  const hubspotAktivieren = () => {
+  // HubSpot braucht keinen Schluessel — der Zugang kommt aus der OAuth-Karte.
+  // Dieser Aufruf schreibt nur die Verbindungszeile und holt die Bereitschaft
+  // frisch. Er ist idempotent, taugt also auch als „nochmal nachsehen".
+  const hubspotEintragen = () => {
     setFehler(null);
+    setBestaetigung(null);
     speichern.mutate({ provider: "hubspot", enabled: true }, {
+      onSuccess: (res) => nachSpeichern(res, hubspotSchonEingetragen
+        ? "HubSpot neu geprüft."
+        : "HubSpot ist jetzt als Ticketsystem eingetragen."),
       onError: () => setFehler("Die Einstellung konnte nicht gespeichert werden."),
     });
   };
@@ -179,6 +205,15 @@ export function TicketingWriteCard() {
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
           <span>{r.hard_line}</span>
         </p>
+
+        {/* Rueckmeldung nach dem Speichern. Ohne sie sieht ein erfolgreicher
+            Klick auf einer Karte, die schon „bereit" meldet, nach nichts aus. */}
+        {bestaetigung ? (
+          <p className="flex items-start gap-1.5 text-[11.5px] leading-snug text-primary">
+            <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>{bestaetigung}</span>
+          </p>
+        ) : null}
 
         {/* ── Zugang hinterlegen ───────────────────────────────────────── */}
         {zeigeFormular ? (
@@ -248,13 +283,14 @@ export function TicketingWriteCard() {
             ) : (
               <div className="space-y-2">
                 <p className="text-[11.5px] leading-snug text-muted-foreground">
-                  HubSpot wird nicht über einen Schlüssel verbunden, sondern über die
-                  HubSpot-Karte in diesem Tab. Ist das erledigt, genügt hier ein Klick.
+                  {hubspotSchonEingetragen
+                    ? "HubSpot ist bereits als Ticketsystem eingetragen. Der Zugang selbst kommt aus der HubSpot-Karte in diesem Tab — hier lässt sich nur nachsehen, ob er noch trägt."
+                    : "HubSpot wird nicht über einen Schlüssel verbunden, sondern über die HubSpot-Karte in diesem Tab. Ist das erledigt, genügt hier ein Klick."}
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" onClick={hubspotAktivieren} disabled={laeuft}>
+                  <Button size="sm" onClick={hubspotEintragen} disabled={laeuft}>
                     {laeuft ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-                    HubSpot als Ticketsystem verwenden
+                    {hubspotSchonEingetragen ? "Verbindung neu prüfen" : "HubSpot als Ticketsystem verwenden"}
                   </Button>
                   {r.connected ? (
                     <Button size="sm" variant="ghost" onClick={() => { setZugangOffen(false); setFehler(null); }}>
@@ -355,12 +391,23 @@ export function TicketingWriteCard() {
         {/* ── Handlung ─────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-2">
           {r.connected && !zeigeFormular ? (
-            <Button size="sm" variant="outline" onClick={() => { setZugangOffen(true); setProvider((r.provider as Provider) || "freshdesk"); }}>
+            <Button size="sm" variant="outline" onClick={() => { setZugangOffen(true); setBestaetigung(null); setFehler(null); setProvider((r.provider as Provider) || "freshdesk"); }}>
               Zugang ersetzen
             </Button>
           ) : null}
           {s.aktion === "einschalten" ? (
-            <Button size="sm" onClick={() => speichern.mutate({ provider: (r.provider as Provider) || "hubspot", enabled: true })} disabled={laeuft}>
+            <Button
+              size="sm"
+              disabled={laeuft}
+              onClick={() => {
+                setFehler(null);
+                setBestaetigung(null);
+                speichern.mutate({ provider: (r.provider as Provider) || "hubspot", enabled: true }, {
+                  onSuccess: (res) => nachSpeichern(res, "Der schreibende Zugriff ist wieder eingeschaltet."),
+                  onError: () => setFehler("Die Einstellung konnte nicht gespeichert werden."),
+                });
+              }}
+            >
               {laeuft ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
               Wieder einschalten
             </Button>
