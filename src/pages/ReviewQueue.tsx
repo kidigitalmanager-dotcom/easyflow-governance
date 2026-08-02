@@ -32,15 +32,34 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ContactDossier } from "@/components/ContactDossier";
 import { PageHeader, SectionCard, Chip, EmptyState } from "@/components/ue/primitives";
+import { ApiError } from "@/lib/api-client"; // v4.187.0: 409-Block des Entwurf-Gates erkennen
 import type { RecentEmail } from "@/lib/api-client";
 
 const onErr = (e: unknown) => toast.error("Fehler: " + (e instanceof Error ? e.message : String(e)));
+
+/* v4.187.0 (Entwurf-Gate, Leons Microsoft-Fall vom 02.08.): Das Backend blockt
+   Automatenmails (noreply/Newsletter/system_notification) jetzt mit
+   409 automated_sender_no_reply + deutscher message_de, statt blind einen
+   Entwurf aus der falschen Rolle zu bauen. Dieser Block ist eine ERWARTETE
+   Antwort, kein Fehler — deshalb Info-Toast mit dem Backend-Text statt
+   "Fehler: automated_sender_no_reply". */
+const onGenerateErr = (e: unknown) => {
+  if (e instanceof ApiError && e.message === "automated_sender_no_reply") {
+    const p = e.payload as { message_de?: string } | null | undefined;
+    toast.info(
+      p?.message_de ||
+        "Diese E-Mail kommt von einem Automaten-Absender. Eine Antwort würde dort nicht gelesen, deshalb wird kein Entwurf erstellt.",
+    );
+    return;
+  }
+  onErr(e);
+};
 
 // On-demand-Entwurf (Thread + Excel-Live-Sync + Knowledge → Bedrock).
 function GenerateDraftButton({ eventId }: { eventId: string }) {
   const gen = useGenerateDraft();
   return (
-    <Button size="sm" variant="outline" disabled={gen.isPending} onClick={() => gen.mutate(eventId, { onError: onErr })}>
+    <Button size="sm" variant="outline" disabled={gen.isPending} onClick={() => gen.mutate(eventId, { onError: onGenerateErr })}>
       {gen.isPending ? (
         <>
           <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> {REVIEW.generatingDraft}

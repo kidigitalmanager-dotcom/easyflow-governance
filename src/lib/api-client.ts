@@ -95,7 +95,10 @@ async function apiPost<T>(path: string, body: Record<string, unknown>): Promise<
 
   const data = await res.json();
   if (!res.ok) {
-    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`);
+    // v4.187.0: Rumpf als payload mitgeben (traegt z. B. message_de bei
+    // erwarteten Blocks wie 409 automated_sender_no_reply) — additiv wie
+    // in apiFetch am 29.07.; error.message/error.status bleiben unveraendert.
+    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`, data);
   }
   return data;
 }
@@ -126,7 +129,10 @@ async function apiPatch<T>(path: string, body: Record<string, unknown>): Promise
 
   const data = await res.json();
   if (!res.ok) {
-    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`);
+    // v4.187.0: Rumpf als payload mitgeben (traegt z. B. message_de bei
+    // erwarteten Blocks wie 409 automated_sender_no_reply) — additiv wie
+    // in apiFetch am 29.07.; error.message/error.status bleiben unveraendert.
+    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`, data);
   }
   return data;
 }
@@ -157,7 +163,10 @@ async function apiGetV1<T>(path: string): Promise<T> {
 
   const data = await res.json();
   if (!res.ok) {
-    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`);
+    // v4.187.0: Rumpf als payload mitgeben (traegt z. B. message_de bei
+    // erwarteten Blocks wie 409 automated_sender_no_reply) — additiv wie
+    // in apiFetch am 29.07.; error.message/error.status bleiben unveraendert.
+    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`, data);
   }
   return data;
 }
@@ -178,7 +187,10 @@ async function apiDelete<T>(path: string): Promise<T> {
 
   const data = await res.json();
   if (!res.ok) {
-    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`);
+    // v4.187.0: Rumpf als payload mitgeben (traegt z. B. message_de bei
+    // erwarteten Blocks wie 409 automated_sender_no_reply) — additiv wie
+    // in apiFetch am 29.07.; error.message/error.status bleiben unveraendert.
+    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`, data);
   }
   return data;
 }
@@ -1596,7 +1608,10 @@ async function apiSend<T>(method: "PATCH" | "PUT", path: string, body: Record<st
 
   const data = await res.json();
   if (!res.ok) {
-    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`);
+    // v4.187.0: Rumpf als payload mitgeben (traegt z. B. message_de bei
+    // erwarteten Blocks wie 409 automated_sender_no_reply) — additiv wie
+    // in apiFetch am 29.07.; error.message/error.status bleiben unveraendert.
+    throw new ApiError(res.status, data.error || `API Fehler ${res.status}`, data);
   }
   return data;
 }
