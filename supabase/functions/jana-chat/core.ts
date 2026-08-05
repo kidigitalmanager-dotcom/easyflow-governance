@@ -357,7 +357,7 @@ export function contextForPrompt(ctx: JanaContext): Record<string, unknown> {
   };
 }
 
-export function buildChatPrompt(ctx: JanaContext, message: string, history: Array<{ role: string; content: string }> = []): string {
+export function buildChatPrompt(ctx: JanaContext, message: string, history: Array<{ role: string; content: string }> = [], productBlock?: string): string {
   const hist = (history ?? [])
     .slice(-6)
     .map((h) => `${h.role === "assistant" ? "Jana" : "Nutzer"}: ${redactPII(String(h.content ?? "")).slice(0, 600)}`)
@@ -368,6 +368,7 @@ export function buildChatPrompt(ctx: JanaContext, message: string, history: Arra
     "CONTEXT (die eigenen Signale des Kunden, PII-frei):",
     JSON.stringify(contextForPrompt(ctx)),
   ];
+  if (productBlock) { parts.push("", productBlock); }
   if (hist) { parts.push("", "BISHERIGER VERLAUF:", hist); }
   parts.push("", `FRAGE DES KUNDEN: ${redactPII(message).slice(0, 1200)}`, "", "Antworte jetzt als JSON:");
   return parts.join("\n");
@@ -472,7 +473,7 @@ export const DEFAULT_MODEL_ID = "eu.anthropic.claude-sonnet-4-5-20250929-v1:0";
 export const HAIKU_MODEL_ID = "eu.anthropic.claude-haiku-4-5-20251001-v1:0";
 export type Complexity = "simple" | "complex";
 // Marker fuer Mehrschritt-/Analyse-/Vergleichsfragen (DE + EN). Trifft einer zu -> komplex.
-const COMPLEX_RE = /\b(warum|weshalb|wieso|vergleich\w*|verglichen|versus|unterschied\w*|treiber|ursach\w*|grund|gr[\u00fcu]nde|zusammenhang|entwicklung|trend\w*|prognos\w*|erwart\w*|bedeut\w*|erkl[\u00e4a]r\w*|begr[\u00fcu]nd\w*|analys\w*|einbruch|gefallen|gesunken|gestiegen|ver[\u00e4a]ndert|schw[\u00e4a]chst\w*|st[\u00e4a]rkst\w*|gr[\u00f6o][\u00dfs]t\w*|niedrigst\w*|h[\u00f6o]chst\w*|ma[\u00dfs]nahm\w*|priorit\w*|risik\w*|divergenz|abweichung|why|compare|driver|reason|forecast|explain)\b/i;
+const COMPLEX_RE = /\b(warum|weshalb|wieso|vergleich\w*|verglichen|versus|unterschied\w*|treiber|ursach\w*|grund|gr[üu]nde|zusammenhang|entwicklung|trend\w*|prognos\w*|erwart\w*|bedeut\w*|erkl[äa]r\w*|begr[üu]nd\w*|analys\w*|einbruch|gefallen|gesunken|gestiegen|ver[äa]ndert|schw[äa]chst\w*|st[äa]rkst\w*|gr[öo][ßs]t\w*|niedrigst\w*|h[öo]chst\w*|ma[ßs]nahm\w*|priorit\w*|risik\w*|divergenz|abweichung|why|compare|driver|reason|forecast|explain)\b/i;
 // Serverseitige Komplexitaets-Klassifikation (deterministisch, KEIN LLM). NICHT vom Frontend steuerbar.
 export function classifyComplexity(message: string, opts?: { action?: string; historyLen?: number }): Complexity {
   if (opts?.action === "explain_divergence") return "complex";
@@ -535,6 +536,61 @@ function numOr(x: unknown, d: number): number { const n = numOrNull(x); return n
 function round2(x: number | null): number | null { return x == null ? null : Math.round(x * 100) / 100; }
 function stripSuffix(name: string): string { return String(name || "").replace(/\s*\([^)]*\)\s*$/, "").trim(); }
 function firstClause(measures: string | null | undefined): string | null { const m = (measures || "").trim(); if (!m) return null; const first = m.split(/[;.]/)[0].trim(); return first || m; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Diff D — Tenant-Wissensbasis (memory-engine Read-API): bestaetigte
+// Geschaeftsregeln (B3 governance.tenant_knowledge, status='confirmed') +
+// zitat-treue Doc-Auszuege (B5 RAG ueber governance.knowledge_base). REINE,
+// testbare Formatter; die HTTP-Reads liegen in index.ts (I/O). Beide Bloecke
+// werden dem Chat-Prompt als Zusatzkontext vorangestellt. Leere/kaputte
+// Eingabe -> leerer Block (nichts wird erfunden, kein Absturz).
+// ─────────────────────────────────────────────────────────────────────────────
+export type TenantFact = { category?: string | null; fact_text?: string | null };
+
+// Baut den verbindlichen Regel-/Stil-Block aus den bestaetigten Fakten
+// (GET /v1/memory/knowledge?status=confirmed -> facts[]). Leere/whitespace-Fakten
+// fallen raus, Deckel bei `max`. "" wenn keine gueltigen Fakten.
+export function formatConfirmedRulesBlock(facts: TenantFact[] | null | undefined, max = 40): string {
+  const lines: string[] = [];
+  for (const f of Array.isArray(facts) ? facts : []) {
+    const text = String(f?.fact_text ?? "").replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    const cat = String(f?.category ?? "").trim();
+    lines.push(cat ? `- [${cat}] ${text}` : `- ${text}`);
+    if (lines.length >= max) break;
+  }
+  if (!lines.length) return "";
+  return "BESTAETIGTE REGELN & STIL DES UNTERNEHMENS (verbindlich, vom Kunden bestaetigt - immer beruecksichtigen):\n" + lines.join("\n");
+}
+
+// Baut den zitat-treuen Auszugs-Block aus den RAG-Treffern
+// (GET /v1/memory/knowledge/search -> results[]). Jeder Auszug traegt seine
+// Quelle (source_label = "Titel #Abschnitt"); der Text wird defensiv gedeckelt.
+// Der Block-Kopf weist das LLM an, die Quelle im Antworttext als
+// [Quelle: <source_label>] zu nennen (Zitat-Treue wie im Draft-Pfad). "" wenn
+// keine Treffer.
+export type KbExcerpt = { source_label?: string | null; title?: string | null; chunk_index?: number | null; text?: string | null };
+export function formatKbExcerptsBlock(results: KbExcerpt[] | null | undefined, opts?: { max?: number; charCap?: number }): string {
+  const max = opts?.max ?? 6;
+  const charCap = opts?.charCap ?? 700;
+  const entries: string[] = [];
+  for (const r of Array.isArray(results) ? results : []) {
+    const text = String(r?.text ?? "").replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    const label = String(r?.source_label ?? "").trim()
+      || (String(r?.title ?? "").trim() ? `${String(r?.title).trim()} #${(Number(r?.chunk_index) || 0) + 1}` : "Dokument");
+    const excerpt = text.length > charCap ? text.slice(0, charCap).trim() + " ..." : text;
+    entries.push(`[Quelle: ${label}]\n${excerpt}`);
+    if (entries.length >= max) break;
+  }
+  if (!entries.length) return "";
+  return [
+    "BELEGTE AUSZUEGE AUS DEN EIGENEN DOKUMENTEN DES KUNDEN (zusaetzlich zu den CONTEXT-Signalen nutzbar):",
+    "Wenn du eine Information aus einem dieser Auszuege verwendest, nenne die Quelle im Antworttext woertlich als [Quelle: <Titel #Abschnitt>]. Nutze NUR, was hier steht; erfinde keine Dokumentinhalte.",
+    "",
+    entries.join("\n\n"),
+  ].join("\n");
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Investor Data-Room (M2) — Portfolio-Aggregation (deterministisch, testbar).

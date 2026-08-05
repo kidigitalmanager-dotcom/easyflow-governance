@@ -690,7 +690,10 @@ async function callJana(body: Record<string, unknown>): Promise<any> {
 }
 
 export function useJanaChat() {
-  return useMutation<JanaChatResponse, Error, { message: string; history?: { role: string; content: string }[]; mode?: "tenant" | "investor"; slug?: string; tenant_context?: { plan?: string | null; active_mailboxes?: number | null } }>({
+  // `entitlements` (Upsell-Schnitt 05.08.2026): roher Buchungsstand aus dem
+  // billing-summary-Cache, damit Jana nicht anbietet, was schon bezahlt ist.
+  // Die Edge-Function normalisiert defensiv, fehlende Felder sind erlaubt.
+  return useMutation<JanaChatResponse, Error, { message: string; history?: { role: string; content: string }[]; mode?: "tenant" | "investor"; slug?: string; tenant_context?: { plan?: string | null; active_mailboxes?: number | null; entitlements?: Record<string, unknown> | null } }>({
     mutationFn: (v) => callJana({
       action: "chat",
       message: v.message,

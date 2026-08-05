@@ -77,6 +77,19 @@ export const AREAS: Area[] = [
 export const COLLAPSE_KEY = "ue_sidebar_collapsed";
 
 /**
+ * Einklapp-Zustand der "Entdecken"-Gruppe (Upsell-Schnitt 05.08.2026).
+ *
+ * Eigener Schluessel, nicht COLLAPSE_KEY: wer die Seitenleiste offen haben will,
+ * aber die Produkthinweise nicht, soll das getrennt entscheiden koennen. Liegt
+ * pro Gerät im localStorage, genau wie COLLAPSE_KEY.
+ *
+ * Die Zuordnung Bereich → Produkt steht bewusst NICHT hier, sondern als `area`
+ * am Produkt selbst (src/lib/consoleCatalog.ts). Sonst muesste man ein neues
+ * Produkt an zwei Stellen eintragen und eine davon wuerde vergessen.
+ */
+export const DISCOVER_COLLAPSE_KEY = "ue_sidebar_discover_collapsed";
+
+/**
  * Aktiv-Erkennung. Nav-Ziele duerfen eine Query tragen (z.B.
  * /signale?sec=risk_shield) — dann muss auch die Query passen, sonst waeren
  * "Gesundheit" und "Fruehwarnung" gleichzeitig aktiv.

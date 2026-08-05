@@ -6,7 +6,8 @@ import { Sparkles, Send, ShieldCheck, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { renderRichText } from "@/lib/richtext";
 import { useJanaChat } from "@/hooks/use-capital";
-import { useMe } from "@/hooks/use-api";
+import { useMe, useBillingSummary } from "@/hooks/use-api";
+import { entitlementContext } from "@/lib/consoleCatalog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { CapAccount, JanaCitation, JanaDeepLink, JanaSuggestion } from "@/lib/capital";
 
@@ -46,6 +47,11 @@ export function JanaChat({ account, mode = "tenant" }: { account?: CapAccount | 
   const isInvestor = mode === "investor";
   const chat = useJanaChat();
   const me = useMe();
+  // Buchungsstand fuer die Produktfragen (Upsell-Schnitt 05.08.2026). Liest den
+  // bestehenden react-query-Cache "billing-summary" mit, den auch der Abo-Tab und
+  // die Seitenleiste benutzen: kein zusaetzlicher Request. Im Investor-Modus
+  // irrelevant und wird dort auch nicht mitgesendet.
+  const billing = useBillingSummary();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [input, setInput] = useState("");
@@ -80,7 +86,21 @@ export function JanaChat({ account, mode = "tenant" }: { account?: CapAccount | 
       return;
     }
     chat.mutate(
-      { message: q, history, ...(isInvestor ? { mode: "investor" as const, slug: account!.slug } : { tenant_context: { plan: me.data?.plan?.name ?? null, active_mailboxes: me.data?.plan?.active_mailboxes ?? null } }) },
+      {
+        message: q,
+        history,
+        ...(isInvestor
+          ? { mode: "investor" as const, slug: account!.slug }
+          : {
+            tenant_context: {
+              plan: me.data?.plan?.name ?? null,
+              active_mailboxes: me.data?.plan?.active_mailboxes ?? null,
+              // Damit Jana „was würde mir noch helfen?" ehrlich beantworten kann,
+              // statt Dinge anzubieten, die der Betrieb schon bezahlt.
+              entitlements: entitlementContext(billing.data?.entitlements),
+            },
+          }),
+      },
       {
         onSuccess: (r) => {
           let content = r.answer ?? "";

@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { LogOut, ChevronLeft, Shield } from "lucide-react";
-import { AREAS, COLLAPSE_KEY, areaForPath, isNavActive, type Area } from "@/lib/nav";
+import { LogOut, ChevronLeft, ChevronDown, ChevronRight, Shield, Plus } from "lucide-react";
+import { AREAS, COLLAPSE_KEY, DISCOVER_COLLAPSE_KEY, areaForPath, isNavActive, type Area } from "@/lib/nav";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { addonDeepLink, discoverForArea, priceLabel } from "@/lib/consoleCatalog";
+import { useBillingSummary } from "@/hooks/use-api";
 import { cn } from "@/lib/utils";
 import { planLabel } from "@/lib/api-client";
 import { DashboardTopBar } from "@/components/DashboardTopBar";
@@ -69,6 +73,31 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   const current = AREAS.find((a) => a.key === area) ?? AREAS[0];
+
+  /**
+   * "Entdecken" — was der Betrieb noch nicht hat (Upsell-Schnitt 05.08.2026).
+   *
+   * react-query cacht `billing-summary` unter einem Schluessel, den auch der
+   * Abo-Tab benutzt: kein zusaetzlicher Request, nur ein weiterer Leser. Solange
+   * die Zusammenfassung laedt, ist `entitlements` undefined und discoverForArea
+   * gibt eine leere Liste — es darf nichts aufblitzen und nichts faelschlich
+   * grau erscheinen, was der Kunde schon bezahlt.
+   */
+  const { data: billing } = useBillingSummary();
+  const discover = discoverForArea(current.key, billing?.entitlements);
+  const [discoverCollapsed, setDiscoverCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem(DISCOVER_COLLAPSE_KEY) === "1"; } catch { return false; }
+  });
+  const toggleDiscover = useCallback(() => {
+    setDiscoverCollapsed((c) => {
+      const next = !c;
+      try { localStorage.setItem(DISCOVER_COLLAPSE_KEY, next ? "1" : "0"); } catch { /* egal */ }
+      return next;
+    });
+  }, []);
+  // Welches "Was ist das?"-Fenster ist offen? Gesteuert, damit der Klick auf
+  // "Dazubuchen" es schliesst, bevor navigiert wird.
+  const [openInfo, setOpenInfo] = useState<string | null>(null);
 
   const tenant = me?.tenant;
   const setup = me?.setup;
@@ -217,6 +246,76 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <Shield className="h-4 w-4 flex-shrink-0" />
                 <span className="truncate">Admin</span>
               </NavLink>
+            )}
+
+            {/* ── Entdecken: Produkte, die dieser Betrieb noch nicht hat ──────
+                Gebucht = weg. Wer alles hat (Full-Stack, Team), sieht hier
+                nichts — es gibt dann nichts zu verkaufen. Kein Badge, keine
+                Farbe, kein Countdown: grau heisst grau. */}
+            {discover.length > 0 && (
+              <div className="mt-3 border-t border-sidebar-border pt-2.5">
+                <button
+                  type="button"
+                  onClick={toggleDiscover}
+                  aria-expanded={!discoverCollapsed}
+                  className="flex w-full items-center gap-1 px-3 pb-1 text-left text-muted-foreground transition-colors hover:text-sidebar-foreground"
+                >
+                  {discoverCollapsed
+                    ? <ChevronRight className="h-3 w-3 flex-shrink-0" />
+                    : <ChevronDown className="h-3 w-3 flex-shrink-0" />}
+                  <span className="ue-kicker">
+                    Entdecken{discoverCollapsed ? ` (${discover.length})` : ""}
+                  </span>
+                </button>
+
+                {!discoverCollapsed && discover.map((it) => (
+                  <Popover
+                    key={it.key}
+                    open={openInfo === it.key}
+                    onOpenChange={(o) => setOpenInfo(o ? it.key : null)}
+                  >
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        title={`${it.label} — noch nicht gebucht`}
+                        className={cn(
+                          "group relative flex w-full items-center gap-2.5 rounded-[10px] border border-transparent px-3 py-[7px]",
+                          "text-[13px] font-medium text-tx-faint transition-colors duration-150",
+                          "hover:bg-sidebar-accent hover:text-muted-foreground",
+                        )}
+                      >
+                        {it.icon && <it.icon className="h-4 w-4 flex-shrink-0" />}
+                        <span className="truncate">{it.label}</span>
+                        <Plus className="ml-auto h-3 w-3 flex-shrink-0 opacity-50" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="right" align="start" className="w-[320px] space-y-2.5">
+                      <div>
+                        <p className="text-sm font-semibold">{it.label}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {priceLabel(it.price_eur)} {it.unit.replace(/^\/\s*/, "pro ")} · netto
+                        </p>
+                      </div>
+                      <p className="text-[12.5px] leading-relaxed text-muted-foreground">{it.benefit}</p>
+                      {it.in_bundles && it.in_bundles.length > 0 && (
+                        <p className="text-[11px] leading-relaxed text-tx-faint">
+                          Ohne Aufpreis enthalten in: {it.in_bundles.join(", ")}.
+                        </p>
+                      )}
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={() => { setOpenInfo(null); navigate(addonDeepLink(it)); }}
+                      >
+                        Dazubuchen
+                      </Button>
+                      <p className="text-[10.5px] leading-relaxed text-tx-faint">
+                        Führt zu Abo &amp; Zusatz. Gekauft wird erst dort, nichts passiert automatisch.
+                      </p>
+                    </PopoverContent>
+                  </Popover>
+                ))}
+              </div>
             )}
           </div>
 

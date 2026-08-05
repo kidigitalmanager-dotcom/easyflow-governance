@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,33 +6,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CreditCard, Loader2, Plus, Minus, Check, Lock, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { useBillingSummary, useBillingCheckout, useBillingPortal } from "@/hooks/use-api";
-import { type BillingEntitlements, isUnlimitedLimit, planLabel } from "@/lib/api-client";
+import { isUnlimitedLimit, planLabel } from "@/lib/api-client";
+import { ADDONS, PLANS, gate, isBooked, priceLabel, type ConsoleItem } from "@/lib/consoleCatalog";
 
-type Req = "base" | "voice" | null;
-interface Item { key: string; label: string; price: string; unit: string; kind: "qty" | "flag" | "plan"; requires: Req; min?: number; max?: number; desc: string; }
-
-const PLANS: Item[] = [
-  { key: "ue2_email_starter_monthly", label: "E-Mail Starter", price: "49 €", unit: "/ Monat · Postfach", kind: "plan", requires: null, desc: "1 Postfach · 1.000 Mails/Monat" },
-  { key: "ue2_email_pro_monthly", label: "E-Mail Pro", price: "99 €", unit: "/ Monat · Postfach", kind: "plan", requires: null, desc: "1 Postfach · 3.000 Mails/Monat" },
-];
-const ADDONS: Item[] = [
-  { key: "ue2_extra_mailbox_monthly", label: "Zusatz-Postfach", price: "35 €", unit: "/ Monat · Postfach", kind: "qty", requires: "base", min: 1, max: 100, desc: "Weiteres Postfach am selben Workspace" },
-  { key: "ue2_volume_pack_monthly", label: "Volumen-Paket", price: "99 €", unit: "/ Monat", kind: "qty", requires: "base", min: 1, max: 10, desc: "+3.000 Mails/Monat je Paket" },
-  { key: "ue2_autopilot_monthly", label: "Autopilot", price: "99 €", unit: "/ Monat · Postfach", kind: "qty", requires: "base", min: 1, max: 100, desc: "Automatisches Senden mit Reife-Gate" },
-  { key: "ue2_erp_sync_monthly", label: "Excel-/ERP-Live-Sync", price: "79 €", unit: "/ Monat", kind: "qty", requires: "base", min: 1, max: 20, desc: "Excel/OneDrive/SharePoint — Live-Abgleich" },
-  { key: "ue2_branch_pack_monthly", label: "Branchen-Pack", price: "29 €", unit: "/ Monat", kind: "qty", requires: "base", min: 1, max: 13, desc: "Branchen-Labels + Antwort-Bausteine" },
-  { key: "ue2_copilot_seat_monthly", label: "Sales Co-Pilot", price: "39 €", unit: "/ Monat · Sitz", kind: "qty", requires: null, min: 1, max: 100, desc: "Live-Transkript + Einwand-Hilfen" },
-  { key: "ue2_voice_jana_monthly", label: "Voice „Jana“", price: "199 €", unit: "/ Monat", kind: "flag", requires: null, desc: "KI-Telefonassistenz · 1.000 Min inkl." },
-  { key: "ue2_phone_local_monthly", label: "Lokale DE-Nummer", price: "2,99 €", unit: "/ Monat", kind: "qty", requires: "voice", min: 1, max: 100, desc: "Festnetz-Nummer für Voice" },
-  { key: "ue2_phone_mobile_monthly", label: "Mobile DE-Nummer", price: "30 €", unit: "/ Monat", kind: "qty", requires: "voice", min: 1, max: 100, desc: "Mobile Nummer für Voice" },
-  // v4.190.0 — Website-Chat „Jana“: standalone buchbar (kein E-Mail-Plan nötig).
-  // Nach dem Kauf schaltet der Stripe-Webhook frei; eingerichtet wird unter
-  // Einstellungen → Integrationen (WebsiteChatCard: Snippet, Vorschau, Versand).
-  { key: "ue2_webchat_monthly", label: "Website-Chat „Jana“", price: "49 €", unit: "/ Monat", kind: "flag", requires: null, desc: "Chat-Widget auf Ihrer Website · Termine + Rückrufe als Aufträge · Einrichtung unter Integrationen" },
-];
-// v4.153.0 — die Plan-Namen liegen jetzt in api-client.ts (planLabel), damit
-// nicht vier Anzeigen vier Wahrheiten haben. Vorher stand die Karte nur hier,
-// und Seitenleiste plus Topbar zeigten den rohen Schluessel.
+/**
+ * Abo & Zusatz.
+ *
+ * Umbau 05.08.2026 (Upsell-Schnitt): die Preisliste liegt nicht mehr hier,
+ * sondern in `src/lib/consoleCatalog.ts` — die "Entdecken"-Gruppe der
+ * Seitenleiste braucht dieselben Daten, und zwei Listen waeren zwei Wahrheiten
+ * (im Gesamtsystem waere es die vierte: Server, Website, Console, Sidebar).
+ *
+ * Dabei sind vier Kacheln dazugekommen, die serverseitig laengst kaufbar waren
+ * und auf useeasy.ai/pricing verkauft werden, im Abo-Tab aber nie standen:
+ * Buchhaltung, Zeiterfassung, Beleg-Paket, Compliance-Radar. Neu ist damit auch
+ * die dritte Kauf-Bedingung `requires: "accounting"`.
+ */
 
 /**
  * Postfach-Zeile der Plan-Karte. (v4.153.0)
@@ -45,13 +34,6 @@ function mailboxText(d: { total_mailboxes: number; total_mailboxes_unlimited?: b
   return d.total_mailboxes === 1 ? "1 Postfach" : `${d.total_mailboxes} Postfächer`;
 }
 
-function hasBase(e?: BillingEntitlements | null) { return !!(e && e.base_plan); }
-function gate(item: Item, e?: BillingEntitlements | null): { ok: boolean; hint?: string } {
-  if (item.requires === "base") return hasBase(e) ? { ok: true } : { ok: false, hint: "Benötigt einen E-Mail-Plan" };
-  if (item.requires === "voice") return e?.voice_enabled ? { ok: true } : { ok: false, hint: "Benötigt Voice „Jana“" };
-  return { ok: true };
-}
-
 export default function BillingTab() {
   const { data, isLoading, refetch } = useBillingSummary();
   const checkout = useBillingCheckout();
@@ -60,6 +42,9 @@ export default function BillingTab() {
   const derived = data?.derived;
   const [qty, setQty] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  // Deep-Link aus der Seitenleiste: ?addon=<lookup_key> hebt die Kachel kurz hervor.
+  const [spotlight, setSpotlight] = useState<string | null>(null);
+  const tileRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
@@ -69,10 +54,29 @@ export default function BillingTab() {
     if (c) { p.delete("checkout"); const q = p.toString(); window.history.replaceState({}, "", window.location.pathname + (q ? "?" + q : "")); }
   }, [refetch]);
 
-  const qOf = (it: Item) => qty[it.key] ?? (it.min ?? 1);
-  const setQ = (it: Item, v: number) => setQty((s) => ({ ...s, [it.key]: Math.max(it.min ?? 1, Math.min(it.max ?? 999, v)) }));
+  /**
+   * ?addon=<lookup_key> — kommt aus der Entdecken-Gruppe der Seitenleiste.
+   *
+   * Gewartet wird auf das Ende von `isLoading`, weil die Kacheln vorher nicht im
+   * DOM stehen und scrollIntoView ins Leere liefe. Der Parameter bleibt bewusst
+   * in der URL: ein Reload soll dieselbe Kachel wieder zeigen.
+   */
+  useEffect(() => {
+    if (isLoading) return;
+    const want = new URLSearchParams(window.location.search).get("addon");
+    if (!want) return;
+    const el = tileRefs.current[want];
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setSpotlight(want);
+    const t = setTimeout(() => setSpotlight(null), 2400);
+    return () => clearTimeout(t);
+  }, [isLoading]);
 
-  async function buy(it: Item) {
+  const qOf = (it: ConsoleItem) => qty[it.key] ?? (it.min ?? 1);
+  const setQ = (it: ConsoleItem, v: number) => setQty((s) => ({ ...s, [it.key]: Math.max(it.min ?? 1, Math.min(it.max ?? 999, v)) }));
+
+  async function buy(it: ConsoleItem) {
     const g = gate(it, ent);
     if (!g.ok) { toast.error(g.hint ?? "Nicht verfügbar"); return; }
     setBusy(it.key);
@@ -85,8 +89,12 @@ export default function BillingTab() {
       refetch();
     } catch (e) {
       const m = (e as Error)?.message || "";
-      if (/requires_base/.test(m)) toast.error("Benötigt einen E-Mail-Plan.");
+      // Die Gruende kommen wortgleich aus billing_catalog.canPurchase():
+      // requires_base_plan | requires_voice | requires_accounting | unknown_key.
+      if (/requires_accounting/.test(m)) toast.error("Benötigt die Buchhaltung.");
+      else if (/requires_base/.test(m)) toast.error("Benötigt einen E-Mail-Plan.");
       else if (/requires_voice/.test(m)) toast.error("Benötigt Voice „Jana“.");
+      else if (/price_not_found/.test(m)) toast.error("Für diese Leistung ist gerade kein Preis hinterlegt. Bitte melde dich kurz bei uns.");
       else toast.error("Konnte nicht buchen: " + m);
     } finally { setBusy(null); }
   }
@@ -136,7 +144,7 @@ export default function BillingTab() {
               <div key={it.key} className="rounded-lg border p-4 flex flex-col">
                 <div className="flex items-baseline justify-between">
                   <span className="font-medium">{it.label}</span>
-                  <span className="text-sm"><b>{it.price}</b> <span className="text-muted-foreground">{it.unit}</span></span>
+                  <span className="text-sm"><b>{priceLabel(it.price_eur)}</b> <span className="text-muted-foreground">{it.unit}</span></span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{it.desc}</p>
                 <Button className="mt-3" size="sm" variant={active ? "secondary" : "default"} disabled={active || busy === it.key} onClick={() => buy(it)}>
@@ -154,15 +162,22 @@ export default function BillingTab() {
           {ADDONS.map((it) => {
             const g = gate(it, ent);
             const isFlag = it.kind === "flag";
-            const flagActive = isFlag && (
-              (it.key === "ue2_voice_jana_monthly" && !!ent?.voice_enabled) ||
-              (it.key === "ue2_webchat_monthly" && !!ent?.webchat_enabled)
-            );
+            // Flag-Leistungen sind entweder an oder aus. Mengen-Leistungen bleiben
+            // buchbar, auch wenn schon eine Einheit da ist (zweites Postfach).
+            const flagActive = isFlag && isBooked(it, ent);
+            const on = spotlight === it.key;
             return (
-              <div key={it.key} className="rounded-lg border p-4 flex flex-col">
+              <div
+                key={it.key}
+                ref={(el) => { tileRefs.current[it.key] = el; }}
+                className={
+                  "rounded-lg border p-4 flex flex-col transition-shadow duration-300"
+                  + (on ? " ring-2 ring-primary ring-offset-2 ring-offset-background" : "")
+                }
+              >
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="font-medium text-sm">{it.label}</span>
-                  <span className="text-xs whitespace-nowrap"><b>{it.price}</b> <span className="text-muted-foreground">{it.unit}</span></span>
+                  <span className="text-xs whitespace-nowrap"><b>{priceLabel(it.price_eur)}</b> <span className="text-muted-foreground">{it.unit}</span></span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 flex-1">{it.desc}</p>
                 {!g.ok && <div className="mt-2 inline-flex items-center gap-1 text-xs text-amber-600"><Lock className="w-3 h-3" /> {g.hint}</div>}

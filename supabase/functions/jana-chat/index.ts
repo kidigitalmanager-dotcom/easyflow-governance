@@ -4,8 +4,13 @@ import {
   validateAnswer, extractProxyText, resolveModelId, resolveMaxTokens,
   classifyComplexity, bedrockInvokeUrl, extractProxyModel,
   rankPortfolio, buildPortfolioPrompt, validatePortfolioAnswer,
+  redactPII, formatConfirmedRulesBlock, formatKbExcerptsBlock,
   type RawBundle,
 } from "./core.ts";
+import {
+  classifyChatIntent, detectBuyIntent, matchFeatureSuggestions, normalizeTenantCtx,
+  buildProductPrompt, validateProductAnswer, productReferenceBlock, scanUnverifiedPrices, buyDeepLinkFor,
+} from "./product_knowledge.ts";
 
 // ── jana-chat ────────────────────────────────────────────────────────────────
 // Read-only Chat + Wochen-Prioritaeten ueber die EIGENEN Capital-Signale des
@@ -132,6 +137,52 @@ async function callBedrock(url: string, token: string, prompt: string, model: st
   }
 }
 
+// ── Diff D: memory-engine Read-API (Kunden-Wissensbasis) ─────────────────────
+// Beide Reads sind best-effort + non-fatal (werfen NIE nach aussen): bei
+// Fehler/Timeout/404/kein-Ergebnis liefern sie einen leeren Block -> der Chat
+// laeuft wie ohne Wissensbasis weiter (heutiges Verhalten). Der Console-Token
+// des Users wird durchgereicht; den Governance-Tenant loest die memory-engine
+// selbst aus dem Token auf (Tenant NUR aus dem Token = Hard-Line, nie aus dem Body).
+const KB_FETCH_TIMEOUT_MS = 6000;
+
+async function fetchConfirmedRules(base: string, consoleToken: string): Promise<string> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), KB_FETCH_TIMEOUT_MS);
+  try {
+    const r = await fetch(`${base}/v1/memory/knowledge?status=confirmed&limit=40`, {
+      headers: { Authorization: `Bearer ${consoleToken}` }, signal: ctrl.signal,
+    });
+    if (!r.ok) return "";
+    const j = await r.json().catch(() => ({}));
+    return formatConfirmedRulesBlock((j as any)?.facts);
+  } catch (_) {
+    return "";
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// RAG-Suche ueber die EIGENEN Dokumente des Kunden. Die Frage wird VOR dem
+// Verlassen der Function redigiert (redactPII) und laengenbegrenzt.
+async function fetchKnowledgeExcerpts(base: string, consoleToken: string, message: string): Promise<string> {
+  const q = redactPII(String(message ?? "")).slice(0, 500).trim();
+  if (!q) return "";
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), KB_FETCH_TIMEOUT_MS);
+  try {
+    const r = await fetch(`${base}/v1/memory/knowledge/search?q=${encodeURIComponent(q)}&limit=6`, {
+      headers: { Authorization: `Bearer ${consoleToken}` }, signal: ctrl.signal,
+    });
+    if (!r.ok) return "";
+    const j = await r.json().catch(() => ({}));
+    return formatKbExcerptsBlock((j as any)?.results);
+  } catch (_) {
+    return "";
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ── Investor Data-Room (M2): Portfolio-Aggregat ueber das sichtbare Universe ──
 // Laedt nur die zum Ranking noetigen Aggregate (kein loadBundle je Firma) via
 // service_role, streng gescoped auf extern-ODER-freigegeben. Ranking + Zitat-
@@ -205,6 +256,46 @@ async function handleInvestorPortfolio(svc: any, body: any) {
   });
 }
 
+// ── Produktwissen (Jana erklaert Produkte/Preise/Bundles + schlaegt Features vor)
+// Reine Produktfragen brauchen KEIN cap_account -> auch fuer Tenants ohne
+// Capital-Konto beantwortbar. Deterministik-first: Katalog + Vorschlagsregeln
+// (product_knowledge.ts); das LLM formuliert nur und darf Preise NUR aus dem
+// Katalog nennen (Preis-/Zitat-Validierung verwirft Erfundenes). Kein Auto-Kauf;
+// bei Kaufabsicht liefert die Antwort einen Deep-Link auf den Abo-Tab.
+async function handleProductChat(body: any, message: string, mode: string): Promise<Response> {
+  const tenantCtx = normalizeTenantCtx(body.tenant_context);
+  const history = Array.isArray(body.history) ? body.history : [];
+  const buyIntent = detectBuyIntent(message);
+  const suggestions = matchFeatureSuggestions(message);
+  const base: Record<string, unknown> = {
+    ok: true, mode, action: "product", has_own_account: true,
+    suggestions: suggestions.map((s) => ({ key: s.key, name: s.name, price_eur: s.price_eur })),
+    // v24: bei genau EINEM erkannten Produkt zeigt der Link direkt auf dessen
+    // Kachel (?addon=<lookup_key>), sonst allgemein auf den Abo-Tab.
+    deep_link: buyIntent ? buyDeepLinkFor(suggestions) : null, generated_at: new Date().toISOString(),
+  };
+
+  const BEDROCK_URL = (Deno.env.get("USEEASY_BEDROCK_PROXY_URL") ?? "").trim();
+  const BEDROCK_TOKEN = (Deno.env.get("USEEASY_BEDROCK_AUTH_TOKEN") ?? Deno.env.get("USEEASY_SHARED_AUTH_TOKEN") ?? "").trim();
+  if (!BEDROCK_URL || !BEDROCK_TOKEN) return json(200, { ...base, llm_configured: false, answer: null, citations: [] });
+
+  const env = { JANA_CHAT_MODEL_ID: Deno.env.get("JANA_CHAT_MODEL_ID"), JANA_CHAT_MODEL: Deno.env.get("JANA_CHAT_MODEL"), JANA_CHAT_MAX_TOKENS: Deno.env.get("JANA_CHAT_MAX_TOKENS") };
+  const complexity = classifyComplexity(message, { historyLen: history.length });
+  const model = resolveModelId(env, complexity);
+  const maxTokens = resolveMaxTokens(env);
+  const prompt = buildProductPrompt(message, { tenantCtx, history, buyIntent, suggestions });
+
+  const llm = await callBedrock(BEDROCK_URL, BEDROCK_TOKEN, prompt, model, maxTokens);
+  if (!llm.ok) return json(200, { ...base, llm_configured: true, llm_error: llm.error, answer: null, citations: [] });
+
+  const v = validateProductAnswer(llm.text);
+  return json(200, {
+    ...base, llm_configured: true, answer: v.answer, citations: v.citations, used_data: v.used_data,
+    confidence: v.confidence, dropped_citations: v.dropped_citations, unverified_prices: v.unverified_prices,
+    parse_ok: v.parse_ok, model, complexity, proxy_model: llm.proxyModel ?? null,
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -228,6 +319,20 @@ Deno.serve(async (req) => {
       return await handleInvestorPortfolio(svc, body);
     }
 
+    // Produktwissen-Weiche: reine Produktfragen (kein Signalbezug) werden OHNE
+    // cap_account beantwortet -> auch fuer Tenants ohne Capital-Konto. Mischfragen
+    // (Produkt + Signal) laufen unten durch den Signal-Pfad und bekommen dort
+    // zusaetzlich den Produktkontext.
+    let chatIntent: { product: boolean; signal: boolean } | null = null;
+    if (action === "chat" && mode !== "investor") {
+      const msg0 = String(body.message ?? "").trim();
+      if (!msg0) return json(400, { error: "empty_message" });
+      chatIntent = classifyChatIntent(msg0);
+      if (chatIntent.product && !chatIntent.signal) {
+        return await handleProductChat(body, msg0, mode);
+      }
+    }
+
     // Konto aufloesen.
     let acc: any = null;
     if (mode === "investor") {
@@ -244,7 +349,13 @@ Deno.serve(async (req) => {
         .order("created_at", { ascending: true });
       if (error) return json(500, { error: error.message });
       acc = (data ?? [])[0];
-      if (!acc) return json(200, { ok: true, mode, has_own_account: false, owned_count: 0, account: null });
+      if (!acc) {
+        // Kein Capital-Konto: Produktfragen (auch Mischfragen) trotzdem beantworten.
+        if (action === "chat" && chatIntent?.product) {
+          return await handleProductChat(body, String(body.message ?? "").trim(), mode);
+        }
+        return json(200, { ok: true, mode, has_own_account: false, owned_count: 0, account: null });
+      }
     }
 
     const bundle = await loadBundle(svc, acc);
@@ -278,17 +389,44 @@ Deno.serve(async (req) => {
     const complexity = classifyComplexity(message, { action, historyLen: history.length });
     const model = resolveModelId(env, complexity);
     const maxTokens = resolveMaxTokens(env);
-    const prompt = action === "explain_divergence" ? buildExplainDivergencePrompt(ctx) : buildChatPrompt(ctx, message, history);
+    // Mischfrage (Produkt + Signal): Produktkontext zusaetzlich in den Signal-Prompt
+    // einhaengen. Signal-only bleibt byte-identisch (productBlock === undefined).
+    const isMixedProduct = action === "chat" && !!chatIntent?.product && !!chatIntent?.signal;
+    const productBlock0 = isMixedProduct ? productReferenceBlock(message, undefined, normalizeTenantCtx(body.tenant_context)) : undefined;
+    // Diff D (2026-07-11): Kunden-Wissensbasis aus der memory-engine Read-API dem
+    // Chat-Prompt voranstellen. Intent-Gate: nur dieser Signal-/Allgemein-Pfad;
+    // reine Produktfragen liefen oben schon via handleProductChat und brauchen
+    // kein Kunden-RAG. Beides best-effort/non-fatal + PARALLEL:
+    //   (a) GET /v1/memory/knowledge?status=confirmed  -> facts[] (bestaetigte Regeln)
+    //   (b) GET /v1/memory/knowledge/search?q=<redigiert> -> results[] (zitat-treue Auszuege)
+    // Console-Token wird durchgereicht; die memory-engine loest den Governance-
+    // Tenant selbst aus dem Token auf. Fehler/404/kein Ergebnis -> kein Block
+    // (heutiges Verhalten). redactPII vor dem LLM unberuehrt.
+    let rulesBlock = "", kbBlock = "";
+    if (action === "chat") {
+      const kbBase = (Deno.env.get("USEEASY_API_BASE") ?? "https://api.useeasy.ai").trim();
+      const [rulesRes, kbRes] = await Promise.allSettled([
+        fetchConfirmedRules(kbBase, consoleToken),
+        fetchKnowledgeExcerpts(kbBase, consoleToken, message),
+      ]);
+      rulesBlock = rulesRes.status === "fulfilled" ? rulesRes.value : "";
+      kbBlock = kbRes.status === "fulfilled" ? kbRes.value : "";
+    }
+    const productBlock = [rulesBlock, kbBlock, productBlock0].filter(Boolean).join("\n\n") || undefined;
+    const prompt = action === "explain_divergence" ? buildExplainDivergencePrompt(ctx) : buildChatPrompt(ctx, message, history, productBlock);
 
     const llm = await callBedrock(BEDROCK_URL, BEDROCK_TOKEN, prompt, model, maxTokens);
     if (!llm.ok) return json(200, { ok: true, mode, has_own_account: true, account: accountOut, llm_configured: true, llm_error: llm.error, answer: null, citations: [], latest_period: ctx.account.latest_period });
 
     const v = validateAnswer(llm.text, ctx);
+    const productExtra = isMixedProduct
+      ? { suggestions: matchFeatureSuggestions(message).map((s) => ({ key: s.key, name: s.name, price_eur: s.price_eur })), deep_link: detectBuyIntent(message) ? buyDeepLinkFor(matchFeatureSuggestions(message)) : null, unverified_prices: scanUnverifiedPrices(v.answer) }
+      : {};
     return json(200, {
       ok: true, mode, action, has_own_account: true, account: accountOut, llm_configured: true,
       answer: v.answer, citations: v.citations, used_data: v.used_data, confidence: v.confidence,
       dropped_citations: v.dropped_citations, parse_ok: v.parse_ok, model, complexity, proxy_model: llm.proxyModel ?? null,
-      latest_period: ctx.account.latest_period, generated_at: new Date().toISOString(),
+      latest_period: ctx.account.latest_period, generated_at: new Date().toISOString(), ...productExtra,
     });
   } catch (e) {
     return json(500, { error: String(e) });
