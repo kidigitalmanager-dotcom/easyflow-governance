@@ -17,9 +17,10 @@
 // der geoeffnete Bereich teil- und wiederherstellbar.
 // -----------------------------------------------------------------------------
 import { useSearchParams } from "react-router-dom";
-import { Users, PhoneCall, ShieldCheck, Rocket, Bot, ListChecks, ChevronRight } from "lucide-react";
+import { Users, PhoneCall, ShieldCheck, Rocket, Bot, ListChecks, ChevronRight, BookOpenCheck } from "lucide-react";
 import VoiceRepsTab from "@/components/VoiceRepsTab";
 import CoPilotRepsTab from "@/components/CoPilotRepsTab";
+import CoPilotScriptsTab from "@/components/CoPilotScriptsTab";
 import SalesCallsAuditTab from "@/components/SalesCallsAuditTab";
 import RecordingConsentTab from "@/components/RecordingConsentTab";
 import VoiceAgentsTab from "@/components/VoiceAgentsTab";
@@ -32,8 +33,8 @@ import { VoiceReadinessCard } from "@/components/voice/VoiceReadinessCard";
 import { VoiceShadowCard } from "@/components/voice/VoiceShadowCard";
 import { cn } from "@/lib/utils";
 
-type AreaKey = "reps" | "calls" | "consent" | "copilot" | "agents" | "leads";
-const AREAS: AreaKey[] = ["reps", "calls", "consent", "copilot", "agents", "leads"];
+type AreaKey = "reps" | "calls" | "consent" | "copilot" | "scripts" | "agents" | "leads";
+const AREAS: AreaKey[] = ["reps", "calls", "consent", "copilot", "scripts", "agents", "leads"];
 const isArea = (v: string | null): v is AreaKey => !!v && (AREAS as string[]).includes(v);
 
 /** Zustand einer Kachel — bewusst knapp, immer aus echten Daten. */
@@ -139,6 +140,10 @@ export default function VoiceCalls() {
       description: "Der Gesprächs-Assistent am Bildschirm deiner Vertriebler.",
     },
     {
+      key: "scripts", name: "Skripte & Einwände", icon: BookOpenCheck, state: copilotState, action: "Skripte verwalten",
+      description: "Skripte und Einwände zentral pflegen, an Vertriebler geben und sehen, womit sie wirklich telefonieren.",
+    },
+    {
       key: "agents", name: "KI-Agenten", icon: Bot, state: agentsState, action: "Agenten öffnen",
       description: "Telefon-Assistent für eingehende Anrufe und Janas Rückrufe.",
     },
@@ -152,7 +157,7 @@ export default function VoiceCalls() {
 
   // Statische Klassennamen: Tailwind scannt den Quelltext, ein
   // `stagger-${i}` waere im Build weggeputzt worden.
-  const STAGGER = ["stagger-1", "stagger-2", "stagger-3", "stagger-4", "stagger-5", "stagger-6"];
+  const STAGGER = ["stagger-1", "stagger-2", "stagger-3", "stagger-4", "stagger-5", "stagger-6", "stagger-6"];
 
   return (
     <div className="space-y-6">
@@ -221,6 +226,7 @@ export default function VoiceCalls() {
         {tab === "calls" && <SalesCallsAuditTab />}
         {tab === "consent" && <RecordingConsentTab />}
         {tab === "copilot" && <CoPilotRepsTab />}
+        {tab === "scripts" && <CoPilotScriptsTab />}
         {tab === "agents" && <VoiceAgentsTab />}
         {tab === "leads" && <LeadUploadTab />}
       </div>

@@ -2980,6 +2980,159 @@ export const redeployCopilotVertriebler = (vId: string) =>
 export const deleteCopilotVertriebler = (vId: string) =>
   copilotFetch<{ ok: boolean }>(`/me/vertriebler/${encodeURIComponent(vId)}`, { method: "DELETE" });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Co-Pilot Skript- und Einwand-Verwaltung (leads-sync v1.20.0)
+// Backend: EINE gesammelte Route-Familie /v1/copilot/scripts/* (das Gateway war
+// bei 293/300 Routen — deshalb ein greedy-Eintrag statt fuenf einzelnen).
+// Auth = derselbe Supabase-Bearer wie bei /v1/admin/me/vertriebler.
+// 401 hier bedeutet wie dort NICHT "ausgeloggt", sondern haeufig "kein
+// Co-Pilot-Workspace verknuepft" — deshalb kein signOut.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const COPILOT_SCRIPTS_BASE = "https://api.useeasy.ai/v1/copilot/scripts";
+
+export interface ScriptPhase {
+  id: string;
+  label: string;
+  text: string;
+  goal: string;
+  next: string;
+}
+
+export interface ObjectionItem {
+  key: string;
+  hotkey: string;
+  label: string;
+  response: string;
+}
+
+export interface LibraryMeta {
+  source?: string;
+  source_file?: string;
+  created_at?: string;
+  updated_at?: string;
+  updated_by?: string;
+}
+
+export interface LibraryScript {
+  id: string;
+  name: string;
+  scenario?: { vertical?: string; type?: string };
+  phases: ScriptPhase[];
+  meta?: LibraryMeta;
+}
+
+export interface LibraryObjectionSet {
+  id: string;
+  name: string;
+  script_id?: string;
+  objections: ObjectionItem[];
+  meta?: LibraryMeta;
+}
+
+export interface ScriptLibraryResponse {
+  ok: boolean;
+  scripts: { library: LibraryScript[]; active_id: string | null };
+  objections: { library: LibraryObjectionSet[]; active_id: string | null };
+  updated_at?: string | null;
+  updated_by?: string | null;
+}
+
+export interface RepScriptRow {
+  id: string;
+  name: string;
+  phases: number;
+  empty_phases: number;
+  scenario?: { vertical?: string; type?: string };
+  from_library: boolean;
+  source: string;
+}
+
+export interface RepObjectionRow {
+  id: string;
+  name: string;
+  count: number;
+  script_id: string;
+  from_library: boolean;
+  source: string;
+}
+
+export interface ScriptOverviewRep {
+  client_id: string;
+  display_name: string;
+  status: string;
+  has_config: boolean;
+  updated_at: string | null;
+  updated_by: string | null;
+  active_script_id: string | null;
+  active_objection_id: string | null;
+  scripts: RepScriptRow[];
+  objections: RepObjectionRow[];
+}
+
+export interface ScriptOverviewResponse {
+  ok: boolean;
+  reps: ScriptOverviewRep[];
+  library_script_ids: string[];
+  library_objection_ids: string[];
+}
+
+export interface AssignResult {
+  client_id: string;
+  ok: boolean;
+  error: string | null;
+  active_script_id: string | null;
+  active_objection_id: string | null;
+  scripts: number;
+  objections: number;
+}
+
+export interface ParseResponse {
+  ok: boolean;
+  name: string;
+  phases: ScriptPhase[];
+  truncated?: boolean;
+}
+
+async function scriptsFetch<T>(
+  path: string,
+  opts: { method?: string; body?: Record<string, unknown> } = {},
+): Promise<T> {
+  const token = await getToken();
+  if (!token) throw new ApiError(401, "Nicht authentifiziert");
+  const res = await fetch(`${COPILOT_SCRIPTS_BASE}${path}`, {
+    method: opts.method ?? "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(opts.body ? { "Content-Type": "application/json" } : {}),
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  let data: { error?: string } | null = null;
+  try { data = await res.json(); } catch { /* leere Antwort */ }
+  if (!res.ok) throw new ApiError(res.status, data?.error || `API Fehler ${res.status}`);
+  return data as T;
+}
+
+export const fetchScriptLibrary = () =>
+  scriptsFetch<ScriptLibraryResponse>("/library");
+
+export const saveScriptLibrary = (body: Record<string, unknown>) =>
+  scriptsFetch<ScriptLibraryResponse>("/library", { method: "PUT", body });
+
+export const fetchScriptOverview = () =>
+  scriptsFetch<ScriptOverviewResponse>("/overview");
+
+export const assignScripts = (body: {
+  rep_ids: string[];
+  script_ids?: string[];
+  objection_ids?: string[];
+  activate?: boolean;
+}) => scriptsFetch<{ ok: boolean; activated: boolean; results: AssignResult[] }>("/assign", { method: "POST", body });
+
+export const parseScriptText = (text: string, name?: string) =>
+  scriptsFetch<ParseResponse>("/parse", { method: "POST", body: { text, name } });
+
 // ── v4.61.0 Billing (In-Console-Kauf) — /v1/billing/* liegt außerhalb /dashboard ──
 export interface BillingEntitlements {
   base_plan: string | null;
