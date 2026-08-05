@@ -66,6 +66,30 @@ function Badge({ tone, children }: { tone: "lib" | "own" | "active" | "warn"; ch
   );
 }
 
+/**
+ * Langes Dokument in Abschnitte schneiden.
+ *
+ * 🔴 Warum: leads-sync hat 30 s Lambda-Timeout und das API-Gateway schneidet dort
+ * ebenfalls ab. Ein einzelner Aufruf ueber ein 11-Seiten-PDF lief am 05.08. genau
+ * hinein — im Browser kam ein nackter 503 an. Zwei kurze Aufrufe sind schneller
+ * als einer langer und liefern eine benennbare Fehlerursache.
+ * Geschnitten wird an Absatzgrenzen, damit keine Phase mittendrin zerreisst.
+ */
+const PARSE_CHUNK_CHARS = 20000;
+function splitForParse(text: string): string[] {
+  const t = text.trim();
+  if (t.length <= PARSE_CHUNK_CHARS) return [t];
+  const paras = t.split(/\n\s*\n/);
+  const out: string[] = [];
+  let cur = "";
+  for (const p of paras) {
+    if (cur && (cur.length + p.length + 2) > PARSE_CHUNK_CHARS) { out.push(cur); cur = p; }
+    else cur = cur ? `${cur}\n\n${p}` : p;
+  }
+  if (cur.trim()) out.push(cur);
+  return out.length ? out : [t.slice(0, PARSE_CHUNK_CHARS)];
+}
+
 /** Erkennt, ob eine hochgeladene JSON-Datei ein Skript oder ein Einwand-Satz ist. */
 function sniffKind(rows: unknown): Kind | null {
   if (!Array.isArray(rows) || !rows.length) return null;
@@ -141,15 +165,27 @@ export default function CoPilotScriptsTab() {
         if (!ex.text || ex.text.trim().length < 200) {
           throw new Error("Aus dem PDF kam kaum Text. Ist es ein Scan? Dann bitte als JSON hochladen.");
         }
-        setBusy("KI zerlegt das Skript in Phasen…");
-        const parsed = await parseScriptText(ex.text, file.name.replace(/\.pdf$/i, ""));
-        setPreview({ name: parsed.name, phases: parsed.phases, file: file.name });
+        const chunks = splitForParse(ex.text);
+        const baseName = file.name.replace(/\.pdf$/i, "");
+        const collected: ScriptPhase[] = [];
+        for (let i = 0; i < chunks.length; i++) {
+          setBusy(chunks.length > 1
+            ? `KI zerlegt Abschnitt ${i + 1} von ${chunks.length}…`
+            : "KI zerlegt das Skript in Phasen…");
+          const parsed = await parseScriptText(chunks[i], baseName, i, chunks.length);
+          collected.push(...parsed.phases);
+        }
+        if (!collected.length) throw new Error("Es kamen keine Phasen zurück.");
+        // IDs ueber alle Abschnitte hinweg eindeutig halten.
+        const phases = collected.map((p, i) => ({ ...p, id: `phase_${i}` }));
+        setPreview({ name: baseName, phases, file: file.name });
       } else {
         throw new Error("Bitte eine .json- oder .pdf-Datei wählen.");
       }
     } catch (e) {
       const msg = e instanceof ApiError
-        ? (e.message === "ai_unavailable" ? "Die KI-Umwandlung ist gerade nicht erreichbar. Du kannst das Skript als JSON hochladen."
+        ? (e.message === "ai_timeout" ? "Die Umwandlung hat zu lange gedauert. Versuch es nochmal — oder lade das Skript als JSON hoch."
+          : e.message === "ai_unavailable" ? "Die KI-Umwandlung ist gerade nicht erreichbar. Du kannst das Skript als JSON hochladen."
           : e.message === "parse_failed" ? "Aus dem PDF ließen sich keine Phasen bilden. Bitte als JSON hochladen."
           : e.message)
         : (e instanceof Error ? e.message : "Unbekannter Fehler");

@@ -3130,8 +3130,8 @@ export const assignScripts = (body: {
   activate?: boolean;
 }) => scriptsFetch<{ ok: boolean; activated: boolean; results: AssignResult[] }>("/assign", { method: "POST", body });
 
-export const parseScriptText = (text: string, name?: string) =>
-  scriptsFetch<ParseResponse>("/parse", { method: "POST", body: { text, name } });
+export const parseScriptText = (text: string, name?: string, part?: number, parts?: number) =>
+  scriptsFetch<ParseResponse>("/parse", { method: "POST", body: { text, name, part, parts } });
 
 // ── v4.61.0 Billing (In-Console-Kauf) — /v1/billing/* liegt außerhalb /dashboard ──
 export interface BillingEntitlements {
