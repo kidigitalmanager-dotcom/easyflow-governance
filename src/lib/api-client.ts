@@ -2996,6 +2996,8 @@ export interface BillingEntitlements {
   time_tracking_enabled?: boolean;
   doc_quota?: number;
   doc_packs?: number;
+  // v4.190.0 — Website-Chat „Jana“ (ue2_webchat), Selfserve-Karte unter Integrationen.
+  webchat_enabled?: boolean;
 }
 export interface BillingSummaryResponse { ok: boolean; entitlements: BillingEntitlements; derived: { total_mailboxes: number; total_mailboxes_unlimited?: boolean; mail_quota_total: number }; }
 export interface BillingCheckoutResponse { ok: boolean; mode?: "checkout" | "subscription_updated" | "plan_changed"; url?: string; subscription?: string; error?: string; reason?: string; }

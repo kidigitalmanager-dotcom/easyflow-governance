@@ -25,6 +25,10 @@ const ADDONS: Item[] = [
   { key: "ue2_voice_jana_monthly", label: "Voice „Jana“", price: "199 €", unit: "/ Monat", kind: "flag", requires: null, desc: "KI-Telefonassistenz · 1.000 Min inkl." },
   { key: "ue2_phone_local_monthly", label: "Lokale DE-Nummer", price: "2,99 €", unit: "/ Monat", kind: "qty", requires: "voice", min: 1, max: 100, desc: "Festnetz-Nummer für Voice" },
   { key: "ue2_phone_mobile_monthly", label: "Mobile DE-Nummer", price: "30 €", unit: "/ Monat", kind: "qty", requires: "voice", min: 1, max: 100, desc: "Mobile Nummer für Voice" },
+  // v4.190.0 — Website-Chat „Jana“: standalone buchbar (kein E-Mail-Plan nötig).
+  // Nach dem Kauf schaltet der Stripe-Webhook frei; eingerichtet wird unter
+  // Einstellungen → Integrationen (WebsiteChatCard: Snippet, Vorschau, Versand).
+  { key: "ue2_webchat_monthly", label: "Website-Chat „Jana“", price: "49 €", unit: "/ Monat", kind: "flag", requires: null, desc: "Chat-Widget auf Ihrer Website · Termine + Rückrufe als Aufträge · Einrichtung unter Integrationen" },
 ];
 // v4.153.0 — die Plan-Namen liegen jetzt in api-client.ts (planLabel), damit
 // nicht vier Anzeigen vier Wahrheiten haben. Vorher stand die Karte nur hier,
@@ -150,7 +154,10 @@ export default function BillingTab() {
           {ADDONS.map((it) => {
             const g = gate(it, ent);
             const isFlag = it.kind === "flag";
-            const flagActive = isFlag && it.key === "ue2_voice_jana_monthly" && !!ent?.voice_enabled;
+            const flagActive = isFlag && (
+              (it.key === "ue2_voice_jana_monthly" && !!ent?.voice_enabled) ||
+              (it.key === "ue2_webchat_monthly" && !!ent?.webchat_enabled)
+            );
             return (
               <div key={it.key} className="rounded-lg border p-4 flex flex-col">
                 <div className="flex items-baseline justify-between gap-2">

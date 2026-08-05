@@ -38,6 +38,8 @@ interface WebchatStatus {
   configured: boolean;
   runtime_active: boolean;
   config: WebchatConfig | null;
+  /** v4.191.0 — Einbau-Ziel aus public.tenants.website_url (Quelle: Website-Scan). */
+  website_url: string | null;
   embed_snippet: string | null;
   embed_base: string;
   usage_30d: { messages: number; orders: number };
@@ -76,6 +78,7 @@ export default function WebsiteChatCard() {
   const [widgetEnabled, setWidgetEnabled] = useState(true);
   const [featBooking, setFeatBooking] = useState(true);
   const [featCallback, setFeatCallback] = useState(true);
+  const [websiteUrl, setWebsiteUrl] = useState("");
   const seeded = useRef(false);
 
   const applyStatus = useCallback((st: WebchatStatus) => {
@@ -90,6 +93,7 @@ export default function WebsiteChatCard() {
       setWidgetEnabled(st.config.enabled === true);
       setFeatBooking(st.config.features?.booking !== false);
       setFeatCallback(st.config.features?.callback !== false);
+      setWebsiteUrl(st.website_url || "");
     }
   }, []);
 
@@ -176,13 +180,22 @@ export default function WebsiteChatCard() {
           notify_enabled: notifyEnabled,
           enabled: widgetEnabled,
           features: { booking: featBooking, callback: featCallback },
+          // v4.191.0: nur mitsenden, wenn wirklich geändert — sonst würde ein
+          // leeres Feld die Website (auch Crawl-Ziel des Website-Scans) löschen.
+          ...(websiteUrl.trim() !== (status?.website_url || "")
+            ? { website_url: websiteUrl.trim() }
+            : {}),
         }),
       });
       if (res.ok && data.ok) {
         applyStatus(data);
         toast.success("Einstellungen gespeichert — das Widget übernimmt sie beim nächsten Laden der Website.");
       } else {
-        toast.error(data.error === "invalid_notify_email" ? "Bitte eine gültige Benachrichtigungs-E-Mail angeben." : "Speichern fehlgeschlagen.");
+        toast.error(
+          data.error === "invalid_notify_email" ? "Bitte eine gültige Benachrichtigungs-E-Mail angeben."
+          : data.error === "invalid_website_url" ? "Bitte eine gültige Website angeben, z. B. www.ihre-firma.de."
+          : "Speichern fehlgeschlagen."
+        );
       }
     } catch {
       toast.error("Netzwerkfehler — bitte später erneut versuchen.");
@@ -371,7 +384,10 @@ export default function WebsiteChatCard() {
 
           {showMailForm && (
             <div className="space-y-2 rounded-md border p-3">
-              <Label className="text-sm">Ihr Webdesigner / Ihre Agentur bekommt eine fertige Einbau-Anleitung mit Ihrem Snippet:</Label>
+              <Label className="text-sm">Ihr Webdesigner / Ihre Agentur bekommt eine fertige Einbau-Anleitung mit Ihrem Snippet{status.website_url ? ` für ${status.website_url}` : ""}:</Label>
+              {!status.website_url && (
+                <p className="text-xs text-amber-600">Tipp: Tragen Sie unten „Ihre Website“ ein und speichern Sie — dann steht das Einbau-Ziel direkt in der E-Mail.</p>
+              )}
               <Input value={mailTo} onChange={(e) => setMailTo(e.target.value)} placeholder="webmaster@ihre-agentur.de" type="email" autoComplete="off" />
               <Textarea value={mailNote} onChange={(e) => setMailNote(e.target.value)} placeholder="Optionale Nachricht, z. B.: Bitte bis Freitag einbauen." rows={2} />
               <Button size="sm" onClick={sendSnippet} disabled={busy}>
@@ -393,6 +409,11 @@ export default function WebsiteChatCard() {
 
           {/* Einstellungen */}
           <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="wc-site" className="text-sm">Ihre Website (Einbau-Ziel)</Label>
+              <Input id="wc-site" value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} type="url" placeholder="www.ihre-firma.de" />
+              <p className="text-xs text-muted-foreground">Steht in der Einbau-Anleitung an Ihren Website-Betreuer und ist zugleich die Adresse, die UseEasy für Ihr Firmenwissen ausliest (Website-Scan).</p>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="wc-name" className="text-sm">Anzeigename im Chat</Label>
               <Input id="wc-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="z. B. Muster Haustechnik GmbH" />
