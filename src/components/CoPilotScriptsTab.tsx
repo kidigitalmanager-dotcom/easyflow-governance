@@ -75,7 +75,8 @@ function Badge({ tone, children }: { tone: "lib" | "own" | "active" | "warn"; ch
  * als einer langer und liefern eine benennbare Fehlerursache.
  * Geschnitten wird an Absatzgrenzen, damit keine Phase mittendrin zerreisst.
  */
-const PARSE_CHUNK_CHARS = 20000;
+const PARSE_CHUNK_CHARS = 5000;
+const PARSE_MIN_CHARS = 1200;
 function splitForParse(text: string): string[] {
   const t = text.trim();
   if (t.length <= PARSE_CHUNK_CHARS) return [t];
@@ -88,6 +89,32 @@ function splitForParse(text: string): string[] {
   }
   if (cur.trim()) out.push(cur);
   return out.length ? out : [t.slice(0, PARSE_CHUNK_CHARS)];
+}
+
+/**
+ * Ein Abschnitt kann trotz passender Laenge in den Abbruch laufen: die Dauer haengt
+ * an der AUSGABE, und dichte Dialogseiten erzeugen viel mehr Ausgabe als eine Tabelle.
+ * Gemessen 05.08.: drei gleich grosse Abschnitte, einer in 14 s durch, zwei im Abbruch.
+ * Deshalb halbieren wir einen abgebrochenen Abschnitt und versuchen es erneut, bis
+ * PARSE_MIN_CHARS erreicht ist. Erst dann ist es ein echter Fehler.
+ */
+async function parseAdaptive(
+  chunk: string, name: string, onNote: (s: string) => void,
+): Promise<ScriptPhase[]> {
+  try {
+    const r = await parseScriptText(chunk, name, 0, 1);
+    return r.phases ?? [];
+  } catch (e) {
+    const timedOut = e instanceof ApiError && (e.message === "ai_timeout" || e.status === 504);
+    if (!timedOut || chunk.length <= PARSE_MIN_CHARS) throw e;
+    onNote("Abschnitt war zu dicht, wird feiner geteilt…");
+    const mid = chunk.lastIndexOf("\n\n", Math.floor(chunk.length / 2)) + 2 || Math.floor(chunk.length / 2);
+    const a = chunk.slice(0, mid);
+    const b = chunk.slice(mid);
+    const left = await parseAdaptive(a, name, onNote);
+    const right = await parseAdaptive(b, name, onNote);
+    return [...left, ...right];
+  }
 }
 
 /** Erkennt, ob eine hochgeladene JSON-Datei ein Skript oder ein Einwand-Satz ist. */
@@ -172,8 +199,9 @@ export default function CoPilotScriptsTab() {
           setBusy(chunks.length > 1
             ? `KI zerlegt Abschnitt ${i + 1} von ${chunks.length}…`
             : "KI zerlegt das Skript in Phasen…");
-          const parsed = await parseScriptText(chunks[i], baseName, i, chunks.length);
-          collected.push(...parsed.phases);
+          const got = await parseAdaptive(chunks[i], baseName, (note) =>
+            setBusy(`Abschnitt ${i + 1} von ${chunks.length}: ${note}`));
+          collected.push(...got);
         }
         if (!collected.length) throw new Error("Es kamen keine Phasen zurück.");
         // IDs ueber alle Abschnitte hinweg eindeutig halten.
