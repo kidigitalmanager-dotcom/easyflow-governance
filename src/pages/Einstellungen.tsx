@@ -24,6 +24,7 @@ import MailboxReconnectCard from "@/components/MailboxReconnectCard";
 import ImapMailboxConnectCard from "@/components/ImapMailboxConnectCard"; // D4 (Briefing D): Postfach per IMAP verbinden
 import TelegramIntegration from "@/components/TelegramIntegration";
 import DhlTrackingCard from "@/components/DhlTrackingCard"; // v4.116.0 — Per-Tenant-DHL-Key
+import WebsiteChatCard from "@/components/WebsiteChatCard"; // v4.190.0 — Website-Chat „Jana" (Selfserve: buchen → aktivieren → Snippet)
 import AssistantConfigCard from "@/components/AssistantConfigCard";
 import TenantSetupSelfCard from "@/components/TenantSetupSelfCard";
 import WebsiteScanCard from "@/components/WebsiteScanCard"; // v4.160.0: Website-Scan (Briefing C)
@@ -648,6 +649,11 @@ export default function Einstellungen() {
               Gmail deckt in Deutschland 3,8 Prozent der Firmendomains ab,
               IONOS allein 34 Prozent. */}
           <ImapMailboxConnectCard />
+          {/* v4.190.0: Buchbares Produkt „Website-Chat Jana" — bewusst weit oben
+              im Integrationen-Tab: Die Karte ist zugleich die Verkaufsfläche
+              (49 €/Monat, in Full-Stack/Team inklusive) und der komplette
+              Selfserve-Flow (buchen → aktivieren → Snippet kopieren/mailen). */}
+          <WebsiteChatCard />
           <MicrosoftIntegration />
           <HubSpotIntegration />
           {/* F1 (29.07.2026): der schreibende Ticket-Zugriff. Bewusst direkt
