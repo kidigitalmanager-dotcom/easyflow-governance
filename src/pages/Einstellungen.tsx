@@ -681,7 +681,7 @@ export default function Einstellungen() {
           {apSection === "samples" && <StichprobenAuditTab />}
         </TabsContent>
 
-        <TabsContent value="autopilot" className="mt-0 space-y-6">
+        <TabsContent value="autopilot" data-tour="jana-voice-tab" className="mt-0 space-y-6">
           <JanaAutopilotTab />
         </TabsContent>
 

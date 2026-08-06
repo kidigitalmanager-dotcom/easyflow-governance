@@ -414,6 +414,7 @@ export const DEMOS: Demo[] = [
       {
         key: "jf-open",
         route: "/signale?sec=jana",
+        target: "jana",
         title: "Der Sparkle-Knopf unten rechts",
         body: "Jana ist auf jeder Seite erreichbar, unten rechts. Du kannst sie in normalem Deutsch fragen, warum eine Zahl sich verändert hat, was diese Woche wichtig ist oder was ein Produkt kostet. Sie liest nur, sie ändert nichts.",
         source: "Beleg: Jana ist read-only, sie kann keine Einstellung ändern und nichts senden.",
@@ -421,6 +422,7 @@ export const DEMOS: Demo[] = [
       },
       {
         key: "jf-beleg",
+        target: "jana",
         title: "Woran du eine gute Antwort erkennst",
         body: "Unter jeder Antwort stehen kleine Belege: die Kennzahl, ihr Stand und die Quelle, aus der sie kommt. Fehlt der Beleg, sagt Jana lieber, dass sie es nicht weiß. Geraten wird nicht, und eine Zahl ohne Quelle gibt sie nicht aus.",
         source: "Beleg: jede quantitative Aussage trägt eine Zitat-Referenz, sonst wird sie verworfen.",
@@ -428,6 +430,7 @@ export const DEMOS: Demo[] = [
       },
       {
         key: "jf-produkt",
+        target: "jana-produkt-starter",
         title: "Sie kennt auch die Preise",
         body: "Jana weiß, welche Pakete es gibt, was sie kosten und was in deinem Paket schon enthalten ist. Sie schlägt nichts ungefragt vor. Fragst du danach, nennt sie den Preis und wo man es bucht, und kauft dabei selbst nie etwas.",
         source: "Beleg: Preise kommen aus dem Produktkatalog, erfundene Beträge werden maschinell erkannt und verworfen.",
@@ -446,6 +449,7 @@ export const DEMOS: Demo[] = [
       {
         key: "bu-uebersicht",
         route: "/buchhaltung",
+        target: "buchhaltung-cash",
         title: "Geld rein, Geld raus",
         body: "Diese Seite rechnet aus deinen Belegen, was in den nächsten Tagen hereinkommt und was hinausgeht. Der Cash-Index ist die Differenz im gewählten Zeitraum. Nichts davon musst du eintippen: die Zahlen kommen aus Rechnungen, die UseEasy im Postfach gelesen hat.",
         source: "Beleg: server-berechnet aus erfassten Belegen, je Zeitraum 7 bis 60 Tage.",
@@ -454,6 +458,7 @@ export const DEMOS: Demo[] = [
       {
         key: "bu-forderungen",
         route: "/forderungen",
+        target: "forderungen-liste",
         title: "Forderungen und Rechnungen",
         body: "Offene Posten stehen hier als Liste statt im Postfach: wer schuldet wie viel, seit wann, und was davon überfällig ist. Eine Mahnung, die eskaliert, erkennt UseEasy an der Sprache und hebt sie hervor, bevor daraus ein Streit wird.",
         source: "Beleg: je Position die Ursprungs-Mail und das Rechnungsdatum.",
@@ -461,6 +466,8 @@ export const DEMOS: Demo[] = [
       },
       {
         key: "bu-export",
+        route: "/buchhaltung",
+        target: "buchhaltung-export",
         title: "Der Export für die Kanzlei",
         body: "Am Ende steht ein Export, den deine Steuerkanzlei direkt verarbeiten kann. Im Paket sind 400 Belege im Monat enthalten. Brauchst du mehr, kommt je Beleg-Paket ein Kontingent von 200 dazu.",
         source: "Beleg: 400 Belege im Monat, Zukauf über Beleg-Pakete.",
@@ -479,6 +486,7 @@ export const DEMOS: Demo[] = [
       {
         key: "cr-ampel",
         route: "/signale?sec=risk_shield",
+        target: "risk-shield-ampel",
         title: "Alles, was warnt, an einem Ort",
         body: "Auf der Frühwarnung stehen zwei Dinge nebeneinander: was bei deinen Partnern auffällt, und deine eigene Rechts- und Compliance-Lage. Eine Sprache für beides, mit drei Stufen: Bestätigt, Beobachtung, Stabil.",
         source: "Beleg: Einordnung nach einer Regel, die an zwei Rückrechnungen kalibriert wurde.",
@@ -486,6 +494,7 @@ export const DEMOS: Demo[] = [
       },
       {
         key: "cr-eigene",
+        target: "compliance-radar-card",
         title: "Was der Radar im Postfach findet",
         body: "Er erkennt laufende Fristen, Mahnungen, die eine Stufe weitergehen, angefragte DSGVO-Auskünfte und drohende Verjährung. Jedes Signal nennt die Mail, auf der es beruht, damit du es in zehn Sekunden nachvollziehen kannst.",
         source: "Beleg: je Signal die Ursprungs-Mail und der erkannte Fristtyp.",
@@ -510,6 +519,7 @@ export const DEMOS: Demo[] = [
       {
         key: "vo-seite",
         route: "/voice",
+        target: "voice-readiness",
         title: "Voice und Co-Pilot",
         body: "Hier verwaltest du die Telefonie: welche Rufnummer bei dir klingelt, was Jana am Telefon sagen darf und welche Vorlage sie benutzt. Getrennt davon liegen deine Vertriebler mit dem Co-Pilot, die ist eine andere Sache.",
         source: "Beleg: je Anruf ein Protokoll mit Zeitpunkt, Dauer und erkanntem Anliegen.",
@@ -517,6 +527,8 @@ export const DEMOS: Demo[] = [
       },
       {
         key: "vo-anruf",
+        route: "/voice",
+        target: "voice-tiles",
         title: "Aus einem Anruf wird ein Vorgang",
         body: "Jana nimmt ab, klärt worum es geht und legt daraus einen Vorgang mit Nummer an. Der Anrufer bekommt sofort eine Antwort statt einer Mailbox. Was sie nicht klären kann, gibt sie als Rückruf an dich weiter, mit dem Anliegen dabei.",
         source: "Beleg: jeder Anruf landet im Verlauf, mit Anliegen und Vorgangs-Nummer.",
@@ -525,6 +537,7 @@ export const DEMOS: Demo[] = [
       {
         key: "vo-zeiten",
         route: "/einstellungen?tab=autopilot",
+        target: "jana-voice-tab",
         title: "Wann sie überhaupt abnimmt",
         body: "Du legst die Zeiten fest, in denen Jana Anrufe annimmt, und was ausserhalb passiert. Erreicht sie bei einem Rückruf niemanden, versucht sie es bis zu dreimal, in der Zeitzone des Angerufenen. Im Paket sind 1.000 Gesprächsminuten im Monat enthalten.",
         source: "Beleg: 1.000 Minuten im Monat, darüber 0,18 Euro je Minute.",

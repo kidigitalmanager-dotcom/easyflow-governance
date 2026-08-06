@@ -447,6 +447,8 @@ function ForderungenView({ tabs }: { tabs: React.ReactNode }) {
         </SectionCard>
       )}
 
+      {/* data-tour: Ziel des gefuehrten Durchlaufs "buchhaltung-belege" (06.08.2026). */}
+      <div data-tour="forderungen-liste">
       <SectionCard
         title="Offene Forderungen"
         subtitle={
@@ -567,6 +569,7 @@ function ForderungenView({ tabs }: { tabs: React.ReactNode }) {
           </ul>
         )}
       </SectionCard>
+      </div>
 
       {/* 2026-07-27: Auch die Bezahlt-Liste braucht einen echten Fehlerzustand — sonst
           sieht ein Ladefehler aus, als haette der Betrieb nie eine Zahlung erhalten. */}

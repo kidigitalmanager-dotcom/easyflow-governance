@@ -170,7 +170,9 @@ export default function VoiceCalls() {
       {/* v4.156.0: Einrichtungsstand ganz oben. Blendet sich selbst aus, wenn
           kein Sprachassistent gebucht ist, und verschwindet nicht, sobald alles
           steht: "bereit" ist eine Antwort, die der Kunde sehen will. */}
-      <VoiceReadinessCard onGoToNumbers={() => openArea("reps")} />
+      <div data-tour="voice-readiness">
+        <VoiceReadinessCard onGoToNumbers={() => openArea("reps")} />
+      </div>
 
       {/* v4.157.0: Reifegrad direkt unter der Bereitschaft. Erst "kann er
           telefonieren", dann "wie weit ist er". Blendet sich wie die Karte
@@ -178,7 +180,8 @@ export default function VoiceCalls() {
       <VoiceShadowCard />
 
       {/* ── Kacheln: je Agent/Bereich eine Karte ─────────────────────────── */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* data-tour: Ziel des gefuehrten Durchlaufs "voice-jana" (06.08.2026). */}
+      <div data-tour="voice-tiles" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {tiles.map((t, i) => {
           const Icon = t.icon;
           const isActive = t.key === tab;

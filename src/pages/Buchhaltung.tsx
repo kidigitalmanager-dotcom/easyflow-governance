@@ -113,7 +113,7 @@ export default function Buchhaltung() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
-                <Download className="h-4 w-4" /> Export <ChevronDown className="h-3 w-3 opacity-60" />
+                <Download className="h-4 w-4" /> <span data-tour="buchhaltung-export">Export</span> <ChevronDown className="h-3 w-3 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -134,6 +134,8 @@ export default function Buchhaltung() {
       />
 
       {/* ── Cash-Index ──────────────────────────────────────────────────── */}
+      {/* data-tour: Ziel des gefuehrten Durchlaufs "buchhaltung-belege" (06.08.2026). */}
+      <div data-tour="buchhaltung-cash">
       <SectionCard
         title={`Cash-Index · ${horizon} Tage`}
         subtitle="erwartete Zuflüsse minus Abflüsse im Horizont"
@@ -188,6 +190,7 @@ export default function Buchhaltung() {
           </div>
         )}
       </SectionCard>
+      </div>
 
       {/* ── Geld rein / Geld raus ───────────────────────────────────────── */}
       <div className="grid gap-4 md:grid-cols-2">

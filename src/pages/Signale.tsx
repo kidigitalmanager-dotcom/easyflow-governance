@@ -501,9 +501,14 @@ export default function Signale() {
                 Beides fehlte; die Seite war bis dahin nur eine Komposition der
                 alten Karten. Die Einordnung bestaetigt/beobachtung ist die
                 bestehende, aus zwei Backtests kalibrierte Regel. */}
-            <SignalAmpel alerts={dash?.alerts} loading={mine.isLoading} />
+            {/* data-tour: Ziele des gefuehrten Durchlaufs "compliance-radar" (06.08.2026). */}
+            <div data-tour="risk-shield-ampel">
+              <SignalAmpel alerts={dash?.alerts} loading={mine.isLoading} />
+            </div>
             <RiskShieldCard />
-            <ComplianceRadarCard />
+            <div data-tour="compliance-radar-card">
+              <ComplianceRadarCard />
+            </div>
             <p className="text-xs text-tx-weak leading-relaxed">
               Bewertung nur aus öffentlichen Signalen bzw. dem eigenen Postfach. Keine
               Rechtsberatung. Investoren sehen ausschließlich aggregierte Indizes, nie

@@ -158,7 +158,8 @@ export function JanaChat({ account, mode = "tenant" }: { account?: CapAccount | 
                 ))}
               </div>
               {!isInvestor && (
-                <div className="pt-1">
+                // data-tour: Ziel des gefuehrten Durchlaufs "jana-fragen" (06.08.2026).
+                <div data-tour="jana-produkt-starter" className="pt-1">
                   <p className="text-[11px] text-muted-foreground mb-1.5">Oder zu UseEasy selbst:</p>
                   <div className="flex flex-wrap gap-2">
                     {PRODUCT_STARTERS.map((s) => (

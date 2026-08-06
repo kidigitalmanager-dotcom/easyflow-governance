@@ -1,5 +1,7 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DEMOS, DEMO_ORDER, getDemo } from "./onboarding-content";
+import { DEMOS, DEMO_ORDER, getDemo, TOUR_STEPS } from "./onboarding-content";
 import { ADDONS } from "@/lib/consoleCatalog";
 
 /**
@@ -71,6 +73,68 @@ describe("Onboarding-Durchlaeufe: Katalog", () => {
         const pfad = s.route.split("?")[0];
         expect(ECHTE_ROUTEN.has(pfad), `${d.slug}/${s.key}: Route ${pfad} gibt es nicht`).toBe(true);
       }
+    }
+  });
+});
+
+/**
+ * Alle `data-tour="..."`-Anker, die im Quellbaum tatsaechlich existieren.
+ *
+ * 🔴 Warum am Dateisystem und nicht an einer gepflegten Liste: eine gepflegte
+ * Liste ist wieder eine zweite Wahrheit, die genau dann nicht mitgezogen wird,
+ * wenn ein Anker umbenannt oder entfernt wird. Der Baum ist die Wahrheit.
+ */
+function ankerImQuellbaum(): Set<string> {
+  const gefunden = new Set<string>();
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) { walk(p); continue; }
+      if (!name.endsWith(".tsx")) continue;
+      const src = readFileSync(p, "utf8");
+      for (const m of src.matchAll(/data-tour="([a-z0-9-]+)"/gi)) gefunden.add(m[1]);
+    }
+  };
+  walk(join(process.cwd(), "src"));
+  return gefunden;
+}
+
+describe("Onboarding-Durchlaeufe: Hervorhebung", () => {
+  /**
+   * Der Fund vom 06.08.2026: die vier neuen Durchlaeufe hatten KEIN `target`.
+   * Der Runner hebt dann nichts hervor und dimmt nur die ganze Seite, waehrend
+   * die alten Durchlaeufe die besprochene Stelle einrahmen. Der Unterschied ist
+   * sofort sichtbar, aber kein Test hat ihn gemeldet. Jetzt schon.
+   */
+  it("🔴 jeder Schritt der vier neuen Durchlaeufe hebt etwas hervor (ausser dem Schluss-Schritt)", () => {
+    for (const slug of ["jana-fragen", "buchhaltung-belege", "compliance-radar", "voice-jana"]) {
+      const d = getDemo(slug)!;
+      const ohne = d.steps.filter((s) => !s.target).map((s) => s.key);
+      // Konvention im Bestand: der letzte Schritt darf eine reine Aussage sein
+      // (wie "xl-safe" oder "ap-safe"), alles davor zeigt auf eine Stelle.
+      expect(ohne.length, `${slug}: Schritte ohne target: ${ohne.join(", ")}`).toBeLessThanOrEqual(1);
+      if (ohne.length === 1) {
+        expect(ohne[0], `${slug}: nur der LETZTE Schritt darf ohne target sein`).toBe(d.steps[d.steps.length - 1].key);
+      }
+    }
+  });
+
+  it("🔴 jedes target existiert als data-tour-Anker im Quellbaum", () => {
+    const anker = ankerImQuellbaum();
+    expect(anker.size, "keine Anker gefunden, der Scan laeuft im falschen Verzeichnis").toBeGreaterThan(10);
+    for (const d of DEMOS) {
+      for (const s of d.steps) {
+        if (!s.target) continue;
+        expect(anker.has(s.target), `${d.slug}/${s.key}: data-tour="${s.target}" gibt es nirgends im Quellbaum`).toBe(true);
+      }
+    }
+  });
+
+  it("auch die alte Signale-Tour zeigt nur auf Anker, die es gibt", () => {
+    const anker = ankerImQuellbaum();
+    for (const s of TOUR_STEPS) {
+      if (!s.target) continue;
+      expect(anker.has(s.target), `Tour-Schritt ${s.key}: data-tour="${s.target}" fehlt`).toBe(true);
     }
   });
 });
