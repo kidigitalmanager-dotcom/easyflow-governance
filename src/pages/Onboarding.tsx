@@ -1,10 +1,13 @@
 import {
   Activity, ListChecks, Tag, FileSpreadsheet, Brain, Bot, Sparkles, Play, RotateCcw,
-  Check, Clock, Plug, MailCheck, Send, type LucideIcon,
+  Check, Clock, Plug, MailCheck, Send, Wallet, ShieldAlert, PhoneCall, Lock,
+  type LucideIcon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { DEMOS, DEMO_ORDER, COPY, type Demo } from "@/data/onboarding-content";
+import { ADDONS, addonDeepLink, isBooked, priceLabel } from "@/lib/consoleCatalog";
+import { useBillingSummary } from "@/hooks/use-api";
 import { useOnboardingProgress, useOnboardingState } from "@/hooks/use-onboarding";
 import { useMe, useDashboardStats } from "@/hooks/use-api";
 import { useOnboardingRunner } from "@/components/onboarding/OnboardingRunner";
@@ -12,7 +15,7 @@ import { demoDone, demosDoneCount } from "@/lib/onboarding";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader, SectionCard, Dot, type DotTone } from "@/components/ue/primitives";
-import type { MailboxHealth } from "@/lib/api-client";
+import type { BillingEntitlements, MailboxHealth } from "@/lib/api-client";
 
 /* Onboarding — Redesign 27.07.2026.
 
@@ -37,6 +40,8 @@ import type { MailboxHealth } from "@/lib/api-client";
 // Icon-Namen aus dem Demo-Katalog -> lucide-Komponenten (statische Zuordnung, kein dynamic import).
 const ICONS: Record<string, LucideIcon> = {
   Activity, ListChecks, Tag, FileSpreadsheet, Brain, Bot,
+  // 06.08.2026: Buchhaltung, Compliance-Radar, Voice, Jana-Chat.
+  Wallet, ShieldAlert, PhoneCall, Sparkles,
 };
 
 /** Ein Schritt der Ersteinrichtung: erledigt = emerald, Problem = danger, offen = muted. */
@@ -88,15 +93,33 @@ function StepRow({ index, step }: { index: number; step: SetupStep }) {
   );
 }
 
+/**
+ * Zusatzleistung eines Durchlaufs, falls er eine braucht (06.08.2026).
+ *
+ * `demo.requiresKey` ist ein lookup_key aus consoleCatalog — dadurch gibt es
+ * keine zweite Produkt-Wahrheit und keinen zweiten Preis. `null` heisst: der
+ * Durchlauf ist in jedem Paket nutzbar (so wie die Beratung durch Jana selbst).
+ */
+function demoLock(demo: Demo, ent?: BillingEntitlements | null) {
+  if (!demo.requiresKey) return null;
+  const it = ADDONS.find((a) => a.key === demo.requiresKey);
+  if (!it) return null;                       // unbekannter Schluessel: lieber nichts behaupten
+  if (!ent) return null;                      // Entitlements laden noch: kein falsches Schloss
+  if (isBooked(it, ent)) return null;
+  return it;
+}
+
 function DemoRow({
   index,
   demo,
   done,
+  locked,
   onStart,
 }: {
   index: number;
   demo: Demo;
   done: boolean;
+  locked: ReturnType<typeof demoLock>;
   onStart: () => void;
 }) {
   const Icon = ICONS[demo.icon] ?? Sparkles;
@@ -122,6 +145,18 @@ function DemoRow({
           )}
         </p>
         <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{demo.summary}</p>
+        {locked && (
+          <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11.5px] leading-relaxed text-tx-faint">
+            <Lock className="h-3 w-3 shrink-0" />
+            <span>
+              Braucht {locked.label} ({priceLabel(locked.price_eur)} pro Monat, netto). Ansehen kannst du den
+              Durchlauf trotzdem.
+            </span>
+            <Link to={addonDeepLink(locked)} className="font-medium text-primary hover:underline">
+              Dazubuchen
+            </Link>
+          </p>
+        )}
       </div>
       <span className="inline-flex shrink-0 items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Clock className="h-3.5 w-3.5" /> ca. <span className="tabular">{demo.durationMin}</span> Min
@@ -144,6 +179,10 @@ function DemoRow({
 
 export default function Onboarding() {
   const progressQ = useOnboardingProgress();
+  // Buchungsstand fuer die Hinweiszeile an gebuchten Durchlaeufen. Liest den
+  // bestehenden react-query-Cache "billing-summary" mit (Abo-Tab, Seitenleiste,
+  // Jana-Chat nutzen ihn ebenfalls) — kein zusaetzlicher Request.
+  const billing = useBillingSummary();
   const { startDemo } = useOnboardingRunner();
   // Ersteinrichtung: dieselben abgeleiteten Fakten, die auch die Nudges auf "Heute"
   // benutzen — eine Wahrheit, kein zweiter Rechenweg.
@@ -299,6 +338,7 @@ export default function Onboarding() {
               index={i + 1}
               demo={demo}
               done={demoDone(prog, demo.slug)}
+              locked={demoLock(demo, billing.data?.entitlements)}
               onStart={() => startDemo(demo.slug)}
             />
           ))}
