@@ -4162,3 +4162,68 @@ export const fetchTicketingReadiness = () =>
 
 export const saveTicketingSettings = (input: TicketingSettingsInput) =>
   apiPost<TicketingSettingsResponse>("/v1/ticketing/settings", input as unknown as Record<string, unknown>);
+
+
+// ── Anrufverlauf der Telefon-Assistenten (v4.194.0) ─────────────────────────
+// Backend: GET /v1/dashboard/voice/jana-calls  — verbindet die Vapi-Auswertung
+// (voice.voice_calls) mit outcome/notes/new_date aus governance.jana_calls.
+// Der Vorrang wird SERVERSEITIG entschieden; hier wird nur angezeigt.
+export type JanaCall = {
+  call_id: string;
+  richtung: "inbound" | "outbound";
+  beginn: string | null;
+  ende: string | null;
+  dauer_sekunden: number | null;
+  ende_grund: string | null;
+  ergebnis: string | null;
+  notiz: string | null;
+  termin: string | null;
+  kontakt_name: string | null;
+  rufnummer: string | null;
+  bezug: string | null;
+  notfall: boolean;
+  dringlichkeit: string | null;
+  offene_aufgabe: string | null;
+  zusammenfassung: string | null;
+  /** false = Vapi hat (noch) keine strukturierte Auswertung geliefert. */
+  ausgewertet: boolean;
+  hat_callresult: boolean;
+  transkript: string | null;
+  transkript_vorschau: string | null;
+  transkript_gekuerzt: boolean;
+};
+
+export type JanaCallsResponse = {
+  ok: boolean;
+  total: number;
+  limit: number;
+  offset: number;
+  hat_mehr: boolean;
+  offen: number;
+  notfaelle: number;
+  anrufe: JanaCall[];
+  hinweis?: string;
+};
+
+export type JanaCallDetailResponse = { ok: boolean; anruf: JanaCall };
+
+export const fetchJanaCalls = (p?: {
+  limit?: number; offset?: number; q?: string;
+  ergebnis?: string; richtung?: string; notfall?: boolean;
+  von?: string; bis?: string;
+}) => {
+  const q = new URLSearchParams();
+  if (p?.limit != null) q.set("limit", String(p.limit));
+  if (p?.offset) q.set("offset", String(p.offset));
+  if (p?.q) q.set("q", p.q);
+  if (p?.ergebnis) q.set("ergebnis", p.ergebnis);
+  if (p?.richtung) q.set("richtung", p.richtung);
+  if (p?.notfall) q.set("notfall", "1");
+  if (p?.von) q.set("von", p.von);
+  if (p?.bis) q.set("bis", p.bis);
+  const suffix = q.toString() ? `?${q.toString()}` : "";
+  return apiFetch<JanaCallsResponse>(`/voice/jana-calls${suffix}`);
+};
+
+export const fetchJanaCall = (callId: string) =>
+  apiFetch<JanaCallDetailResponse>(`/voice/jana-calls/${encodeURIComponent(callId)}`);

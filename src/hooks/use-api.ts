@@ -1828,3 +1828,27 @@ export function useSaveTicketingSettings() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["ticketing-readiness"] }); },
   });
 }
+
+
+// ── Anrufverlauf (v4.194.0) ────────────────────────────────────────────────
+import { fetchJanaCalls, fetchJanaCall } from "@/lib/api-client";
+
+export function useJanaCalls(p?: {
+  limit?: number; offset?: number; q?: string;
+  ergebnis?: string; richtung?: string; notfall?: boolean;
+}) {
+  return useQuery({
+    queryKey: ["voice", "jana-calls", p ?? {}],
+    queryFn: () => fetchJanaCalls(p),
+    retry: false,
+  });
+}
+
+export function useJanaCall(callId: string | null) {
+  return useQuery({
+    queryKey: ["voice", "jana-call", callId],
+    queryFn: () => fetchJanaCall(callId as string),
+    enabled: !!callId,
+    retry: false,
+  });
+}

@@ -17,6 +17,7 @@ import { ContactDossier } from "@/components/ContactDossier";
 import { LabelReasonLine } from "@/components/LabelReasonLine";
 import { PageHeader, SectionCard, Chip, EmptyState, Dot } from "@/components/ue/primitives";
 import { cn } from "@/lib/utils";
+import { AnrufVerlaufTab } from "@/components/AnrufVerlaufTab";
 
 /* Verlauf (Navigation: „Verlauf", Route /audit) — Redesign 27.07.2026.
  *
@@ -101,7 +102,7 @@ function inRange(raw: string | undefined, days: number | null, now: number): boo
   return t >= now - days * 86_400_000;
 }
 
-export default function AuditTrail() {
+function EmailVerlauf() {
   const plan = getCurrentPlan();
   const { data: auditData, isLoading, isError, refetch, isFetching } = useAuditLog();
   const undo = useUndoAction();
@@ -992,6 +993,32 @@ export default function AuditTrail() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+
+/* Verlauf ist die OBERSEITE, der Anrufverlauf liegt als Unterseite darunter
+   (/audit?tab=anrufe) — dasselbe Muster wie Forderungen/Rechnungen, damit die
+   Seitenleiste nicht bei jedem neuen Verlaufstyp einen Punkt mehr bekommt.
+   Der Standard bleibt der E-Mail-Verlauf: das ist die taegliche Ansicht. */
+export default function AuditTrail() {
+  const [sp, setSp] = useSearchParams();
+  const tab = sp.get("tab") === "anrufe" ? "anrufe" : "email";
+  const setTab = (t: "email" | "anrufe") =>
+    setSp((prev) => {
+      const n = new URLSearchParams(prev);
+      if (t === "email") n.delete("tab"); else n.set("tab", t);
+      return n;
+    }, { replace: true });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Chip active={tab === "email"} onClick={() => setTab("email")}>E-Mails</Chip>
+        <Chip active={tab === "anrufe"} onClick={() => setTab("anrufe")}>Anrufe</Chip>
+      </div>
+      {tab === "anrufe" ? <AnrufVerlaufTab /> : <EmailVerlauf />}
     </div>
   );
 }

@@ -20,6 +20,7 @@ const ENTRIES: Entry[] = [
   { label: "Heute", to: "/", group: "Arbeit", keywords: "uebersicht dashboard start briefing" },
   { label: "Freigaben", to: "/review", group: "Arbeit", keywords: "review queue entwurf draft freigeben" },
   { label: "Verlauf", to: "/audit", group: "Arbeit", keywords: "audit trail historie undo entscheidungen" },
+  { label: "Anrufverlauf", to: "/audit?tab=anrufe", group: "Arbeit", keywords: "anrufe telefon jana gespraech termin ergebnis" },
   // Umbau 2026-07-27: Buchhaltungs-Gruppe vollstaendig + Mitarbeiter-Gruppe;
   // Rechnungen sind Untertab von Forderungen.
   { label: "Buchhaltung · Übersicht", to: "/buchhaltung", group: "Buchhaltung", keywords: "cash index liquiditaet geld rein raus ampel" },
