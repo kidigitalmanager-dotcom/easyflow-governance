@@ -16,9 +16,11 @@
 // Neu ist nur, dass ein Kachel-Klick den Parameter auch schreibt — damit ist
 // der geoeffnete Bereich teil- und wiederherstellbar.
 // -----------------------------------------------------------------------------
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Users, PhoneCall, ShieldCheck, Rocket, Bot, ListChecks, ChevronRight, BookOpenCheck } from "lucide-react";
+import { Users, PhoneCall, ShieldCheck, Rocket, Bot, ListChecks, ChevronRight, BookOpenCheck, CalendarPlus } from "lucide-react";
 import VoiceRepsTab from "@/components/VoiceRepsTab";
+import TerminBlock from "@/components/TerminBlock";
 import CoPilotRepsTab from "@/components/CoPilotRepsTab";
 import CoPilotScriptsTab from "@/components/CoPilotScriptsTab";
 import SalesCallsAuditTab from "@/components/SalesCallsAuditTab";
@@ -26,15 +28,18 @@ import RecordingConsentTab from "@/components/RecordingConsentTab";
 import VoiceAgentsTab from "@/components/VoiceAgentsTab";
 import LeadUploadTab from "@/components/LeadUploadTab";
 import { useVoiceReps, useRecordingConsent, useAgentCatalog, useLeadLists, useCopilotVertriebler } from "@/hooks/use-api";
-import { ApiError } from "@/lib/api-client";
+import { ApiError, fetchCalendarReadiness } from "@/lib/api-client";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { PageHeader, Dot, type DotTone } from "@/components/ue/primitives";
 import { VoiceReadinessCard } from "@/components/voice/VoiceReadinessCard";
 import { VoiceShadowCard } from "@/components/voice/VoiceShadowCard";
 import { cn } from "@/lib/utils";
 
-type AreaKey = "reps" | "calls" | "consent" | "copilot" | "scripts" | "agents" | "leads";
-const AREAS: AreaKey[] = ["reps", "calls", "consent", "copilot", "scripts", "agents", "leads"];
+// v4.195.0 (Schnitt 0d): "termin" ergaenzt — erste Stufe des Telefon-Modus.
+// Der Vertriebler telefoniert weiter im Co-Piloten und traegt den Termin hier
+// ein. Das Softphone bleibt, wo es ist (Schnitt E, bewusst zuletzt).
+type AreaKey = "reps" | "calls" | "consent" | "copilot" | "scripts" | "agents" | "leads" | "termin";
+const AREAS: AreaKey[] = ["reps", "calls", "consent", "copilot", "scripts", "agents", "leads", "termin"];
 const isArea = (v: string | null): v is AreaKey => !!v && (AREAS as string[]).includes(v);
 
 /** Zustand einer Kachel — bewusst knapp, immer aus echten Daten. */
@@ -120,6 +125,23 @@ export default function VoiceCalls() {
   const anyRetrying = statusQueries.some((q) => q.failed && q.fetching);
   const retryFailed = () => statusQueries.forEach((q) => { if (q.failed) q.retry(); });
 
+  // v4.195.0: Zustand der Kalender-Verbindung. Bewusst aus echten Daten wie
+  // alle anderen Kacheln, statt dauerhaft "–" zu zeigen. Scheitert der Abruf,
+  // sagt die Kachel das, statt "nichts vorhanden" zu behaupten.
+  const [terminState, setTerminState] = useState<TileState>(UNKNOWN);
+  useEffect(() => {
+    let abgebrochen = false;
+    void fetchCalendarReadiness()
+      .then((r) => {
+        if (abgebrochen) return;
+        setTerminState(r.termin_moeglich
+          ? { tone: "emerald", text: "Kalender verbunden" }
+          : { tone: "amber", text: "Kein Kalender verbunden" });
+      })
+      .catch(() => { if (!abgebrochen) setTerminState(FAILED); });
+    return () => { abgebrochen = true; };
+  }, []);
+
   const tiles: {
     key: AreaKey; name: string; icon: typeof Users; state: TileState; description: string; action: string;
   }[] = [
@@ -150,6 +172,10 @@ export default function VoiceCalls() {
     {
       key: "leads", name: "Leads", icon: ListChecks, state: leadsState, action: "Listen öffnen",
       description: "Lead-Listen hochladen und einzelnen Vertrieblern zuweisen.",
+    },
+    {
+      key: "termin", name: "Termin", icon: CalendarPlus, state: terminState, action: "Termin anlegen",
+      description: "Aus dem im Gespräch vereinbarten Zeitpunkt einen Kalendereintrag mit Meeting-Link machen und die Einladung verschicken.",
     },
   ];
 
@@ -232,6 +258,7 @@ export default function VoiceCalls() {
         {tab === "scripts" && <CoPilotScriptsTab />}
         {tab === "agents" && <VoiceAgentsTab />}
         {tab === "leads" && <LeadUploadTab />}
+        {tab === "termin" && <TerminBlock />}
       </div>
     </div>
   );

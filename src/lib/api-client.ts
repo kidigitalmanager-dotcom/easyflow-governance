@@ -73,7 +73,7 @@ async function apiPost<T>(path: string, body: Record<string, unknown>): Promise<
   // Ohne den Eintrag greift der else-Zweig, und der baut aus API_BASE
   // ".../v1/dashboard" die Basis ".../v1" -> URL ".../v1/v1/ticketing/..." (404).
   // Derselbe Fehler wie bei /v1/tenant zwei Tage vorher.
-  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital") || path.startsWith("/v1/memory") || path.startsWith("/v1/ticketing")
+  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital") || path.startsWith("/v1/memory") || path.startsWith("/v1/ticketing") || path.startsWith("/v1/calendar")
     ? "https://api.useeasy.ai"   // knowledge + spreadsheet + capital + memory + ticketing endpoints sit outside /dashboard
     : API_BASE.replace("/dashboard", "");
 
@@ -147,7 +147,7 @@ async function apiGetV1<T>(path: string): Promise<T> {
   // 27.07.2026: /v1/tenant ergaenzt. Ohne den Eintrag baut die else-Zweig-Formel
   // API_BASE.replace("/dashboard","") = ".../v1" -> URL ".../v1/v1/tenant/..." (404).
   // 29.07.2026: /v1/ticketing ergaenzt — gleiche Falle wie /v1/tenant.
-  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital") || path.startsWith("/v1/memory") || path.startsWith("/v1/tenant") || path.startsWith("/v1/ticketing")
+  const baseUrl = path.startsWith("/v1/knowledge") || path.startsWith("/v1/spreadsheet") || path.startsWith("/v1/capital") || path.startsWith("/v1/memory") || path.startsWith("/v1/tenant") || path.startsWith("/v1/ticketing") || path.startsWith("/v1/calendar")
     ? "https://api.useeasy.ai"
     : API_BASE.replace("/dashboard", "");
   const url = path.startsWith("/v1/") ? `${baseUrl}${path}` : `${API_BASE}${path}`;
@@ -4227,3 +4227,116 @@ export const fetchJanaCalls = (p?: {
 
 export const fetchJanaCall = (callId: string) =>
   apiFetch<JanaCallDetailResponse>(`/voice/jana-calls/${encodeURIComponent(callId)}`);
+
+// ── v4.195.0 (Schnitt 0d): Kalender verbinden und Termin anlegen ────────────
+// Alles unter der Greedy-Route /v1/calendar/{proxy+}. Der Praefix steht oben in
+// BEIDEN Base-URL-Listen (apiPost + apiGetV1) — ohne ihn wird daraus
+// ".../v1/v1/calendar/..." und der Aufruf endet in einem 404, den niemand
+// versteht. Dieselbe Falle wie bei /v1/tenant und /v1/ticketing.
+
+export interface CalendarProviderState {
+  provider: "microsoft" | "zoom" | "calendly" | string;
+  label: string;
+  art: "calendar" | "conferencing" | string;
+  /** Zugangsdaten in der Lambda hinterlegt? Ohne sie kann man gar nicht erst verbinden. */
+  konfiguriert: boolean;
+  verbunden: boolean;
+  /** true = geerbt vom Mandanten-Standard, nicht die eigene Verbindung des Vertrieblers. */
+  geerbt: boolean;
+  konto: string | null;
+  buchungslink: string | null;
+  status: string;
+  hinweis: string | null;
+  /** Behauptung des Treibers. Was wirklich geht, misst /v1/calendar/probe. */
+  faehigkeiten: Record<string, string>;
+  /** Grenzen im Klartext, vom Server formuliert. Hier NICHT nachbauen. */
+  grenzen: Record<string, string>;
+}
+
+export interface CalendarReadiness {
+  ok: boolean;
+  rep_id: string | null;
+  anbieter: CalendarProviderState[];
+  termin_moeglich: boolean;
+  naechster_schritt: string | null;
+}
+
+export type MeetingArt = "teams" | "zoom" | "link" | "none";
+
+export interface AppointmentVorschau {
+  betreff: string;
+  beginn: string;
+  ende: string;
+  zeitzone: string;
+  dauer_min: number;
+  kalender: string | null;
+  geerbt: boolean;
+  meeting_art: MeetingArt | string;
+  beitrittslink: string | null;
+  teilnehmer: string[];
+  ueberschneidung: boolean;
+  frei_belegt_gelesen: boolean;
+  frei_belegt_hinweis: string | null;
+  einladung_wird_verschickt: boolean;
+}
+
+export interface AppointmentInput {
+  rep_id?: string | null;
+  lead_id?: string | null;
+  starts_at: string;
+  duration_min: number;
+  subject?: string;
+  notes?: string;
+  attendee_email?: string;
+  attendee_name?: string;
+  meeting: { type: MeetingArt; url?: string };
+  /** true = nur Vorschau samt Ueberschneidungs-Warnung, es wird NICHTS angelegt. */
+  dry_run?: boolean;
+}
+
+export interface AppointmentResult {
+  ok: boolean;
+  dry_run?: boolean;
+  vorschau?: AppointmentVorschau;
+  event_id?: string;
+  web_link?: string | null;
+  beitrittslink?: string | null;
+  fall?: { case_notiert: boolean; zeitpunkt_notiert?: boolean; thread_key?: string; grund?: string };
+  error?: string;
+  felder?: string[];
+  detail?: string;
+  naechster_schritt?: string;
+}
+
+/** Eine Quelle fuer beide Einstiege: Integrationen-Tab und Telefon-Bereich. */
+export const fetchCalendarReadiness = (repId?: string | null) =>
+  apiGetV1<CalendarReadiness>(
+    `/v1/calendar/readiness${repId ? `?rep_id=${encodeURIComponent(repId)}` : ""}`,
+  );
+
+/** Liefert die Adresse des Anbieters. Kein zweiter OAuth-Weg, beide Einstiege rufen dies. */
+export const startCalendarConnect = (
+  provider: string,
+  repId?: string | null,
+  isDefault = false,
+) =>
+  apiPost<{ ok: boolean; provider?: string; authorize_url?: string; error?: string; detail?: string; naechster_schritt?: string }>(
+    "/v1/calendar/connect",
+    { provider, rep_id: repId ?? null, is_default: isDefault },
+  );
+
+export const disconnectCalendar = (provider: string, repId?: string | null) =>
+  apiPost<{ ok: boolean; provider?: string; error?: string }>(
+    "/v1/calendar/disconnect",
+    { provider, rep_id: repId ?? null },
+  );
+
+/** MISST die Faehigkeiten am echten Konto. Die Messung schlaegt die Behauptung. */
+export const probeCalendar = (provider: string, repId?: string | null) =>
+  apiGetV1<{ ok: boolean; provider?: string; behauptet?: Record<string, string>; gemessen?: Record<string, string>; error?: string }>(
+    `/v1/calendar/probe?provider=${encodeURIComponent(provider)}${repId ? `&rep_id=${encodeURIComponent(repId)}` : ""}`,
+  );
+
+/** dry_run zuerst, dann bestaetigen. Nie ohne Klick anlegen (Layer 0). */
+export const createAppointment = (input: AppointmentInput) =>
+  apiPost<AppointmentResult>("/v1/calendar/appointment", input as unknown as Record<string, unknown>);
