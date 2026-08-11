@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { InvestorLayout } from "@/components/layout/InvestorLayout";
-import { EmployeeLayout } from "@/components/layout/EmployeeLayout";
+import { EmployeeWorkspace } from "@/components/layout/EmployeeWorkspace";
 import { useMe } from "@/hooks/use-api";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -57,17 +57,18 @@ function RoleGate({ children }: { children: React.ReactNode }) {
 // v4.132.0 — Mitarbeiter-Weiche (Zeiterfassung): /v1/dashboard/me liefert für
 // tenant_members-Logins role:'employee' → schlankes Mitarbeiter-Frontend
 // (EmployeeLayout, Muster InvestorLayout), egal welcher Pfad aufgerufen wurde.
-// Admins/Owner bleiben unberührt (role fehlt bzw. != 'employee'). Backend ist
-// fail-closed: Mitarbeiter erreichen ohnehin nur die /time-Endpoints.
+// Admins/Owner bleiben unberührt (role fehlt bzw. != 'employee').
+//
+// Schnitt B4a (11.08.2026): der Mitarbeiter bekommt statt der festen
+// Zeiterfassung die volle Arbeitsfläche (Fälle, Termin, Anrufe, Zeiten) —
+// siehe EmployeeWorkspace. Die Weiche selbst bleibt unverändert, und das
+// Backend bleibt fail-closed: was ein Vertriebler sehen darf, entscheidet die
+// Fall-Route über tenant_members und sales_users, nicht diese Oberfläche.
 function EmployeeSwitch({ children }: { children: React.ReactNode }) {
   const me = useMe();
   const data = me.data as { role?: string; display_name?: string; tenant?: unknown; user?: { email?: string } } | undefined;
   if (data?.role === "employee") {
-    return (
-      <EmployeeLayout displayName={data.display_name}>
-        <Zeiterfassung />
-      </EmployeeLayout>
-    );
+    return <EmployeeWorkspace displayName={data.display_name} />;
   }
   // v4.132.0 (E2E-Fund 22.07. abends): Wer ueber die Mitarbeiter-Kachel kam,
   // aber (noch) keine Rolle hat — kein Team-Eintrag, kein echter Betrieb —,

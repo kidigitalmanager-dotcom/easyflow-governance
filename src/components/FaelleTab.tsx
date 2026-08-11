@@ -334,13 +334,51 @@ export default function FaelleTab() {
 
       {/* 🔴 Fehler ist NICHT leer: ein Lesefehler bekommt eine eigene Meldung,
           sonst sieht "es gibt nichts" genauso aus wie "ich kam nicht dran". */}
-      {q.isError && (
-        <QueryErrorNotice
-          label="Die Fälle konnten nicht geladen werden."
-          onRetry={() => { void q.refetch(); }}
-          retrying={q.isFetching}
-        />
-      )}
+      {q.isError && (() => {
+        // 🔴 v4.198.0 (Schnitt B4a): ein 403 ist kein Ladefehler, sondern eine
+        // Auskunft. Das Backend unterscheidet seit v4.198.0 drei Lagen
+        // (kein_zugang / keine_zuordnung / lesefehler) und schickt den Grund im
+        // Rumpf mit. Ihn hinter "konnte nicht geladen werden" zu verstecken war
+        // genau die stille Lücke, die diesen Schnitt ausgelöst hat: der
+        // Vertriebler sah einen technischen Fehler, wo eine fehlende Zeile in
+        // der Verwaltung stand, und niemand wusste, wer was tun muss.
+        const f = q.error as unknown as
+          { status?: number; payload?: { error?: string; stand?: string; hinweis?: string } } | null;
+        const rumpf = f?.payload;
+        if (f?.status === 403 && rumpf?.error === "kein_zugriff") {
+          return (
+            <div className="glass-card p-5 space-y-2 border border-amber-500/30">
+              <p className="text-sm font-medium text-foreground">
+                {rumpf.stand === "kein_zugang"
+                  ? "Dieses Konto hat keinen Zugang zur Konsole."
+                  : rumpf.stand === "lesefehler"
+                    ? "Die Zuordnung konnte gerade nicht gelesen werden."
+                    : "Dieses Konto ist keinem Vertriebler zugeordnet."}
+              </p>
+              <p className="text-[12.5px] text-muted-foreground leading-relaxed">
+                {rumpf.hinweis || "Bitte die Leitung ansprechen."}
+              </p>
+              {rumpf.stand === "lesefehler" && (
+                <button
+                  type="button"
+                  onClick={() => { void q.refetch(); }}
+                  disabled={q.isFetching}
+                  className="h-9 px-3 rounded-lg border border-border text-[13px]"
+                >
+                  {q.isFetching ? "Wird geprüft ..." : "Erneut versuchen"}
+                </button>
+              )}
+            </div>
+          );
+        }
+        return (
+          <QueryErrorNotice
+            label="Die Fälle konnten nicht geladen werden."
+            onRetry={() => { void q.refetch(); }}
+            retrying={q.isFetching}
+          />
+        );
+      })()}
 
       {!q.isError && d?.stammdaten === "nicht_erreichbar" && (
         <p className="text-[11.5px] text-amber-400">
