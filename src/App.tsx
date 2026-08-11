@@ -66,7 +66,7 @@ function RoleGate({ children }: { children: React.ReactNode }) {
 // Fall-Route über tenant_members und sales_users, nicht diese Oberfläche.
 function EmployeeSwitch({ children }: { children: React.ReactNode }) {
   const me = useMe();
-  const data = me.data as { role?: string; display_name?: string; tenant?: unknown; user?: { email?: string } } | undefined;
+  const data = me.data as { role?: string; display_name?: string; tenant?: unknown; user?: { email?: string }; setup?: { checks?: { tenant_exists?: boolean } } } | undefined;
   if (data?.role === "employee") {
     return <EmployeeWorkspace displayName={data.display_name} />;
   }
@@ -76,17 +76,26 @@ function EmployeeSwitch({ children }: { children: React.ReactNode }) {
   // "Warte auf Freischaltung"-Screen. Echte Inhaber (Betrieb vorhanden)
   // laufen normal in die Console; die Kachel vergibt weiterhin KEINE Rechte.
   const cameViaWorkerTile = typeof window !== "undefined" && localStorage.getItem("ue_login_tile") === "worker";
-  if (cameViaWorkerTile && me.isSuccess && !data?.tenant) {
+  // Login-Fix 11.08.2026: /v1/dashboard/me synthetisiert bei unbekannter E-Mail
+  // tenant:{status:'not_onboarded'} (Domain-Rueckfall, z. B. gmail_com). Dadurch war
+  // `!data?.tenant` NIE wahr und dieser Screen toter Code: der Mitarbeiter landete im
+  // Unternehmer-Funnel samt Phantom-Daten (gemessen 11.08., mufasamusawu@gmail.com).
+  // Das praezise Signal liefert /me seit jeher: setup.checks.tenant_exists (false nur,
+  // wenn der Lookup lief und keine Zeile fand). Fail-open: fehlt das Feld, bleibt
+  // alles wie bisher. Leitung mit echtem Mandanten (tenant_exists true) faellt hier
+  // weiterhin durch in die Console, auch ueber die Mitarbeiter-Kachel.
+  const tenantMissing = !data?.tenant || data?.setup?.checks?.tenant_exists === false;
+  if (cameViaWorkerTile && me.isSuccess && tenantMissing) {
     const email = data?.user?.email || "";
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="w-full max-w-md glass-card p-8 space-y-4 text-center">
+        <div data-ue="fast-geschafft-weiche-v2" className="w-full max-w-md glass-card p-8 space-y-4 text-center">
           <h1 className="text-xl font-semibold text-foreground">Fast geschafft!</h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
             Dein Konto{email ? <> (<span className="font-mono text-xs">{email}</span>)</> : null} ist
             noch keinem Betrieb zugeordnet. Bitte deinen Chef, dich in der UseEasy-Console unter
-            <b> Einstellungen → Team</b> mit genau dieser E-Mail-Adresse anzulegen — danach hier
-            einfach neu laden und du landest direkt in der Zeiterfassung.
+            <b> Mitarbeiter → Team</b> mit genau dieser E-Mail-Adresse anzulegen. Danach hier
+            einfach neu laden und du landest direkt auf deiner Arbeitsfläche.
           </p>
           <div className="space-y-2 pt-2">
             <button onClick={() => window.location.reload()}

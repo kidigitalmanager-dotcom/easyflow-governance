@@ -238,7 +238,7 @@ export default function Login() {
         kicker="Neu bei UseEasy"
         title="Konto"
         accent="erstellen."
-        subtitle="Als Mitarbeiter: nutze genau die E-Mail-Adresse, die dein Chef unter Einstellungen → Team hinterlegt hat — dann landest du direkt in der Zeiterfassung."
+        subtitle="Als Mitarbeiter: nutze genau die E-Mail-Adresse, die dein Chef unter Mitarbeiter → Team hinterlegt hat. Dann landest du direkt auf deiner Arbeitsfläche."
       >
         {signupSent ? (
           <div className="space-y-4 max-w-[340px]">
@@ -350,7 +350,7 @@ export default function Login() {
         {workerTile && (
           <p className="text-[12px] text-muted-foreground leading-relaxed">
             Mitarbeiter melden sich mit <b className="text-tx-secondary">E-Mail + Passwort</b> an.
-            Wichtig: genau die Adresse nutzen, die dein Chef unter Einstellungen → Team hinterlegt
+            Wichtig: genau die Adresse nutzen, die dein Chef unter Mitarbeiter → Team hinterlegt
             hat. Noch kein Konto? Unten „Konto erstellen“.
           </p>
         )}
