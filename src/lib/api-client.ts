@@ -1937,6 +1937,132 @@ export const deleteLeadList = (listId: string) =>
     `/leads/lists/${encodeURIComponent(listId)}`,
   );
 
+// ════════════════════════════════════════════════════════════════════════════
+// Faelle (Schnitt B, v4.197.0) — Backend: /v1/dashboard/leads/cases
+//
+// Quelle sind governance.case_state plus governance.copilot_lead_status_history,
+// NICHT jana_calls oder voice_calls (das ist Jana, der KI-Telefonassistent).
+// Der Status wird ausschliesslich ueber patchLeadStatus gesetzt; die Konsole
+// schreibt nie direkt, damit der HubSpot-Push und der Schleifenschutz greifen.
+// ════════════════════════════════════════════════════════════════════════════
+
+export type CopilotCaseSicht = {
+  rolle: "leitung" | "vertriebler" | "unbekannt";
+  rep_id: string | null;
+  name: string | null;
+  grund?: string;
+};
+
+export interface CopilotCase {
+  lead_id: string;
+  thread_key: string | null;
+  status: string | null;
+  status_am: string | null;
+  /** copilot | console | webhook | manual */
+  herkunft: string | null;
+  vertriebler: string | null;
+  rep_id: string | null;
+  offen: boolean;
+  erledigt_am: string | null;
+  termin_am: string | null;
+  termin_ende: string | null;
+  termin_link: string | null;
+  termin_quelle: string | null;
+  zusage_am: string | null;
+  zusage_art: string | null;
+  zusage_gemacht: boolean;
+  frist_am: string | null;
+  aktualisiert_am: string | null;
+  firma: string | null;
+  ansprechpartner: string | null;
+  telefon: string | null;
+  ort: string | null;
+  email: string | null;
+  list_id: string | null;
+  list_name: string | null;
+  hubspot_contact_id: string | null;
+}
+
+export interface CopilotCaseEvent {
+  id: number | string;
+  status: string;
+  vorher: string | null;
+  vertriebler: string | null;
+  vertriebler_id: string | null;
+  notiz: string | null;
+  angerufen_am: string | null;
+  erstellt_am: string;
+  herkunft: string | null;
+}
+
+export interface CopilotCasesResponse {
+  ok: boolean;
+  /** ok = gelesen, lesefehler = konnte nicht gelesen werden (nicht "leer"). */
+  stand: "ok" | "lesefehler";
+  sicht: CopilotCaseSicht;
+  gesamt: number;
+  limit: number;
+  offset: number;
+  /** ok = Firmennamen sind da, nicht_erreichbar = leads-sync antwortet nicht. */
+  stammdaten: "ok" | "nicht_erreichbar";
+  faelle: CopilotCase[];
+  modus?: string;
+  hinweis?: string;
+  suche_gekuerzt?: boolean;
+  suche_ohne_treffer?: boolean;
+  error?: string;
+}
+
+export interface CopilotCaseDetailResponse {
+  ok: boolean;
+  stand: "ok" | "lesefehler";
+  sicht: CopilotCaseSicht;
+  stammdaten: "ok" | "nicht_erreichbar";
+  verlauf_stand: "ok" | "lesefehler";
+  fall: CopilotCase;
+  verlauf: CopilotCaseEvent[];
+  error?: string;
+}
+
+export const fetchCopilotCases = (p?: {
+  status?: string; sicht?: string; von?: string; bis?: string;
+  q?: string; limit?: number; offset?: number;
+}) => {
+  const qs = new URLSearchParams();
+  if (p?.status) qs.set("status", p.status);
+  if (p?.sicht) qs.set("sicht", p.sicht);
+  if (p?.von) qs.set("von", p.von);
+  if (p?.bis) qs.set("bis", p.bis);
+  if (p?.q) qs.set("q", p.q);
+  if (p?.limit != null) qs.set("limit", String(p.limit));
+  if (p?.offset != null) qs.set("offset", String(p.offset));
+  const s = qs.toString();
+  return apiFetch<CopilotCasesResponse>(`/leads/cases${s ? `?${s}` : ""}`);
+};
+
+export const fetchCopilotCase = (leadId: string) =>
+  apiFetch<CopilotCaseDetailResponse>(`/leads/cases/${encodeURIComponent(leadId)}`);
+
+/**
+ * Status setzen. Laeuft ueber den internen Op patch_lead_status in leads-sync,
+ * also exakt denselben Weg wie ein Klick im Co-Piloten: dieselbe Historienzeile,
+ * derselbe HubSpot-Push, derselbe Schleifenschutz.
+ *
+ * `request_id` zurueckgeben und beim Wiederholen mitschicken — dann entsteht
+ * keine zweite Zeile und kein zweiter CRM-Task.
+ */
+export const patchLeadStatus = (leadId: string, payload: {
+  status: string;
+  previous_status?: string | null;
+  notes?: string | null;
+  vertriebler_id?: string | null;
+  vertriebler_name?: string | null;
+  request_id?: string | null;
+}) => apiSend<{
+  ok: boolean; status?: number; duplicate?: boolean; request_id?: string;
+  source?: string; error?: string; fall?: { notiert?: boolean; grund?: string; thread_key?: string };
+}>("PATCH", `/leads/${encodeURIComponent(leadId)}/status`, payload);
+
 // ── Fetchers: Sales Calls (Block 3) ──────────────────────────────────
 
 export const fetchSalesCalls = (params?: {

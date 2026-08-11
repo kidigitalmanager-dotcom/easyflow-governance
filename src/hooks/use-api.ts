@@ -50,6 +50,9 @@ import {
   fetchLeadLists,
   uploadLeads,
   deleteLeadList,
+  fetchCopilotCases,
+  fetchCopilotCase,
+  patchLeadStatus,
   fetchSalesCalls,
   fetchRecordingConsent,
   updateRecordingConsent,
@@ -526,6 +529,46 @@ export function useLeadListDelete() {
   return useMutation({
     mutationFn: deleteLeadList,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lead-lists"] }),
+  });
+}
+
+// ── Faelle (Schnitt B) ──────────────────────────────────────────────────────
+// Bewusst kein retry: ein Lesefehler soll SICHTBAR werden statt sich hinter
+// stillen Wiederholungen als "leer" zu tarnen (Lehre aus dem Kalender-Lesefix).
+
+export function useCopilotCases(params?: {
+  status?: string; sicht?: string; von?: string; bis?: string;
+  q?: string; limit?: number; offset?: number;
+}) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["copilot-cases", params],
+    queryFn: () => fetchCopilotCases(params),
+    enabled: !!session,
+    staleTime: 15_000,
+    retry: false,
+  });
+}
+
+export function useCopilotCase(leadId: string | null) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["copilot-case", leadId],
+    queryFn: () => fetchCopilotCase(leadId as string),
+    enabled: !!session && !!leadId,
+    retry: false,
+  });
+}
+
+export function useSetLeadStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { leadId: string; payload: Parameters<typeof patchLeadStatus>[1] }) =>
+      patchLeadStatus(v.leadId, v.payload),
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["copilot-cases"] });
+      qc.invalidateQueries({ queryKey: ["copilot-case", v.leadId] });
+    },
   });
 }
 

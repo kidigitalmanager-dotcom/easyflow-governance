@@ -18,7 +18,7 @@
 // -----------------------------------------------------------------------------
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Users, PhoneCall, ShieldCheck, Rocket, Bot, ListChecks, ChevronRight, BookOpenCheck, CalendarPlus } from "lucide-react";
+import { Users, PhoneCall, ShieldCheck, Rocket, Bot, ListChecks, ChevronRight, BookOpenCheck, CalendarPlus, FolderOpen } from "lucide-react";
 import VoiceRepsTab from "@/components/VoiceRepsTab";
 import TerminBlock from "@/components/TerminBlock";
 import CoPilotRepsTab from "@/components/CoPilotRepsTab";
@@ -27,7 +27,8 @@ import SalesCallsAuditTab from "@/components/SalesCallsAuditTab";
 import RecordingConsentTab from "@/components/RecordingConsentTab";
 import VoiceAgentsTab from "@/components/VoiceAgentsTab";
 import LeadUploadTab from "@/components/LeadUploadTab";
-import { useVoiceReps, useRecordingConsent, useAgentCatalog, useLeadLists, useCopilotVertriebler } from "@/hooks/use-api";
+import FaelleTab from "@/components/FaelleTab";
+import { useVoiceReps, useRecordingConsent, useAgentCatalog, useLeadLists, useCopilotVertriebler, useCopilotCases } from "@/hooks/use-api";
 import { ApiError, fetchCalendarReadiness } from "@/lib/api-client";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { PageHeader, Dot, type DotTone } from "@/components/ue/primitives";
@@ -38,8 +39,9 @@ import { cn } from "@/lib/utils";
 // v4.195.0 (Schnitt 0d): "termin" ergaenzt — erste Stufe des Telefon-Modus.
 // Der Vertriebler telefoniert weiter im Co-Piloten und traegt den Termin hier
 // ein. Das Softphone bleibt, wo es ist (Schnitt E, bewusst zuletzt).
-type AreaKey = "reps" | "calls" | "consent" | "copilot" | "scripts" | "agents" | "leads" | "termin";
-const AREAS: AreaKey[] = ["reps", "calls", "consent", "copilot", "scripts", "agents", "leads", "termin"];
+// v4.197.0 (Schnitt B): "faelle" ergaenzt — die Vorgangs-Sicht auf einen Lead.
+type AreaKey = "reps" | "faelle" | "calls" | "consent" | "copilot" | "scripts" | "agents" | "leads" | "termin";
+const AREAS: AreaKey[] = ["reps", "faelle", "calls", "consent", "copilot", "scripts", "agents", "leads", "termin"];
 const isArea = (v: string | null): v is AreaKey => !!v && (AREAS as string[]).includes(v);
 
 /** Zustand einer Kachel — bewusst knapp, immer aus echten Daten. */
@@ -65,6 +67,9 @@ export default function VoiceCalls() {
   const agentsQ = useAgentCatalog();
   const leadsQ = useLeadLists();
   const copilotQ = useCopilotVertriebler();
+  // Schnitt B: nur die ZAHL fuer die Kachel, deshalb limit 1. Die Liste selbst
+  // holt der Bereich mit seinen eigenen Filtern.
+  const faelleQ = useCopilotCases({ status: "offen", limit: 1 });
 
   // Der Co-Pilot laeuft gegen ein eigenes Backend: "kein Workspace verknuepft"
   // ist KEIN Serverfehler, sondern ein legitimer Zustand (siehe CoPilotRepsTab).
@@ -105,6 +110,17 @@ export default function VoiceCalls() {
     : mine.status === "live" ? { tone: "emerald", text: "live" }
     : { tone: "amber", text: mine.status };
 
+  // "Kein Zugriff" ist kein Serverfehler, sondern eine Aussage: das Konto ist
+  // keinem Vertriebler zugeordnet und fuehrt den Betrieb nicht.
+  const faelleKeinZugriff = faelleQ.error instanceof ApiError && faelleQ.error.message === "kein_zugriff";
+  const faelleState: TileState = faelleQ.isLoading ? UNKNOWN
+    : faelleKeinZugriff ? { tone: "muted", text: "nicht zugeordnet" }
+    : faelleQ.isError ? FAILED
+    : (() => {
+        const n = faelleQ.data?.gesamt ?? 0;
+        return n > 0 ? { tone: "amber", text: `${n} offen` } : { tone: "emerald", text: "nichts offen" };
+      })();
+
   const leadsState: TileState = leadsQ.isLoading ? UNKNOWN : leadsQ.isError ? FAILED : (() => {
     const lists = leadsQ.data?.lists ?? [];
     if (lists.length === 0) return { tone: "muted", text: "keine Liste" };
@@ -120,6 +136,7 @@ export default function VoiceCalls() {
     { failed: agentsQ.isError, fetching: agentsQ.isFetching, retry: () => { void agentsQ.refetch(); } },
     { failed: leadsQ.isError, fetching: leadsQ.isFetching, retry: () => { void leadsQ.refetch(); } },
     { failed: copilotQ.isError && !copilotNotConnected, fetching: copilotQ.isFetching, retry: () => { void copilotQ.refetch(); } },
+    { failed: faelleQ.isError && !faelleKeinZugriff, fetching: faelleQ.isFetching, retry: () => { void faelleQ.refetch(); } },
   ];
   const anyFailed = statusQueries.some((q) => q.failed);
   const anyRetrying = statusQueries.some((q) => q.failed && q.fetching);
@@ -148,6 +165,10 @@ export default function VoiceCalls() {
     {
       key: "reps", name: "Vertriebler", icon: Users, state: repsState, action: "Vertriebler verwalten",
       description: "Rufnummern, Weiterleitungen und Einladungen deiner Vertriebler.",
+    },
+    {
+      key: "faelle", name: "Fälle", icon: FolderOpen, state: faelleState, action: "Fälle öffnen",
+      description: "Jeder Lead, an dem gearbeitet wurde: Status, Termin, Frist und der volle Verlauf.",
     },
     {
       key: "calls", name: "Anrufe", icon: PhoneCall, state: callsState, action: "Anrufe prüfen",
@@ -252,6 +273,7 @@ export default function VoiceCalls() {
       <div className="space-y-4">
         <p className="ue-kicker">{activeTile.name}</p>
         {tab === "reps" && <VoiceRepsTab />}
+        {tab === "faelle" && <FaelleTab />}
         {tab === "calls" && <SalesCallsAuditTab />}
         {tab === "consent" && <RecordingConsentTab />}
         {tab === "copilot" && <CoPilotRepsTab />}
