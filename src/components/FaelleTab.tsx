@@ -15,6 +15,7 @@
 import { useState } from "react";
 import { useCopilotCases, useCopilotCase, useSetLeadStatus } from "@/hooks/use-api";
 import type { CopilotCase } from "@/lib/api-client";
+import { fallEntwurfErzeugen, fallVerdict, fallTermin, fallTicket } from "@/lib/api-client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
@@ -227,6 +228,272 @@ function FallDetail({ leadId, onClose }: { leadId: string; onClose: () => void }
             {rueckmeldung.text}
           </p>
         )}
+      </div>
+
+      {/* ── Schnitt C: Nach dem Anruf (Entwurf, Termin, Ticket) ─────────── */}
+      <PostCallAktionen leadId={leadId} fall={f} onAenderung={() => { void refetch(); }} />
+    </div>
+  );
+}
+
+/**
+ * Schnitt C (v4.202.0): Post-Call-Aktionen am Fall. Jede Aktion hat ihre
+ * EIGENE Rueckmeldung (Lehre vom Ticket-Knopf 29.07.: "hat geklappt" und
+ * "ist kaputt" duerfen nie gleich aussehen). Der Entwurf ist eine normale
+ * draft_queue-Zeile; Freigeben legt ihn in den Entwuerfe-Ordner des Postfachs,
+ * gesendet wird immer von einem Menschen.
+ */
+function PostCallAktionen({ leadId, fall, onAenderung }: {
+  leadId: string; fall: CopilotCase; onAenderung: () => void;
+}) {
+  // Entwurf
+  const [entwurf, setEntwurf] = useState<{ draft_id: string; subject: string; body: string } | null>(null);
+  const [entwurfText, setEntwurfText] = useState("");
+  const [entwurfLaeuft, setEntwurfLaeuft] = useState(false);
+  const [verdictLaeuft, setVerdictLaeuft] = useState(false);
+  const [entwurfMeldung, setEntwurfMeldung] = useState<{ ton: "ok" | "info" | "fehler"; text: string } | null>(null);
+  // Termin
+  const [terminZeit, setTerminZeit] = useState("");
+  const [terminDauer, setTerminDauer] = useState(30);
+  const [terminArt, setTerminArt] = useState<"teams" | "zoom" | "link" | "none">("teams");
+  const [terminLink, setTerminLink] = useState("");
+  const [terminLaeuft, setTerminLaeuft] = useState(false);
+  const [terminMeldung, setTerminMeldung] = useState<{ ton: "ok" | "info" | "fehler"; text: string } | null>(null);
+  // Ticket
+  const [ticketBetreff, setTicketBetreff] = useState("");
+  const [ticketText, setTicketText] = useState("");
+  const [ticketPrio, setTicketPrio] = useState<"niedrig" | "normal" | "hoch" | "dringend">("normal");
+  const [ticketLaeuft, setTicketLaeuft] = useState(false);
+  const [ticketMeldung, setTicketMeldung] = useState<{ ton: "ok" | "info" | "fehler"; text: string } | null>(null);
+
+  const fehlerText = (e: unknown, standard: string) => {
+    if (e && typeof e === "object" && "payload" in e) {
+      const p = (e as { payload?: { message_de?: string; hinweis?: string; error?: string } }).payload;
+      if (p?.message_de) return p.message_de;
+      if (p?.hinweis) return p.hinweis;
+      if (p?.error === "kein_kalender_verbunden") return "Es ist noch kein Kalender verbunden. Einstellungen → Datenquellen → Kalender verbinden.";
+      if (p?.error === "recipient_unresolved") return "Am Lead ist keine E-Mail-Adresse hinterlegt.";
+      if (p?.error) return `Nicht geklappt: ${p.error}`;
+    }
+    return standard;
+  };
+
+  const entwurfErzeugen = async () => {
+    setEntwurfLaeuft(true); setEntwurfMeldung(null);
+    try {
+      const r = await fallEntwurfErzeugen(leadId);
+      if (r.ok && r.draft_id) {
+        setEntwurf({ draft_id: r.draft_id, subject: r.subject ?? "", body: r.body ?? "" });
+        setEntwurfText(r.body ?? "");
+        setEntwurfMeldung({ ton: "info", text: "Entwurf erzeugt — pruefen, bei Bedarf anpassen, dann freigeben." });
+      } else {
+        setEntwurfMeldung({ ton: "fehler", text: r.message_de ?? `Kein Entwurf: ${r.error ?? "unbekannter Grund"}` });
+      }
+    } catch (e) {
+      setEntwurfMeldung({ ton: "fehler", text: fehlerText(e, "Der Entwurf konnte nicht erzeugt werden. Nochmal versuchen ist gefahrlos.") });
+    } finally { setEntwurfLaeuft(false); }
+  };
+
+  const verdictSenden = async (verdict: "approve" | "reject") => {
+    if (!entwurf) return;
+    setVerdictLaeuft(true); setEntwurfMeldung(null);
+    const bearbeitet = entwurfText.trim() !== (entwurf.body ?? "").trim();
+    try {
+      const r = await fallVerdict(leadId, verdict === "approve" && bearbeitet
+        ? { draft_id: entwurf.draft_id, human_verdict: "edit", draft_body_final: entwurfText }
+        : { draft_id: entwurf.draft_id, human_verdict: verdict });
+      if (r.ok) {
+        if (verdict === "approve") {
+          setEntwurfMeldung({ ton: "ok", text: "Freigegeben — der Entwurf liegt im Entwuerfe-Ordner deines Postfachs. Gesendet wird erst, wenn du ihn dort abschickst." });
+        } else {
+          setEntwurfMeldung({ ton: "info", text: "Verworfen. Es wurde nichts versendet." });
+        }
+        setEntwurf(null); setEntwurfText("");
+      } else {
+        setEntwurfMeldung({ ton: "fehler", text: r.message_de ?? `Nicht uebernommen: ${r.error ?? "unbekannter Grund"}` });
+      }
+    } catch (e) {
+      setEntwurfMeldung({ ton: "fehler", text: fehlerText(e, "Die Freigabe hat nicht geklappt. Der Entwurf ist nicht verloren — nochmal versuchen.") });
+    } finally { setVerdictLaeuft(false); }
+  };
+
+  const terminAnlegen = async () => {
+    if (!terminZeit) { setTerminMeldung({ ton: "fehler", text: "Bitte zuerst Datum und Uhrzeit waehlen." }); return; }
+    setTerminLaeuft(true); setTerminMeldung(null);
+    try {
+      const r = await fallTermin(leadId, {
+        starts_at: new Date(terminZeit).toISOString(),
+        duration_min: terminDauer,
+        subject: fall.firma ? `Termin mit ${fall.firma}` : "Termin",
+        attendee_email: fall.email ?? undefined,
+        attendee_name: fall.ansprechpartner ?? undefined,
+        meeting: terminArt === "link" ? { type: "link", url: terminLink } : { type: terminArt },
+      });
+      if (r.ok) {
+        const teile = ["Termin angelegt, Einladung geht ueber deinen Kalender raus."];
+        if (r.beitrittslink) teile.push("Beitrittslink haengt am Termin.");
+        if (r.fall?.case_notiert) teile.push("Der Zeitpunkt steht jetzt als Zusage am Fall.");
+        setTerminMeldung({ ton: "ok", text: teile.join(" ") });
+        onAenderung();
+      } else if (r.error === "validierung") {
+        setTerminMeldung({ ton: "fehler", text: `Eingabe unvollstaendig: ${(r.felder ?? []).join(", ")}` });
+      } else {
+        setTerminMeldung({ ton: "fehler", text: fehlerText({ payload: r }, `Termin nicht angelegt: ${r.error ?? "unbekannter Grund"}`) });
+      }
+    } catch (e) {
+      setTerminMeldung({ ton: "fehler", text: fehlerText(e, "Der Termin konnte nicht angelegt werden.") });
+    } finally { setTerminLaeuft(false); }
+  };
+
+  const ticketAnlegen = async () => {
+    if (!ticketBetreff.trim() || !ticketText.trim()) {
+      setTicketMeldung({ ton: "fehler", text: "Betreff und Beschreibung gehoeren ins Ticket." }); return;
+    }
+    setTicketLaeuft(true); setTicketMeldung(null);
+    try {
+      const r = await fallTicket(leadId, { subject: ticketBetreff.trim(), body: ticketText.trim(), priority: ticketPrio });
+      if (r.ok && r.ticket_id) {
+        setTicketMeldung(r.duplicate
+          ? { ton: "info", text: `Gab es schon: Ticket ${r.ticket_id} — es wurde kein zweites angelegt.` }
+          : { ton: "ok", text: `Ticket ${r.ticket_id} ist angelegt (${r.provider ?? "Ticketsystem"}).` });
+        if (!r.duplicate) { setTicketBetreff(""); setTicketText(""); }
+      } else {
+        setTicketMeldung({ ton: "fehler", text: r.message_de ?? `Ticket nicht angelegt: ${r.error ?? "unbekannter Grund"}` });
+      }
+    } catch (e) {
+      setTicketMeldung({ ton: "fehler", text: fehlerText(e, "Das Ticket konnte nicht angelegt werden.") });
+    } finally { setTicketLaeuft(false); }
+  };
+
+  const meldungZeile = (m: { ton: "ok" | "info" | "fehler"; text: string } | null) => m && (
+    <p className={
+      m.ton === "ok" ? "text-[11.5px] text-green-500"
+      : m.ton === "info" ? "text-[11.5px] text-muted-foreground"
+      : "text-[11.5px] text-red-400"
+    }>
+      {m.text}
+    </p>
+  );
+
+  return (
+    <div className="space-y-3" data-ue="fall-post-call-v1">
+      <p className="ue-kicker">Nach dem Anruf</p>
+      <div className="grid gap-3 lg:grid-cols-3">
+
+        {/* Entwurf */}
+        <div className="glass-card p-3 space-y-2">
+          <p className="text-[12px] font-medium">Follow-up-Mail</p>
+          {!fall.email && (
+            <p className="text-[11.5px] text-muted-foreground">Am Lead ist keine E-Mail-Adresse hinterlegt — ohne Adresse kein Entwurf.</p>
+          )}
+          {!entwurf ? (
+            <Button size="sm" variant="outline" disabled={entwurfLaeuft || !fall.email} onClick={() => { void entwurfErzeugen(); }}>
+              {entwurfLaeuft ? "Entwurf wird erstellt…" : "Entwurf erzeugen"}
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[11.5px] text-muted-foreground">Betreff: {entwurf.subject}</p>
+              <textarea
+                value={entwurfText}
+                onChange={(e) => setEntwurfText(e.target.value)}
+                rows={7}
+                className="w-full rounded-md border border-border bg-background/60 p-2 text-[12px]"
+              />
+              <div className="flex flex-wrap gap-1.5">
+                <Button size="sm" disabled={verdictLaeuft} onClick={() => { void verdictSenden("approve"); }}>
+                  {verdictLaeuft ? "Wird uebernommen…" : "Freigeben → Entwuerfe-Ordner"}
+                </Button>
+                <Button size="sm" variant="outline" disabled={verdictLaeuft} onClick={() => { void verdictSenden("reject"); }}>
+                  Verwerfen
+                </Button>
+                <Button size="sm" variant="ghost" disabled={entwurfLaeuft || verdictLaeuft} onClick={() => { void entwurfErzeugen(); }}>
+                  Neu erzeugen
+                </Button>
+              </div>
+            </div>
+          )}
+          {meldungZeile(entwurfMeldung)}
+        </div>
+
+        {/* Termin */}
+        <div className="glass-card p-3 space-y-2">
+          <p className="text-[12px] font-medium">Termin vorschlagen</p>
+          <input
+            type="datetime-local"
+            value={terminZeit}
+            onChange={(e) => setTerminZeit(e.target.value)}
+            className="w-full rounded-md border border-border bg-background/60 p-2 text-[12px]"
+          />
+          <div className="flex gap-1.5">
+            <select
+              value={terminDauer}
+              onChange={(e) => setTerminDauer(Number(e.target.value))}
+              className="rounded-md border border-border bg-background/60 p-2 text-[12px]"
+            >
+              <option value={15}>15 Min</option>
+              <option value={30}>30 Min</option>
+              <option value={45}>45 Min</option>
+              <option value={60}>60 Min</option>
+            </select>
+            <select
+              value={terminArt}
+              onChange={(e) => setTerminArt(e.target.value as "teams" | "zoom" | "link" | "none")}
+              className="flex-1 rounded-md border border-border bg-background/60 p-2 text-[12px]"
+            >
+              <option value="teams">Teams-Meeting</option>
+              <option value="zoom">Zoom-Meeting</option>
+              <option value="link">Eigener Link</option>
+              <option value="none">Ohne Meeting-Link</option>
+            </select>
+          </div>
+          {terminArt === "link" && (
+            <input
+              type="url"
+              value={terminLink}
+              onChange={(e) => setTerminLink(e.target.value)}
+              placeholder="https://…"
+              className="w-full rounded-md border border-border bg-background/60 p-2 text-[12px]"
+            />
+          )}
+          <Button size="sm" variant="outline" disabled={terminLaeuft} onClick={() => { void terminAnlegen(); }}>
+            {terminLaeuft ? "Termin wird angelegt…" : "Termin anlegen"}
+          </Button>
+          {meldungZeile(terminMeldung)}
+        </div>
+
+        {/* Ticket */}
+        <div className="glass-card p-3 space-y-2">
+          <p className="text-[12px] font-medium">Ticket anlegen</p>
+          <input
+            value={ticketBetreff}
+            onChange={(e) => setTicketBetreff(e.target.value)}
+            placeholder="Betreff"
+            className="w-full rounded-md border border-border bg-background/60 p-2 text-[12px]"
+          />
+          <textarea
+            value={ticketText}
+            onChange={(e) => setTicketText(e.target.value)}
+            placeholder="Was ist zu tun? (geht so ins Ticketsystem)"
+            rows={3}
+            className="w-full rounded-md border border-border bg-background/60 p-2 text-[12px]"
+          />
+          <div className="flex items-center gap-1.5">
+            <select
+              value={ticketPrio}
+              onChange={(e) => setTicketPrio(e.target.value as "niedrig" | "normal" | "hoch" | "dringend")}
+              className="rounded-md border border-border bg-background/60 p-2 text-[12px]"
+            >
+              <option value="niedrig">niedrig</option>
+              <option value="normal">normal</option>
+              <option value="hoch">hoch</option>
+              <option value="dringend">dringend</option>
+            </select>
+            <Button size="sm" variant="outline" disabled={ticketLaeuft} onClick={() => { void ticketAnlegen(); }}>
+              {ticketLaeuft ? "Wird angelegt…" : "Ticket anlegen"}
+            </Button>
+          </div>
+          {meldungZeile(ticketMeldung)}
+        </div>
       </div>
     </div>
   );

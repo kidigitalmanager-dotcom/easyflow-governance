@@ -84,7 +84,11 @@ function EmployeeSwitch({ children }: { children: React.ReactNode }) {
   // wenn der Lookup lief und keine Zeile fand). Fail-open: fehlt das Feld, bleibt
   // alles wie bisher. Leitung mit echtem Mandanten (tenant_exists true) faellt hier
   // weiterhin durch in die Console, auch ueber die Mitarbeiter-Kachel.
-  const tenantMissing = !data?.tenant || data?.setup?.checks?.tenant_exists === false;
+  // v4.202.0-Haertung: eine ARCHIVIERTE Leiche (Muster gmail_com, 21.02.) zaehlt
+  // fuer die Mitarbeiter-Kachel ebenfalls als "kein Betrieb" — sonst entfuehrt
+  // die naechste Altlast wieder einen Login in den Unternehmer-Funnel.
+  const tenantArchived = (data?.tenant as { status?: string } | undefined)?.status === "archived";
+  const tenantMissing = !data?.tenant || data?.setup?.checks?.tenant_exists === false || tenantArchived;
   if (cameViaWorkerTile && me.isSuccess && tenantMissing) {
     const email = data?.user?.email || "";
     return (

@@ -2043,6 +2043,66 @@ export const fetchCopilotCases = (p?: {
 export const fetchCopilotCase = (leadId: string) =>
   apiFetch<CopilotCaseDetailResponse>(`/leads/cases/${encodeURIComponent(leadId)}`);
 
+// ── Schnitt C (v4.202.0): Post-Call am Fall ─────────────────────────────────
+// Alle vier Aktionen laufen ueber die Fall-Bruecke des Backends (gleiche
+// Zugangs-Aufloesung wie die Fall-Liste, Vertriebler nur eigener Fall). Der
+// Entwurf ist eine normale draft_queue-Zeile; Freigeben legt ihn in den
+// Entwuerfe-Ordner des Postfachs (kein Auto-Send, wie ueberall).
+
+export interface FallEntwurfResponse {
+  ok: boolean;
+  draft_id?: string;
+  event_id?: string;
+  subject?: string;
+  body?: string;
+  provider?: string | null;
+  error?: string;
+  message_de?: string;
+}
+
+export interface FallVerdictResponse {
+  ok: boolean;
+  error?: string;
+  message_de?: string;
+  mailbox_draft?: { ok?: boolean; provider?: string | null };
+}
+
+export interface FallTerminResponse {
+  ok: boolean;
+  error?: string;
+  felder?: string[];
+  naechster_schritt?: string;
+  event_id?: string;
+  beitrittslink?: string | null;
+  fall?: { case_notiert?: boolean; zeitpunkt_notiert?: boolean; thread_key?: string };
+}
+
+export interface FallTicketResponse {
+  ok: boolean;
+  ticket_id?: string;
+  duplicate?: boolean;
+  provider?: string;
+  error?: string;
+  message_de?: string;
+}
+
+export const fallEntwurfErzeugen = (leadId: string) =>
+  apiPost<FallEntwurfResponse>(`/leads/cases/${encodeURIComponent(leadId)}/entwurf`, {});
+
+export const fallVerdict = (leadId: string, p: {
+  draft_id: string; human_verdict: "approve" | "reject" | "edit"; draft_body_final?: string;
+}) => apiPost<FallVerdictResponse>(`/leads/cases/${encodeURIComponent(leadId)}/verdict`, p);
+
+export const fallTermin = (leadId: string, p: {
+  starts_at: string; duration_min?: number; subject?: string;
+  attendee_email?: string; attendee_name?: string;
+  meeting?: { type: "teams" | "zoom" | "link" | "none"; url?: string };
+}) => apiPost<FallTerminResponse>(`/leads/cases/${encodeURIComponent(leadId)}/termin`, p as unknown as Record<string, unknown>);
+
+export const fallTicket = (leadId: string, p: {
+  subject: string; body: string; priority?: "niedrig" | "normal" | "hoch" | "dringend";
+}) => apiPost<FallTicketResponse>(`/leads/cases/${encodeURIComponent(leadId)}/ticket`, p);
+
 /**
  * Status setzen. Laeuft ueber den internen Op patch_lead_status in leads-sync,
  * also exakt denselben Weg wie ein Klick im Co-Piloten: dieselbe Historienzeile,
