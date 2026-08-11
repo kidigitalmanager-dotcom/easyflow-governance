@@ -455,6 +455,20 @@ function PostCallAktionen({ leadId, fall, onAenderung }: {
               className="w-full rounded-md border border-border bg-background/60 p-2 text-[12px]"
             />
           )}
+          {/* Abnahme-Befund 11.08.: die Einladung ging sofort an einen echten
+              Lead raus, ohne dass der Dialog das vorher sagte. Der Hinweis
+              steht deshalb VOR dem Knopf und nennt die Adresse. Ohne E-Mail
+              am Lead legt der Kalender-Schreibpfad das Event ohne Teilnehmer
+              an (calendar_write: attendees=[]), dann geht nichts raus. */}
+          {fall.email ? (
+            <p className="text-[11px] text-amber-500">
+              Beim Anlegen geht die Einladung sofort an {fall.email} raus.
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              Ohne E-Mail am Lead landet der Termin nur in deinem Kalender, es geht keine Einladung raus.
+            </p>
+          )}
           <Button size="sm" variant="outline" disabled={terminLaeuft} onClick={() => { void terminAnlegen(); }}>
             {terminLaeuft ? "Termin wird angelegt…" : "Termin anlegen"}
           </Button>
