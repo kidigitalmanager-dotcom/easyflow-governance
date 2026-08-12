@@ -156,7 +156,7 @@ function EntryForm({ customers, projects, projectsError, isOwner, isEmployee, me
         if (res.ok && res.entry) { setSavedId(res.entry.id); savedIdRef.current = res.entry.id; }
         if (res.ok && res.rate_missing && !ratedHintRef.current) {
           ratedHintRef.current = true;
-          toast.message("Zeit erfasst — noch ohne Stundensatz.", { description: "Der Chef hinterlegt Stundensätze unter Einstellungen → Mitarbeiter." });
+          toast.message("Zeit erfasst — noch ohne Stundensatz.", { description: "Der Chef hinterlegt Stundensätze unter Mitarbeiter → Team (Vergütung & Sätze)." });
         }
       } else {
         res = await update.mutateAsync({ id: savedIdRef.current, ...p.body });
@@ -870,7 +870,7 @@ export default function Zeiterfassung() {
                 {settlNoRate > 0 && (
                   <p className="flex items-start gap-1.5 text-xs text-amber">
                     <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    <span><span className="tabular">{settlNoRate}</span>× ohne Lohnsatz — nicht in der Summe. Lohnsatz unter Einstellungen → Mitarbeiter pflegen (gilt für neue Einträge).</span>
+                    <span><span className="tabular">{settlNoRate}</span>× ohne Lohnsatz — nicht in der Summe. Lohnsatz unter Mitarbeiter → Team (Vergütung & Sätze) pflegen (gilt für neue Einträge).</span>
                   </p>
                 )}
                 <div className="flex flex-wrap items-center gap-2">
@@ -986,7 +986,7 @@ export default function Zeiterfassung() {
 
       {isOwner && (
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Users className="h-3.5 w-3.5" /> Mitarbeiter anlegen &amp; Stundensätze pflegen: Einstellungen → Mitarbeiter.
+          <Users className="h-3.5 w-3.5" /> Team pflegen (anlegen, Sätze, Provision): Mitarbeiter → Team.
           Mitarbeiter melden sich mit ihrer hinterlegten E-Mail unter app.useeasy.ai an (Kachel „Mitarbeiter“).
         </p>
       )}

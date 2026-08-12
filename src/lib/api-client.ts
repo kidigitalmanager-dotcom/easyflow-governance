@@ -2027,10 +2027,13 @@ export interface CopilotCaseDetailResponse {
 export const fetchCopilotCases = (p?: {
   status?: string; sicht?: string; von?: string; bis?: string;
   q?: string; limit?: number; offset?: number;
+  /** v4.203.0 (Team-Umbau): die Leitung filtert gezielt nach einem Vertriebler; für Vertriebler erzwingt das Backend weiter die eigene Sicht. */
+  rep_id?: string;
 }) => {
   const qs = new URLSearchParams();
   if (p?.status) qs.set("status", p.status);
   if (p?.sicht) qs.set("sicht", p.sicht);
+  if (p?.rep_id) qs.set("rep_id", p.rep_id);
   if (p?.von) qs.set("von", p.von);
   if (p?.bis) qs.set("bis", p.bis);
   if (p?.q) qs.set("q", p.q);
@@ -3874,7 +3877,21 @@ export interface TimeEntryInput {
   member_email?: string; // nur Owner (Nacherfassung); Backend erzwingt Token-Mail fuer Employees
   project_id?: number | null; // v4.137.0 — Projektwahl; Server-Snapshot ueberschreibt customer_name, null loest die Bindung
 }
-export interface TeamMember { id: number; email: string; display_name: string | null; role: "owner" | "employee"; hourly_rate_cents: number | null; cost_rate_cents?: number | null; active: boolean; created_at?: string }
+export interface TeamMember { id: number; email: string; display_name: string | null; role: "owner" | "employee"; hourly_rate_cents: number | null; cost_rate_cents?: number | null; active: boolean; created_at?: string; konto?: KontoStatus }
+/** v4.203.0 (Team-Umbau): Konto-Status aus Supabase — tri-state, "unbekannt" heisst: Abfrage lief nicht. */
+export type KontoStatus = "vorhanden" | "fehlt" | "unbekannt";
+/** v4.203.0 (Team-Umbau): Vertriebler des Co-Pilot-Mandanten in der Team-Liste. */
+export interface TeamVertriebler {
+  rep_id: string;
+  name: string;
+  email: string | null;
+  aktiv: boolean;
+  copilot_link: string | null;
+  provision_pct: number | null;
+  /** tenant_members-Zeile mit derselben E-Mail vorhanden (B4b: Berechtigung ist nicht Konto). */
+  berechtigung: boolean;
+  konto?: KontoStatus;
+}
 export interface TimeSummaryItem { customer_name: string | null; member_email: string; display_name: string; entries: number; minutes: number; hours: number | null; open_billable_minutes: number; amount_cents: number; entries_without_rate: number }
 
 export function listTimeEntries(params: { from?: string; to?: string; customer?: string; member?: string; status?: "open" | "billed" } = {}): Promise<TimeEntriesResponse> {
@@ -3912,8 +3929,20 @@ export interface ApplyTimeResult { ok: boolean; document_id?: number; doc_type?:
 export function applyTimeToDocument(body: { document_id: number; entry_ids: number[]; gruppierung?: "je_eintrag" | "je_mitarbeiter" | "gesamt" }): Promise<ApplyTimeResult> {
   return apiPost("/time/apply-to-document", body as unknown as Record<string, unknown>);
 }
-export function listTeamMembers(): Promise<{ ok: boolean; members: TeamMember[]; settings: { default_hourly_rate_cents: number | null; default_cost_rate_cents?: number | null } }> {
+export function listTeamMembers(): Promise<{
+  ok: boolean;
+  members: TeamMember[];
+  settings: { default_hourly_rate_cents: number | null; default_cost_rate_cents?: number | null };
+  /** v4.203.0 (Team-Umbau): Vertriebler + Provision + Konto-Status — best effort, fehlt bei alten Backends. */
+  vertrieb?: TeamVertriebler[];
+  provision_verfuegbar?: boolean;
+  konto_quelle?: "supabase" | "nicht_verfuegbar";
+}> {
   return apiFetch("/team/members");
+}
+/** v4.203.0 (Team-Umbau §3.3): freies Prozentfeld je Vertriebler. null/leer löscht den Wert. */
+export function saveTeamProvision(body: { rep_id: string; provision_pct: number | null }): Promise<{ ok: boolean; provision?: { rep_id: string; provision_pct: number | null; updated_at: string } | null; error?: string; hinweis?: string }> {
+  return apiPost("/team/provision", body as Record<string, unknown>);
 }
 export function upsertTeamMember(body: { email: string; display_name?: string; hourly_rate_cents?: number | null; cost_rate_cents?: number | null; role?: "owner" | "employee"; active?: boolean }): Promise<{ ok: boolean; member?: TeamMember; error?: string }> {
   return apiPost("/team/members", body as Record<string, unknown>);

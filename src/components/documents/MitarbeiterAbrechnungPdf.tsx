@@ -119,7 +119,7 @@ export function MitarbeiterAbrechnungPdf({
           </table>
 
           {anyMissing && (
-            <div className="ma-note ma-warn">Für Einsätze mit „offen“ ist kein Lohnsatz hinterlegt — Summe enthält nur die Einsätze mit Satz. Lohnsatz je Mitarbeiter unter Einstellungen → Mitarbeiter pflegen.</div>
+            <div className="ma-note ma-warn">Für Einsätze mit „offen“ ist kein Lohnsatz hinterlegt — Summe enthält nur die Einsätze mit Satz. Lohnsatz je Mitarbeiter unter Mitarbeiter → Team (Vergütung &amp; Sätze) pflegen.</div>
           )}
           <div className="ma-note">Interne Abrechnungsgrundlage aus der erfassten Arbeitszeit. Kein Lohnnachweis oder Gehaltsabrechnung im steuer-/sozialversicherungsrechtlichen Sinne.</div>
         </div>

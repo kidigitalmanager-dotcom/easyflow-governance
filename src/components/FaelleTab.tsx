@@ -13,6 +13,7 @@
 //     Historienzeile, derselbe HubSpot-Push, derselbe Schleifenschutz.
 // -----------------------------------------------------------------------------
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useCopilotCases, useCopilotCase, useSetLeadStatus } from "@/hooks/use-api";
 import type { CopilotCase } from "@/lib/api-client";
 import { fallEntwurfErzeugen, fallVerdict, fallTermin, fallTicket } from "@/lib/api-client";
@@ -514,6 +515,16 @@ function PostCallAktionen({ leadId, fall, onAenderung }: {
 }
 
 export default function FaelleTab() {
+  // v4.203.0 (Team-Umbau): Deep-Link ?rep=<rep_id> aus dem Team-Tab — die
+  // Leitung springt gefiltert in die Fälle EINES Vertrieblers. Für Vertriebler
+  // erzwingt das Backend weiterhin die eigene Sicht, der Parameter ist dort wirkungslos.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const repDeepLink = (searchParams.get("rep") || "").trim();
+  const clearRep = () => setSearchParams((prev) => {
+    const n = new URLSearchParams(prev);
+    n.delete("rep");
+    return n;
+  }, { replace: true });
   const [status, setStatusFilter] = useState("offen");
   const [sicht, setSicht] = useState("alle");
   const [suche, setSuche] = useState("");
@@ -526,6 +537,7 @@ export default function FaelleTab() {
   const q = useCopilotCases({
     status, sicht, q: sucheAktiv || undefined,
     von: von || undefined, bis: bis || undefined,
+    rep_id: repDeepLink || undefined,
     limit: PER_PAGE, offset: seite * PER_PAGE,
   });
 
@@ -547,11 +559,23 @@ export default function FaelleTab() {
             </p>
           </div>
           {rolle && (
-            <p className="text-[11px] text-muted-foreground">
-              {istLeitung
-                ? `Sicht: alle Fälle des Betriebs${d?.sicht.rep_id ? ` · dein Konto: ${d.sicht.name ?? d.sicht.rep_id}` : ""}`
-                : `Sicht: deine Fälle (${d?.sicht.name ?? d?.sicht.rep_id})`}
-            </p>
+            <div className="flex flex-col items-end gap-1">
+              <p className="text-[11px] text-muted-foreground">
+                {istLeitung
+                  ? `Sicht: alle Fälle des Betriebs${d?.sicht.rep_id ? ` · dein Konto: ${d.sicht.name ?? d.sicht.rep_id}` : ""}`
+                  : `Sicht: deine Fälle (${d?.sicht.name ?? d?.sicht.rep_id})`}
+              </p>
+              {repDeepLink && istLeitung && (
+                <button
+                  type="button"
+                  onClick={clearRep}
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                  title="Vertriebler-Filter aufheben"
+                >
+                  Nur Vertriebler: <span className="font-mono">{repDeepLink}</span> ×
+                </button>
+              )}
+            </div>
           )}
         </div>
 

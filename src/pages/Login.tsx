@@ -39,7 +39,7 @@ export default function Login() {
   const [forgotBusy, setForgotBusy] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
   // v4.132.0 (Zeiterfassung): Konto-erstellen-Flow — Mitarbeiter registrieren sich
-  // mit GENAU der E-Mail, die der Chef unter Einstellungen -> Team angelegt hat.
+  // mit GENAU der E-Mail, die der Chef unter Mitarbeiter -> Team angelegt hat.
   // Backend ist fail-closed: ein Konto ohne Team-/Tenant-Zuordnung sieht nichts.
   const [signupMode, setSignupMode] = useState(false);
   const [signupBusy, setSignupBusy] = useState(false);

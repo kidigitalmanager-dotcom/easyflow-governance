@@ -539,6 +539,7 @@ export function useLeadListDelete() {
 export function useCopilotCases(params?: {
   status?: string; sicht?: string; von?: string; bis?: string;
   q?: string; limit?: number; offset?: number;
+  rep_id?: string; // v4.203.0 (Team-Umbau): Leitung filtert nach Vertriebler
 }) {
   const { session } = useAuth();
   return useQuery({
@@ -1372,7 +1373,7 @@ export function useUpdateBillingProfile() {
 // ============================================================================
 import {
   listTimeEntries, createTimeEntry, updateTimeEntry, deleteTimeEntry, unbillTimeEntry,
-  fetchTimeSummary, applyTimeToDocument, listTeamMembers, upsertTeamMember, deleteTeamMember,
+  fetchTimeSummary, applyTimeToDocument, listTeamMembers, upsertTeamMember, deleteTeamMember, saveTeamProvision,
   updateTimeSettings, listTimeProjects, createTimeProject, updateTimeProject, deleteTimeProject,
 } from "@/lib/api-client";
 import type { TimeEntryInput } from "@/lib/api-client";
@@ -1461,6 +1462,14 @@ export function useUpdateTimeSettings() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: updateTimeSettings,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["team-members"] }); },
+  });
+}
+// v4.203.0 (Team-Umbau §3.3): freies Prozentfeld je Vertriebler.
+export function useSaveTeamProvision() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: saveTeamProvision,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["team-members"] }); },
   });
 }

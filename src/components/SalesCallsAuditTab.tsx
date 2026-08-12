@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useSalesCalls, useVoiceReps } from "@/hooks/use-api";
 import type { SalesCall } from "@/lib/api-client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,8 +47,11 @@ function formatDateTime(iso: string | null): string {
 }
 
 export default function SalesCallsAuditTab() {
+  // v4.203.0 (Team-Umbau): Deep-Link ?rep=<rep_id> aus dem Team-Tab — der
+  // Filter startet vorbelegt, das Dropdown zeigt und löst ihn wie gewohnt.
+  const [searchParams] = useSearchParams();
   const [page, setPage] = useState(0);
-  const [repFilter, setRepFilter] = useState<string>("");
+  const [repFilter, setRepFilter] = useState<string>((searchParams.get("rep") || "").trim());
   const [outcomeFilter, setOutcomeFilter] = useState<string>("");
 
   const { data: repsData } = useVoiceReps();

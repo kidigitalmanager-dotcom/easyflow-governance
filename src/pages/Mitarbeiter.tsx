@@ -18,9 +18,9 @@ export default function Mitarbeiter() {
   return (
     <div className="space-y-6">
       <PageHeader
-        kicker="Team"
-        title="Mitarbeiter"
-        subtitle="Logins, Rollen und Stundensätze deines Teams. Die erfassten Zeiten findest du unter Abrechnung."
+        kicker="Mitarbeiter"
+        title="Team"
+        subtitle="Ein Team für alle: Zeiterfassung und Vertrieb — Berechtigung, Konto-Status und Schnellzugriffe je Mitglied. Vergütung und Sätze im zweiten Reiter. Die erfassten Zeiten findest du unter Abrechnung."
         actions={
           <Button asChild variant="outline" size="sm">
             <Link to="/zeiterfassung">
