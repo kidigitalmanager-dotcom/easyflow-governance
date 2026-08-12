@@ -15,13 +15,21 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useCopilotCases, useCopilotCase, useSetLeadStatus } from "@/hooks/use-api";
-import type { CopilotCase } from "@/lib/api-client";
+import type {
+  CopilotCase, CopilotCaseDetailResponse, CopilotCaseKlammer,
+  CopilotCaseEmailNotiz, CopilotCaseTicketNotiz,
+} from "@/lib/api-client";
 import { fallEntwurfErzeugen, fallVerdict, fallTermin, fallTicket } from "@/lib/api-client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
+// Schnitt G: die Saetze liegen als reine, gepruefte Logik daneben — genau
+// dort luegt eine Oberflaeche am leichtesten ("nichts gefunden", obwohl sie
+// gar nicht suchen konnte).
+import { erklaereErnte, ticketStandText, GRUND_TEXT, AKTION_TEXT } from "@/lib/fall-verbindungen";
 import {
   Search, ChevronLeft, ChevronRight, CalendarClock, AlertTriangle, Building2, X,
+  Link2, Mail, Ticket,
 } from "lucide-react";
 
 const PER_PAGE = 25;
@@ -170,6 +178,9 @@ function FallDetail({ leadId, onClose }: { leadId: string; onClose: () => void }
         </div>
       </div>
 
+      {/* ── Schnitt G: der Fall fuellt sich selbst ───────────────────────── */}
+      <FallVerbindungen data={data} />
+
       {/* ── Zeitleiste: append-only, also echte Historie ─────────────────── */}
       <div>
         <p className="ue-kicker mb-2">Verlauf</p>
@@ -234,6 +245,183 @@ function FallDetail({ leadId, onClose }: { leadId: string; onClose: () => void }
       {/* ── Schnitt C: Nach dem Anruf (Entwurf, Termin, Ticket) ─────────── */}
       <PostCallAktionen leadId={leadId} fall={f} onAenderung={() => { void refetch(); }} />
     </div>
+  );
+}
+
+/**
+ * Schnitt G (v4.205.0): "Auch von diesem Kunden".
+ *
+ * Ein Fall ist nach Kanal geschluesselt: der Anruf steht unter
+ * copilot:<mandant>:<lead>, die Mail unter gmail:/outlook:. Ruft derselbe
+ * Kunde an und schreibt danach, waren das bisher zwei Vorgaenge, die nichts
+ * voneinander wussten. Hier stehen jetzt die Verweise darauf.
+ *
+ * Bewusst VERWEISE und kein zweiter Posteingang: Betreff, Absender (maskiert),
+ * Einstufung. Wer die Mail lesen will, oeffnet sie im Postfach.
+ *
+ * Drei Regeln, die diese Ansicht traegt:
+ *  1. "Nichts gefunden" und "konnte nicht lesen" sehen NIE gleich aus. Fehlt
+ *     die Migration, steht das da — nicht "keine Verbindungen".
+ *  2. Warum KEINE Klammer entstand, ist eine Antwort wert. Ein Anker, der auf
+ *     mehrere Leads zeigt, wird bewusst nicht verwendet; das gehoert gesagt.
+ *  3. Alle G-Felder sind optional. Antwortet ein aelteres Backend ohne sie,
+ *     verschwindet dieser Block rueckstandslos.
+ */
+function FallVerbindungen({ data }: { data: CopilotCaseDetailResponse }) {
+  const stand = data.verknuepfung_stand ?? "aus";
+  const klammern = data.verknuepfte_faelle ?? [];
+  const mails = data.email_notizen ?? [];
+  const tickets = data.ticket_notizen ?? [];
+  const ticketStand = data.ticket_stand ?? "aus";
+  const ernte = data.verknuepfung_ernte ?? null;
+
+  // Ein Backend ohne Schnitt G liefert nichts. Dann gibt es diesen Block nicht,
+  // statt einer leeren Ueberschrift, die nach einem Defekt aussieht.
+  if (stand === "aus" && ticketStand === "aus") return null;
+
+  const telefonPartner = klammern.filter((k) => k.art === "telefon");
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+        <p className="ue-kicker">Auch von diesem Kunden</p>
+      </div>
+
+      {stand === "migration_fehlt" && (
+        <p className="text-[11.5px] text-amber-400">
+          Die Verknüpfung ist noch nicht freigeschaltet. Sobald
+          MIGRATION-SCHNITT-G-CASE-LINK.sql einmal gelaufen ist, füllt sich
+          dieser Bereich von selbst — es geht dabei nichts verloren.
+        </p>
+      )}
+
+      {stand === "lesefehler" && (
+        <p className="text-[11.5px] text-red-400">
+          Die Verknüpfungen konnten nicht gelesen werden. Das heisst nicht, dass
+          es keine gibt.
+        </p>
+      )}
+
+      {stand === "ok" && klammern.length === 0 && (
+        <div className="space-y-1">
+          <p className="text-[11.5px] text-muted-foreground">
+            Kein weiterer Vorgang dieses Kunden gefunden.
+          </p>
+          <ErnteGrund ernte={ernte} />
+        </div>
+      )}
+
+      {/* E-Mail-Verweise: das, was nach dem Anruf kam. */}
+      {mails.length > 0 && (
+        <ul className="space-y-1.5">
+          {mails.map((m) => <EmailNotizZeile key={m.thread_key} notiz={m} />)}
+        </ul>
+      )}
+
+      {/* Weitere Telefon-Vorgaenge desselben Kunden. */}
+      {telefonPartner.length > 0 && (
+        <ul className="space-y-1.5">
+          {telefonPartner.map((k) => <TelefonPartnerZeile key={k.thread_key} klammer={k} />)}
+        </ul>
+      )}
+
+      {/* Tickets: eine Notiz je Ticket, aus dem beim Anlegen Protokollierten. */}
+      {ticketStand === "lesefehler" && (
+        <p className="text-[11.5px] text-red-400">
+          Die Tickets zu diesem Fall konnten nicht gelesen werden.
+        </p>
+      )}
+      {ticketStand === "migration_fehlt" && (
+        <p className="text-[11.5px] text-amber-400">
+          Die Ticket-Ablage ist auf diesem Mandanten noch nicht eingerichtet.
+        </p>
+      )}
+      {tickets.length > 0 && (
+        <ul className="space-y-1.5">
+          {tickets.map((tk) => <TicketNotizZeile key={`${tk.anbieter}:${tk.ticket_nummer}`} notiz={tk} />)}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Warum keine Klammer entstand. Schweigen waere hier die schlechtere Antwort. */
+function ErnteGrund({ ernte }: { ernte: Parameters<typeof erklaereErnte>[0] }) {
+  const aussage = erklaereErnte(ernte);
+  if (!aussage) return null;
+  return (
+    <p className={aussage.ton === "warnung" ? "text-[11px] text-amber-400" : "text-[11px] text-muted-foreground"}>
+      {aussage.text}
+    </p>
+  );
+}
+
+function EmailNotizZeile({ notiz }: { notiz: CopilotCaseEmailNotiz }) {
+  return (
+    <li className="glass-card p-2.5">
+      <div className="flex items-start gap-2">
+        <Mail className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[12.5px] font-medium">{notiz.betreff}</span>
+            {notiz.termin_im_spiel && (
+              <span className="rounded border border-green-500/20 bg-green-500/10 px-1.5 py-px text-[10px] text-green-500">
+                Termin oder Frist
+              </span>
+            )}
+            {notiz.dringend && (
+              <span className="rounded border border-amber-400/20 bg-amber-400/10 px-1.5 py-px text-[10px] text-amber-400">
+                Dringend
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {[notiz.absender, notiz.wann ? zeit(notiz.wann) : null, notiz.label]
+              .filter(Boolean).join(" · ") || "ohne weitere Angaben"}
+          </p>
+          {notiz.hinweis && <p className="text-[11px] text-muted-foreground">{notiz.hinweis}</p>}
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function TelefonPartnerZeile({ klammer }: { klammer: CopilotCaseKlammer }) {
+  return (
+    <li className="glass-card p-2.5">
+      <div className="flex items-start gap-2">
+        <Building2 className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className="text-[12.5px]">Weiterer Vorgang desselben Kunden</p>
+          <p className="text-[11px] text-muted-foreground">
+            {[GRUND_TEXT[klammer.grund] ?? klammer.grund, klammer.anker,
+              klammer.letztes_ereignis_am ? zeit(klammer.letztes_ereignis_am) : null]
+              .filter(Boolean).join(" · ")}
+          </p>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function TicketNotizZeile({ notiz }: { notiz: CopilotCaseTicketNotiz }) {
+  const stand = ticketStandText(notiz, zeit, AKTION_TEXT);
+  return (
+    <li className="glass-card p-2.5">
+      <div className="flex items-start gap-2">
+        <Ticket className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className="text-[12.5px]">
+            Ticket {notiz.ticket_nummer}
+            <span className="text-muted-foreground"> · {notiz.anbieter}</span>
+          </p>
+          <p className={stand.ton === "warnung" ? "text-[11px] text-amber-400" : "text-[11px] text-muted-foreground"}>
+            {stand.text}
+          </p>
+        </div>
+      </div>
+    </li>
   );
 }
 

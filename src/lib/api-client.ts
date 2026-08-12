@@ -2013,6 +2013,75 @@ export interface CopilotCasesResponse {
   error?: string;
 }
 
+// ── Schnitt G (v4.205.0): der Fall fuellt sich selbst ───────────────────────
+// Ein Fall ist nach KANAL geschluesselt (gmail:/outlook: gegen copilot:), nicht
+// nach Kunde. Die Klammer governance.case_link verbindet, was zusammengehoert,
+// ohne einen bestehenden Fall umzuschluesseln.
+//
+// Alle G-Felder sind OPTIONAL. Ein Backend vor v4.205.0 schickt sie nicht, und
+// die Oberflaeche muss dann genau so aussehen wie vorher — dasselbe
+// Feature-Detektions-Muster wie bei den Termin-Spalten aus 0d.
+
+/** Wie bei stand/stammdaten: "nichts da" und "kaputt" sind NIE derselbe Wert. */
+export type CopilotCaseGStand = "ok" | "lesefehler" | "migration_fehlt" | "aus";
+
+export interface CopilotCaseKlammer {
+  thread_key: string;
+  /** Woher der verknuepfte Fall kommt. */
+  art: "email" | "telefon";
+  /** Woran die Klammer haengt. Reihenfolge = Vertrauensreihenfolge. */
+  grund: "hubspot_contact_id" | "email" | "telefon" | "manuell";
+  quelle: string;
+  /** Maskierter Anker, z. B. k***@beispiel.de. Nie die volle Adresse. */
+  anker: string | null;
+  betreff: string | null;
+  /** Ebenfalls maskiert. */
+  absender: string | null;
+  prioritaet: string | null;
+  label: string | null;
+  zusage_am: string | null;
+  zusage_art: string | null;
+  frist_am: string | null;
+  erledigt_am: string | null;
+  letztes_ereignis_am: string | null;
+  verknuepft_am: string;
+}
+
+/** Verweise auf E-Mail-Konversationen des Kunden. Kein zweiter Posteingang. */
+export interface CopilotCaseEmailNotiz {
+  thread_key: string;
+  betreff: string;
+  absender: string | null;
+  wann: string | null;
+  label: string | null;
+  prioritaet: string | null;
+  dringend: boolean;
+  termin_im_spiel: boolean;
+  zusage_am: string | null;
+  frist_am: string | null;
+  hinweis: string | null;
+}
+
+/** Eine Notiz je Ticket, aus dem beim Schreiben Protokollierten. */
+export interface CopilotCaseTicketNotiz {
+  anbieter: string;
+  ticket_nummer: string;
+  herkunft: string | null;
+  angelegt_am: string;
+  letzte_aktion: string | null;
+  letzte_aktion_am: string | null;
+  /** ok | unbekannt | der Ablehnungsgrund. Drei Zustaende, nicht zwei. */
+  letzter_stand: string;
+}
+
+/** Warum ein Anker uebersprungen wurde. Damit "keine Klammer" erklaerbar ist. */
+export interface CopilotCaseErnte {
+  stand: string;
+  neu?: number;
+  geprueft?: number;
+  uebersprungen?: Array<{ grund: string; warum: string; leads?: number }>;
+}
+
 export interface CopilotCaseDetailResponse {
   ok: boolean;
   stand: "ok" | "lesefehler";
@@ -2021,6 +2090,13 @@ export interface CopilotCaseDetailResponse {
   verlauf_stand: "ok" | "lesefehler";
   fall: CopilotCase;
   verlauf: CopilotCaseEvent[];
+  /** Schnitt G, alle optional (siehe Kommentar oben). */
+  verknuepfte_faelle?: CopilotCaseKlammer[];
+  verknuepfung_stand?: CopilotCaseGStand;
+  email_notizen?: CopilotCaseEmailNotiz[];
+  ticket_notizen?: CopilotCaseTicketNotiz[];
+  ticket_stand?: CopilotCaseGStand;
+  verknuepfung_ernte?: CopilotCaseErnte | null;
   error?: string;
 }
 
