@@ -2,7 +2,8 @@ import {
   AlignLeft, Banknote, Activity, Settings, Users,
   LayoutDashboard, ListChecks, History, BookOpen, PhoneCall,
   GraduationCap, Receipt, FileText, AlertTriangle, Sparkles,
-  Database, Wallet, CreditCard, FileSpreadsheet, type LucideIcon,
+  Database, Wallet, CreditCard, FileSpreadsheet,
+  Headphones, FolderOpen, CalendarPlus, BookOpenCheck, Briefcase, type LucideIcon,
 } from "lucide-react";
 
 /**
@@ -47,6 +48,26 @@ export const AREAS: Area[] = [
     items: [
       { to: "/mitarbeiter", label: "Team", icon: Users },
       { to: "/zeiterfassung", label: "Abrechnung", icon: FileSpreadsheet },
+    ],
+  },
+  {
+    // Vertriebsflaeche (12.08.2026, Leons Auftrag): der Ort, an dem operativ
+    // gearbeitet wird — telefonieren, Leads, Faelle, Anrufe, Termine, Skripte.
+    //
+    // 🔴 Verwaltung und Arbeitsflaeche sind getrennt. Was hier steht, filtert
+    // auf MICH. Die Sicht ueber ALLE Vertriebler bleibt unter
+    // System -> Voice & Co-Pilot. Dieselbe Quelle, zwei Linsen — es wird
+    // nichts dupliziert, nur anders gefiltert.
+    key: "vertrieb",
+    label: "Vertrieb",
+    icon: Briefcase,
+    items: [
+      { to: "/vertrieb", label: "Telefon", icon: Headphones },
+      { to: "/vertrieb?tab=leads", label: "Leads", icon: ListChecks },
+      { to: "/vertrieb?tab=faelle", label: "Fälle", icon: FolderOpen },
+      { to: "/vertrieb?tab=calls", label: "Anrufe", icon: PhoneCall },
+      { to: "/vertrieb?tab=termin", label: "Termine", icon: CalendarPlus },
+      { to: "/vertrieb?tab=scripts", label: "Skripte & Einwände", icon: BookOpenCheck },
     ],
   },
   {
@@ -97,7 +118,19 @@ export const DISCOVER_COLLAPSE_KEY = "ue_sidebar_discover_collapsed";
 export function isNavActive(to: string, pathname: string, search: string): boolean {
   const [toPath, toQuery] = to.split("?");
   if (toPath !== pathname) return false;
-  if (!toQuery) return true;
+  if (!toQuery) {
+    // 🔴 Ein Ziel OHNE Query ist der Grundzustand einer Seite. Traegt die
+    // aktuelle Adresse einen Reiter, ist ein anderer Eintrag gemeint — sonst
+    // waeren "Telefon" (/vertrieb) und "Anrufe" (/vertrieb?tab=calls)
+    // gleichzeitig aktiv.
+    const geschwisterMitTab = AREAS.some((a) =>
+      a.items.some((i) => {
+        const [p, q] = i.to.split("?");
+        return p === toPath && !!q && new URLSearchParams(q).has("tab");
+      }));
+    if (geschwisterMitTab) return !new URLSearchParams(search).get("tab");
+    return true;
+  }
   const want = new URLSearchParams(toQuery);
   const have = new URLSearchParams(search);
   for (const [k, v] of want) if (have.get(k) !== v) return false;

@@ -1904,3 +1904,64 @@ export function useJanaCall(callId: string | null) {
     retry: false,
   });
 }
+
+
+// ── Kalender-Bereitschaft und Skript-Uebersicht (Baustein 0, 12.08.2026) ────
+// Beide standen vorher als nackte Abrufe in ihren Seiten: der Kalender in
+// einem useEffect ohne Session-Guard, die Skript-Uebersicht in einem useQuery
+// ohne `enabled`. Beide feuerten dadurch moeglicherweise vor der
+// Wiederherstellung der Sitzung, bekamen 401 und liessen ihre Kachel rot
+// stehen, obwohl die Endpunkte mit 200 antworteten.
+import { fetchCalendarReadiness, fetchScriptOverview, fetchScriptLibrary, fetchRepConfig } from "@/lib/api-client";
+
+/** Query-Key der Skript-Uebersicht. Identisch zu dem in CoPilotScriptsTab —
+ *  die Kachel und die Pflege-Seite teilen sich EINEN Abruf. */
+export const SCRIPT_OVERVIEW_KEY = ["copilot", "script-overview"] as const;
+export const SCRIPT_LIBRARY_KEY = ["copilot", "script-library"] as const;
+
+export function useCalendarReadiness(repId?: string | null) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["voice", "calendar-readiness", repId ?? null],
+    queryFn: () => fetchCalendarReadiness(repId ?? null),
+    enabled: !!session,
+    retry: false,
+  });
+}
+
+export function useScriptOverview() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: SCRIPT_OVERVIEW_KEY,
+    queryFn: fetchScriptOverview,
+    enabled: !!session,
+    retry: false,
+  });
+}
+
+export function useScriptLibrary() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: SCRIPT_LIBRARY_KEY,
+    queryFn: fetchScriptLibrary,
+    enabled: !!session,
+    retry: false,
+  });
+}
+
+/**
+ * Die volle Konfiguration EINES Vertrieblers (Skripte + Einwaende mit Text).
+ *
+ * `clientId` ist der Co-Pilot-Client, nicht die rep_id der Voice-Tabelle —
+ * beide heissen bei allen heutigen Vertrieblern gleich, sind es aber nicht
+ * zwangslaeufig. `VoiceRep.client_id` ist die richtige Quelle.
+ */
+export function useRepConfig(clientId: string | null) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["copilot", "rep-config", clientId],
+    queryFn: () => fetchRepConfig(clientId as string),
+    enabled: !!session && !!clientId,
+    retry: false,
+  });
+}

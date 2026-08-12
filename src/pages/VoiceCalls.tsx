@@ -16,7 +16,6 @@
 // Neu ist nur, dass ein Kachel-Klick den Parameter auch schreibt — damit ist
 // der geoeffnete Bereich teil- und wiederherstellbar.
 // -----------------------------------------------------------------------------
-import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Users, PhoneCall, ShieldCheck, Rocket, Bot, ListChecks, ChevronRight, BookOpenCheck, CalendarPlus, FolderOpen } from "lucide-react";
 import VoiceRepsTab from "@/components/VoiceRepsTab";
@@ -28,10 +27,14 @@ import RecordingConsentTab from "@/components/RecordingConsentTab";
 import VoiceAgentsTab from "@/components/VoiceAgentsTab";
 import LeadUploadTab from "@/components/LeadUploadTab";
 import FaelleTab from "@/components/FaelleTab";
-import { useVoiceReps, useRecordingConsent, useAgentCatalog, useLeadLists, useCopilotVertriebler, useCopilotCases } from "@/hooks/use-api";
-import { ApiError, fetchCalendarReadiness } from "@/lib/api-client";
+import { useVoiceReps, useRecordingConsent, useAgentCatalog, useLeadLists, useCopilotVertriebler, useCopilotCases, useCalendarReadiness, useScriptOverview } from "@/hooks/use-api";
+import { ApiError } from "@/lib/api-client";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
-import { PageHeader, Dot, type DotTone } from "@/components/ue/primitives";
+import { PageHeader, Dot } from "@/components/ue/primitives";
+import {
+  statusLage, terminZustand, skripteZustand, UNBEKANNT, GESCHEITERT,
+  type KachelZustand, type QuellKey, type Statusabruf,
+} from "@/lib/voice-kacheln";
 import { VoiceReadinessCard } from "@/components/voice/VoiceReadinessCard";
 import { VoiceShadowCard } from "@/components/voice/VoiceShadowCard";
 import { cn } from "@/lib/utils";
@@ -44,10 +47,11 @@ type AreaKey = "reps" | "faelle" | "calls" | "consent" | "copilot" | "scripts" |
 const AREAS: AreaKey[] = ["reps", "faelle", "calls", "consent", "copilot", "scripts", "agents", "leads", "termin"];
 const isArea = (v: string | null): v is AreaKey => !!v && (AREAS as string[]).includes(v);
 
-/** Zustand einer Kachel — bewusst knapp, immer aus echten Daten. */
-type TileState = { tone: DotTone; text: string };
-const UNKNOWN: TileState = { tone: "muted", text: "–" };
-const FAILED: TileState = { tone: "danger", text: "Zustand nicht abrufbar" };
+/* Zustand einer Kachel — bewusst knapp, immer aus echten Daten. Die reinen
+   Ableitungen liegen in src/lib/voice-kacheln.ts und sind dort geprueft. */
+type TileState = KachelZustand;
+const UNKNOWN = UNBEKANNT;
+const FAILED = GESCHEITERT;
 
 export default function VoiceCalls() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -70,6 +74,11 @@ export default function VoiceCalls() {
   // Schnitt B: nur die ZAHL fuer die Kachel, deshalb limit 1. Die Liste selbst
   // holt der Bereich mit seinen eigenen Filtern.
   const faelleQ = useCopilotCases({ status: "offen", limit: 1 });
+  // Baustein 0: beide vorher ohne Session-Guard. Der Kalender lief in einem
+  // useEffect mit leerer Abhaengigkeitsliste (feuerte vor der Sitzung, blieb
+  // danach rot), die Skript-Uebersicht hatte gar keinen eigenen Zustand.
+  const terminQ = useCalendarReadiness();
+  const scriptsQ = useScriptOverview();
 
   // Der Co-Pilot laeuft gegen ein eigenes Backend: "kein Workspace verknuepft"
   // ist KEIN Serverfehler, sondern ein legitimer Zustand (siehe CoPilotRepsTab).
@@ -103,6 +112,16 @@ export default function VoiceCalls() {
         return n > 0 ? { tone: "emerald", text: `${n} aktiv` } : { tone: "muted", text: "keine angelegt" };
       })();
 
+  // 🔴 Eigener Zustand aus /v1/copilot/scripts/overview. Vorher borgte sich
+  // diese Kachel `copilotState` und behauptete einen Ausfall, den es nicht
+  // gab: der Endpunkt antwortete die ganze Zeit mit 200.
+  const scriptsNichtVerknuepft =
+    scriptsQ.error instanceof ApiError &&
+    ["no_copilot_tenant_for_email", "console_auth_not_configured", "tenant_inactive"].includes(scriptsQ.error.message);
+  const scriptsState: TileState = skripteZustand(scriptsQ, scriptsNichtVerknuepft);
+
+  const terminState: TileState = terminZustand(terminQ);
+
   const mine = agentsQ.data?.mine ?? null;
   const agentsState: TileState = agentsQ.isLoading ? UNKNOWN : agentsQ.isError ? FAILED
     : !mine ? { tone: "muted", text: "nicht aktiviert" }
@@ -130,34 +149,20 @@ export default function VoiceCalls() {
 
   /* Fehler !== leer: scheitert einer der Status-Abrufe, sagt die Seite das —
      die Kacheln bleiben aber bedienbar, der Bereich selbst laedt eigenstaendig. */
-  const statusQueries = [
-    { failed: repsQ.isError, fetching: repsQ.isFetching, retry: () => { void repsQ.refetch(); } },
-    { failed: consentQ.isError, fetching: consentQ.isFetching, retry: () => { void consentQ.refetch(); } },
-    { failed: agentsQ.isError, fetching: agentsQ.isFetching, retry: () => { void agentsQ.refetch(); } },
-    { failed: leadsQ.isError, fetching: leadsQ.isFetching, retry: () => { void leadsQ.refetch(); } },
-    { failed: copilotQ.isError && !copilotNotConnected, fetching: copilotQ.isFetching, retry: () => { void copilotQ.refetch(); } },
-    { failed: faelleQ.isError && !faelleKeinZugriff, fetching: faelleQ.isFetching, retry: () => { void faelleQ.refetch(); } },
-  ];
-  const anyFailed = statusQueries.some((q) => q.failed);
-  const anyRetrying = statusQueries.some((q) => q.failed && q.fetching);
-  const retryFailed = () => statusQueries.forEach((q) => { if (q.failed) q.retry(); });
-
-  // v4.195.0: Zustand der Kalender-Verbindung. Bewusst aus echten Daten wie
-  // alle anderen Kacheln, statt dauerhaft "–" zu zeigen. Scheitert der Abruf,
-  // sagt die Kachel das, statt "nichts vorhanden" zu behaupten.
-  const [terminState, setTerminState] = useState<TileState>(UNKNOWN);
-  useEffect(() => {
-    let abgebrochen = false;
-    void fetchCalendarReadiness()
-      .then((r) => {
-        if (abgebrochen) return;
-        setTerminState(r.termin_moeglich
-          ? { tone: "emerald", text: "Kalender verbunden" }
-          : { tone: "amber", text: "Kein Kalender verbunden" });
-      })
-      .catch(() => { if (!abgebrochen) setTerminState(FAILED); });
-    return () => { abgebrochen = true; };
-  }, []);
+  /* 🔴 Ein Record, keine Liste. Eine Liste kann einen Eintrag vergessen — am
+     12.08. fehlte genau so die Termin-Kachel, und der "Neu laden"-Knopf konnte
+     sie nicht heilen. `Record<QuellKey, ...>` macht daraus einen tsc-Fehler. */
+  const statusQuellen: Record<QuellKey, Statusabruf> = {
+    reps: { failed: repsQ.isError, fetching: repsQ.isFetching, retry: () => { void repsQ.refetch(); } },
+    consent: { failed: consentQ.isError, fetching: consentQ.isFetching, retry: () => { void consentQ.refetch(); } },
+    agents: { failed: agentsQ.isError, fetching: agentsQ.isFetching, retry: () => { void agentsQ.refetch(); } },
+    leads: { failed: leadsQ.isError, fetching: leadsQ.isFetching, retry: () => { void leadsQ.refetch(); } },
+    copilot: { failed: copilotQ.isError && !copilotNotConnected, fetching: copilotQ.isFetching, retry: () => { void copilotQ.refetch(); } },
+    faelle: { failed: faelleQ.isError && !faelleKeinZugriff, fetching: faelleQ.isFetching, retry: () => { void faelleQ.refetch(); } },
+    scripts: { failed: scriptsQ.isError && !scriptsNichtVerknuepft, fetching: scriptsQ.isFetching, retry: () => { void scriptsQ.refetch(); } },
+    termin: { failed: terminQ.isError, fetching: terminQ.isFetching, retry: () => { void terminQ.refetch(); } },
+  };
+  const { anyFailed, anyRetrying, retryAll: retryFailed } = statusLage(statusQuellen);
 
   const tiles: {
     key: AreaKey; name: string; icon: typeof Users; state: TileState; description: string; action: string;
@@ -183,7 +188,7 @@ export default function VoiceCalls() {
       description: "Der Gesprächs-Assistent am Bildschirm deiner Vertriebler.",
     },
     {
-      key: "scripts", name: "Skripte & Einwände", icon: BookOpenCheck, state: copilotState, action: "Skripte verwalten",
+      key: "scripts", name: "Skripte & Einwände", icon: BookOpenCheck, state: scriptsState, action: "Skripte verwalten",
       description: "Skripte und Einwände zentral pflegen, an Vertriebler geben und sehen, womit sie wirklich telefonieren.",
     },
     {

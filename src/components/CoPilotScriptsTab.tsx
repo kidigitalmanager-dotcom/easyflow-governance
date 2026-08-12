@@ -21,9 +21,10 @@
 // Zuweisen, dass der Vertriebler den Tab neu laden muss.
 // -----------------------------------------------------------------------------
 import { useMemo, useRef, useState, type ReactNode } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useScriptLibrary, useScriptOverview, SCRIPT_LIBRARY_KEY, SCRIPT_OVERVIEW_KEY } from "@/hooks/use-api";
 import {
-  fetchScriptLibrary, saveScriptLibrary, fetchScriptOverview, assignScripts, parseScriptText,
+  saveScriptLibrary, assignScripts, parseScriptText,
   type LibraryScript, type LibraryObjectionSet, type ScriptPhase,
   type ScriptOverviewRep,
 } from "@/lib/api-client";
@@ -49,8 +50,8 @@ import { toast } from "sonner";
 
 type Kind = "script" | "objections";
 
-const LIB_KEY = ["copilot", "script-library"] as const;
-const OVERVIEW_KEY = ["copilot", "script-overview"] as const;
+const LIB_KEY = SCRIPT_LIBRARY_KEY;
+const OVERVIEW_KEY = SCRIPT_OVERVIEW_KEY;
 
 function Badge({ tone, children }: { tone: "lib" | "own" | "active" | "warn"; children: ReactNode }) {
   const cls = {
@@ -129,8 +130,12 @@ function sniffKind(rows: unknown): Kind | null {
 
 export default function CoPilotScriptsTab() {
   const qc = useQueryClient();
-  const libQ = useQuery({ queryKey: LIB_KEY, queryFn: fetchScriptLibrary, retry: false });
-  const ovQ = useQuery({ queryKey: OVERVIEW_KEY, queryFn: fetchScriptOverview, retry: false });
+  // Baustein 0: beide Abrufe liefen ohne `enabled: !!session` und konnten
+  // damit vor der Wiederherstellung der Sitzung feuern. Die Hooks setzen den
+  // Pflicht-Guard und teilen sich den Key mit der Kachel unter /voice — die
+  // Uebersicht wird also weiterhin nur EINMAL geholt.
+  const libQ = useScriptLibrary();
+  const ovQ = useScriptOverview();
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<string>("");

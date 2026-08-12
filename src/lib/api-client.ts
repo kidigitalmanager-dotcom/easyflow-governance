@@ -3398,6 +3398,49 @@ export const assignScripts = (body: {
 export const parseScriptText = (text: string, name?: string, part?: number, parts?: number) =>
   scriptsFetch<ParseResponse>("/parse", { method: "POST", body: { text, name, part, parts } });
 
+// ── Rep-Config aus der Konsole (leads-sync v1.26.0, 12.08.2026) ──────────────
+//
+// 🔴 Gemessen am 12.08.: der Mandanten-Pfad /leads/_tenant/<t>/rep/<r>/config
+// antwortet dem Konsolen-JWT mit 401. Die Uebersicht (/overview) liefert nur
+// Namen und Phasen-ZAHLEN. Der volle Text eines Skripts, das ein Vertriebler
+// SELBST angelegt hat, steht ausschliesslich in rep-config — ohne diese Route
+// koennte der Telefon-Modus genau diese Skripte nicht anzeigen.
+//
+// Auth ist derselbe Konsolen-Bearer wie bei /library und /overview; der
+// Mandant kommt serverseitig aus der Sitzung, nie aus dem Pfad.
+
+export interface RepConfigResponse {
+  ok: boolean;
+  /** false = es gibt gar keine Zeile fuer diesen Vertriebler. */
+  found?: boolean;
+  /** Alt-Format: nacktes Phasen-Array. */
+  script?: ScriptPhase[] | null;
+  scripts?: { library: LibraryScript[]; active_id?: string | null } | null;
+  /** Neu: Bibliothek. Alt: nacktes Einwand-Array. */
+  objections?: { library: LibraryObjectionSet[]; active_id?: string | null } | ObjectionItem[] | null;
+  updated_at?: string | null;
+  updated_by?: string | null;
+}
+
+export const fetchRepConfig = (clientId: string) =>
+  scriptsFetch<RepConfigResponse>(`/rep/${encodeURIComponent(clientId)}/config`);
+
+/**
+ * Schreiben. 🔴 Der Telefon-Modus ruft das NICHT: er liest nur.
+ *
+ * Grund: `uebernehmeBackend` kann eine Alt-Format-Migration anstossen, und die
+ * braucht die Paket-Vorgabe (`sales_packs.mjs`), die es in der Konsole nicht
+ * gibt. Ein Rueckschreiben mit leerem Paket wuerde das Skript des Vertrieblers
+ * in "Skript 1" umbenennen. Gepflegt wird deshalb weiterhin ueber die
+ * Zuweisung unter System, Voice & Co-Pilot, Skripte & Einwaende.
+ */
+export const saveRepConfig = (
+  clientId: string,
+  body: { scripts?: unknown; objections?: unknown; script?: unknown; updated_by?: string },
+) => scriptsFetch<{ ok: boolean; saved?: boolean; tenant_id?: string; client_id?: string }>(
+  `/rep/${encodeURIComponent(clientId)}/config`, { method: "PUT", body: body as Record<string, unknown> },
+);
+
 // ── v4.61.0 Billing (In-Console-Kauf) — /v1/billing/* liegt außerhalb /dashboard ──
 export interface BillingEntitlements {
   base_plan: string | null;

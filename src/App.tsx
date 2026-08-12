@@ -24,6 +24,7 @@ import Verbindlichkeiten from "./pages/Verbindlichkeiten";
 import Buchhaltung from "./pages/Buchhaltung";
 import Einstellungen from "./pages/Einstellungen";
 import VoiceCalls from "./pages/VoiceCalls";
+import Vertrieb from "./pages/Vertrieb";
 import Signale from "./pages/Signale";
 import Fruehwarnung from "./pages/Fruehwarnung";
 import Chancen from "./pages/Chancen";
@@ -178,6 +179,11 @@ const App = () => (
                       <Route path="/mitarbeiter" element={<Mitarbeiter />} />
                       <Route path="/zeiterfassung" element={<Zeiterfassung />} />
                       <Route path="/voice" element={<VoiceCalls />} />
+                      {/* Vertriebsflaeche (12.08.2026). /voice bleibt unberuehrt:
+                          die Deep-Links ?tab= und ?rep= aus dem Team-Umbau zeigen
+                          weiterhin dorthin, dort ist die Sicht ueber ALLE
+                          Vertriebler zuhause. */}
+                      <Route path="/vertrieb" element={<Vertrieb />} />
                       <Route path="/einstellungen" element={<Einstellungen />} />
                       <Route path="/admin" element={<Admin />} />
                       <Route path="/admin/rule-suggestions" element={<AdminRuleSuggestions />} />

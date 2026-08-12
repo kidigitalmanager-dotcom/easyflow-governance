@@ -46,17 +46,25 @@ function formatDateTime(iso: string | null): string {
   });
 }
 
-export default function SalesCallsAuditTab() {
+/**
+ * @param festerRep  Arbeits-Linse der Vertriebsflaeche (12.08.2026): der
+ *   Vertriebler steht fest, das Dropdown entfaellt. OHNE diese Eigenschaft
+ *   verhaelt sich der Bereich exakt wie vorher — unter System bleibt es die
+ *   Team-Sicht ueber ALLE Vertriebler samt Deep-Link ?rep=.
+ */
+export default function SalesCallsAuditTab({ festerRep }: { festerRep?: string | null } = {}) {
   // v4.203.0 (Team-Umbau): Deep-Link ?rep=<rep_id> aus dem Team-Tab — der
   // Filter startet vorbelegt, das Dropdown zeigt und löst ihn wie gewohnt.
   const [searchParams] = useSearchParams();
   const [page, setPage] = useState(0);
   const [repFilter, setRepFilter] = useState<string>((searchParams.get("rep") || "").trim());
   const [outcomeFilter, setOutcomeFilter] = useState<string>("");
+  const fest = festerRep != null;
+  const wirksamerRep = fest ? (festerRep || "") : repFilter;
 
   const { data: repsData } = useVoiceReps();
   const { data, isLoading, error } = useSalesCalls({
-    rep_id: repFilter || undefined,
+    rep_id: wirksamerRep || undefined,
     outcome: outcomeFilter || undefined,
     limit: PER_PAGE,
     offset: page * PER_PAGE,
@@ -74,23 +82,27 @@ export default function SalesCallsAuditTab() {
       <div className="glass-card p-6 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h2 className="text-base font-semibold">Sales-Calls-Audit</h2>
+            <h2 className="text-base font-semibold">{fest ? "Meine Anrufe" : "Sales-Calls-Audit"}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Alle Anrufe deiner Vertriebler — mit Recording und HubSpot-Verknüpfung.
+              {fest
+                ? "Deine Gespräche — mit Recording und HubSpot-Verknüpfung."
+                : "Alle Anrufe deiner Vertriebler — mit Recording und HubSpot-Verknüpfung."}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-            <select
-              value={repFilter}
-              onChange={(e) => resetPageAnd(() => setRepFilter(e.target.value))}
-              className="bg-muted/50 border border-border rounded-md px-2 py-1 text-xs"
-            >
-              <option value="">Alle Vertriebler</option>
-              {reps.map((r) => (
-                <option key={r.rep_id} value={r.rep_id}>{r.name}</option>
-              ))}
-            </select>
+            {!fest && (
+              <select
+                value={repFilter}
+                onChange={(e) => resetPageAnd(() => setRepFilter(e.target.value))}
+                className="bg-muted/50 border border-border rounded-md px-2 py-1 text-xs"
+              >
+                <option value="">Alle Vertriebler</option>
+                {reps.map((r) => (
+                  <option key={r.rep_id} value={r.rep_id}>{r.name}</option>
+                ))}
+              </select>
+            )}
             <select
               value={outcomeFilter}
               onChange={(e) => resetPageAnd(() => setOutcomeFilter(e.target.value))}

@@ -53,8 +53,15 @@ export type Einwand = { key: string; hotkey: string; label: string; response: st
 export type EinwandSatz = {
   id: string;
   name: string;
-  /** Bindung an ein Skript. Leer = an keines gebunden. */
-  script_id: string;
+  /**
+   * Bindung an ein Skript. Leer ODER nicht gesetzt = an keines gebunden.
+   *
+   * 🔴 Optional, weil es das auf der Leitung wirklich gibt: die zentrale
+   * Bibliothek liefert Saetze mit leerem `script_id`, und aeltere Zeilen haben
+   * das Feld gar nicht. `einwandSatzZumSkript` prueft deshalb auf Wahrheit,
+   * nicht auf Gleichheit mit "".
+   */
+  script_id?: string;
   objections: Einwand[];
   meta?: unknown;
 };
@@ -68,10 +75,19 @@ export type BackendAntwort = {
   found?: boolean;
   /** Alt-Format: nacktes Phasen-Array. */
   script?: Phase[] | null;
-  scripts?: SkriptBibliothek | null;
+  /**
+   * 🔴 Auf der Leitung ist `active_id` optional und darf null sein — der
+   * Endpunkt liefert eine Zeile auch ohne aktiven Eintrag. `mitAktiv`
+   * normalisiert das auf den ersten Eintrag. Der Typ sagt das jetzt auch:
+   * vorher behauptete er `active_id: string` und log damit ueber die Realitaet.
+   */
+  scripts?: RohBibliothek<Skript> | null;
   /** Neu: Bibliothek. Alt: nacktes Einwand-Array. */
-  objections?: EinwandBibliothek | Einwand[] | null;
+  objections?: RohBibliothek<EinwandSatz> | Einwand[] | null;
 } | null;
+
+/** Eine Bibliothek, wie sie wirklich ueber die Leitung kommt. */
+export type RohBibliothek<T> = { library: T[]; active_id?: string | null };
 
 export type PaketVorgabe = {
   /** Seeds des Verkaufspakets (sales_packs.mjs). */
@@ -137,8 +153,8 @@ export function aktiverEinwandSatz(lib: EinwandBibliothek | null): EinwandSatz |
 }
 
 /** active_id normalisieren: fehlt sie, gilt der erste Eintrag. */
-function mitAktiv<T extends { library: Array<{ id: string }>; active_id?: string }>(o: T): T {
-  return { ...o, active_id: o.active_id || o.library[0].id } as T;
+function mitAktiv<T extends { id: string }>(o: RohBibliothek<T>): { library: T[]; active_id: string } {
+  return { ...o, active_id: o.active_id || o.library[0].id };
 }
 
 // ── Alt-Formate ─────────────────────────────────────────────────────────────
