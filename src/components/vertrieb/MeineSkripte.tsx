@@ -6,16 +6,30 @@
 // alle Vertriebler. Hier steht nur die eine Frage, die im Betrieb zaehlt:
 // **womit telefoniere ICH gerade?**
 //
-// Nur Lesen, mit Absicht. Ein zweiter Editor waere ein zweiter Weg, auf dem
-// Einwaende verschwinden koennen — und genau das darf nie wieder passieren.
+// 13.08., Leon: "es gibt keinen skript editor, dass du einzelne phasen oder
+// einwaende bearbeiten kannst". Hier stand bis dahin "Nur Lesen, mit Absicht.
+// Ein zweiter Editor waere ein zweiter Weg, auf dem Einwaende verschwinden
+// koennen". Der Gedanke war richtig, die Annahme darunter falsch: es gibt
+// keinen ERSTEN Editor. `CoPilotScriptsTab` kann Bibliothek, Hochladen und
+// Zuweisen — einzelne Phasen bearbeiten kann es nicht. Der Co-Pilot konnte es.
+//
+// Also ist dies kein zweiter Weg, sondern der einzige. 🔴 Mit der vollen
+// Vorsicht des rep-config-Pfades: die Regeln stehen in skript-editor.ts und
+// sind dort mit zehn Mutationen geprueft. Kern davon: geschrieben wird nur,
+// wenn die Konsole beim LESEN nichts umformen musste — sonst entstuende
+// wieder "Skript 1".
 // -----------------------------------------------------------------------------
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRepConfig } from "@/hooks/use-api";
 import { standAusRepConfig } from "@/lib/telefon-stand";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { SectionCard, EmptyState } from "@/components/ue/primitives";
-import { BookOpenCheck, AlertTriangle, Check } from "lucide-react";
+import { BookOpenCheck, AlertTriangle, Check, Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { SkriptEditor } from "@/components/vertrieb/SkriptEditor";
+import { darfSpeichern } from "@/lib/skript-editor";
+import type { EinwandSatz, Skript } from "@/lib/copilot-config";
 
 export function MeineSkripte({ clientId, repName }: { clientId: string | null; repName?: string | null }) {
   const q = useRepConfig(clientId);
@@ -23,6 +37,9 @@ export function MeineSkripte({ clientId, repName }: { clientId: string | null; r
     () => standAusRepConfig(q.isError ? null : (q.data ?? null)),
     [q.data, q.isError],
   );
+  const [bearbeiteSkript, setBearbeiteSkript] = useState<Skript | null>(null);
+  const [bearbeiteSatz, setBearbeiteSatz] = useState<EinwandSatz | null>(null);
+  const freigabe = darfSpeichern(stand);
 
   if (!clientId) {
     return (
@@ -48,11 +65,32 @@ export function MeineSkripte({ clientId, repName }: { clientId: string | null; r
     );
   }
 
+  if (bearbeiteSkript || bearbeiteSatz) {
+    return (
+      <SkriptEditor
+        clientId={clientId}
+        stand={stand}
+        skript={bearbeiteSkript}
+        satz={bearbeiteSatz}
+        aktor={repName}
+        aufSchliessen={() => { setBearbeiteSkript(null); setBearbeiteSatz(null); }}
+      />
+    );
+  }
+
   const skripte = stand.zustand.skripte?.library ?? [];
   const saetze = stand.zustand.einwaende?.library ?? [];
 
   return (
     <div className="space-y-4">
+      {/* 🔴 Ist das Bearbeiten gesperrt, steht der Grund GLEICH da, nicht
+          erst nach einem Klick auf einen Knopf, der dann nichts tut. */}
+      {!freigabe.ja && (
+        <p className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-[12.5px] text-amber-500">
+          {freigabe.grund}
+        </p>
+      )}
+
       {stand.befunde.length > 0 && (
         <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-[12.5px] text-amber-500">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -90,11 +128,17 @@ export function MeineSkripte({ clientId, repName }: { clientId: string | null; r
                       {leer > 0 && <span className="text-amber-500"> · {leer} ohne Text</span>}
                     </p>
                   </div>
-                  {aktiv && (
-                    <span className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-                      aktiv
-                    </span>
-                  )}
+                  <div className="flex shrink-0 items-center gap-2">
+                    {aktiv && (
+                      <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                        aktiv
+                      </span>
+                    )}
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-[11px]"
+                      onClick={() => setBearbeiteSkript(s)}>
+                      <Pencil className="mr-1 h-3 w-3" /> bearbeiten
+                    </Button>
+                  </div>
                 </li>
               );
             })}
@@ -108,6 +152,14 @@ export function MeineSkripte({ clientId, repName }: { clientId: string | null; r
           stand.satz
             ? `Aktiv: ${stand.satz.name} · ${stand.satz.objections.length} Einwände`
             : "Kein Einwand-Satz aktiv. Die Erkennung bleibt damit aus."
+        }
+        action={
+          stand.satz ? (
+            <Button variant="outline" size="sm" className="h-7 px-2 text-[11px]"
+              onClick={() => setBearbeiteSatz(stand.satz)}>
+              <Pencil className="mr-1 h-3 w-3" /> bearbeiten
+            </Button>
+          ) : null
         }
       >
         {saetze.length === 0 ? (
