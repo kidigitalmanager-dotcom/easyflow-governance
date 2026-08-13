@@ -74,3 +74,49 @@ export function standAusRepConfig(antwort: BackendAntwort): TelefonStand {
 export function bereit(stand: TelefonStand): boolean {
   return !!stand.skript && !!stand.satz && stand.satz.objections.length > 0;
 }
+
+
+// ── Skript-Wahl fuer DIESES Gespraech ────────────────────────────────────────
+//
+// Leon, 13.08.: "skripte sind nicht auswaehlbar, welches skript man jetzt
+// nutzen will". Stimmt — angezeigt wurde immer das zugewiesene.
+//
+// 🔴 Die Wahl gilt nur fuer die laufende Sitzung und wird im Browser gemerkt.
+// Sie aendert die ZUWEISUNG NICHT. Das ist kein Sparen, sondern der Kern der
+// Datei: die Konsole hat keine Paket-Vorgabe, und ein Rueckschreiben wuerde
+// ein Alt-Format-Skript in "Skript 1" umbenennen. Zugewiesen wird weiter unter
+// System, Voice & Co-Pilot.
+
+/** Alle Skripte, unter denen gewaehlt werden kann. Leer = es gibt nichts. */
+export function skripteZurAuswahl(stand: TelefonStand): Skript[] {
+  return stand.zustand.skripte?.library ?? [];
+}
+
+export type Skriptwahl = {
+  skript: Skript | null;
+  /** true = es ist NICHT das zugewiesene. Muss sichtbar sein. */
+  abweichend: boolean;
+  /** Das zugewiesene Skript, damit man zurueckfinden kann. */
+  zugewiesen: Skript | null;
+};
+
+/**
+ * Welches Skript fuer dieses Gespraech gilt.
+ *
+ * 🔴 Eine Wahl, die es nicht mehr gibt (Skript geloescht oder umbenannt),
+ * faellt still auf das zugewiesene zurueck — aber sie faellt NICHT auf
+ * `library[0]`. Das war E14 in anderer Gestalt: eine Identitaet, die aus der
+ * Reihenfolge kommt, wandert, sobald jemand etwas hinzufuegt.
+ */
+export function skriptFuerGespraech(stand: TelefonStand, wahlId: string | null): Skriptwahl {
+  const zugewiesen = stand.skript;
+  const id = String(wahlId ?? "").trim();
+  if (!id) return { skript: zugewiesen, abweichend: false, zugewiesen };
+  const gewaehlt = skripteZurAuswahl(stand).find((s) => s.id === id) ?? null;
+  if (!gewaehlt) return { skript: zugewiesen, abweichend: false, zugewiesen };
+  return {
+    skript: gewaehlt,
+    abweichend: !!zugewiesen && gewaehlt.id !== zugewiesen.id,
+    zugewiesen,
+  };
+}

@@ -123,3 +123,63 @@ describe("bereit — wann kann man wirklich telefonieren", () => {
     expect(bereit(s)).toBe(false);
   });
 });
+
+// ── Skript-Wahl fuer das laufende Gespraech (13.08., Leon-Befund 3) ──────────
+
+import { skripteZurAuswahl, skriptFuerGespraech } from "./telefon-stand";
+
+const standMit = (library: Array<{ id: string; name: string }>, activeId: string | null) =>
+  standAusRepConfig({
+    ok: true, found: true,
+    scripts: { library: library.map((s) => ({ ...s, phases: [{ id: "p1", label: "Start", text: "Hallo" }] })), active_id: activeId },
+    objections: { library: [], active_id: null },
+  } as never);
+
+describe("Skript-Wahl fuer dieses Gespraech", () => {
+  const drei = [{ id: "a", name: "HV Kaltakquise" }, { id: "b", name: "HV Kaltakquise v3" }, { id: "c", name: "Ecommerce" }];
+
+  it("ohne Wahl gilt das zugewiesene", () => {
+    const st = standMit(drei, "b");
+    const w = skriptFuerGespraech(st, null);
+    expect(w.skript?.id).toBe("b");
+    expect(w.abweichend).toBe(false);
+  });
+
+  it("eine Wahl setzt sich durch und wird als abweichend gemeldet", () => {
+    const st = standMit(drei, "b");
+    const w = skriptFuerGespraech(st, "c");
+    expect(w.skript?.id).toBe("c");
+    expect(w.abweichend).toBe(true);
+    expect(w.zugewiesen?.id).toBe("b"); // 🔴 der Rueckweg bleibt sichtbar
+  });
+
+  it("das zugewiesene ausdruecklich waehlen ist keine Abweichung", () => {
+    expect(skriptFuerGespraech(standMit(drei, "b"), "b").abweichend).toBe(false);
+  });
+
+  it("🔴 eine Wahl, die es nicht mehr gibt, faellt auf das ZUGEWIESENE zurueck, nie auf das erste", () => {
+    // Der bequeme Fehler waere library[0]. Dann waechst dem Vertriebler ein
+    // fremdes Skript zu, sobald jemand oben eines einfuegt — und er merkt es
+    // erst im Gespraech.
+    const st = standMit(drei, "b");
+    const w = skriptFuerGespraech(st, "geloescht");
+    expect(w.skript?.id).toBe("b");
+    expect(w.skript?.id).not.toBe("a");
+    expect(w.abweichend).toBe(false);
+  });
+
+  it("leere und weisse Wahl zaehlen als keine Wahl", () => {
+    for (const leer of ["", "   ", null]) {
+      expect(skriptFuerGespraech(standMit(drei, "b"), leer).skript?.id).toBe("b");
+    }
+  });
+
+  it("skripteZurAuswahl liefert die ganze Bibliothek, auch das zugewiesene", () => {
+    expect(skripteZurAuswahl(standMit(drei, "b")).map((s) => s.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("ohne Bibliothek ist die Auswahl leer statt undefined", () => {
+    expect(skripteZurAuswahl(standAusRepConfig(null))).toEqual([]);
+    expect(skriptFuerGespraech(standAusRepConfig(null), "a").skript).toBeNull();
+  });
+});

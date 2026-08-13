@@ -19,11 +19,11 @@ import {
   kannWaehlen, kannAuflegen, dauerSekunden, dauerLesbar, nummerLesbar, phaseText,
   type AnrufZustand,
 } from "@/lib/anruf-zustand";
-import { Phone, PhoneOff, Mic, MicOff, X } from "lucide-react";
+import { Phone, PhoneOff, Mic, MicOff, X, CalendarPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Waehlleiste({
-  zustand, waehle, auflegen, quittieren, stumm, stummSchalten, repName,
+  zustand, waehle, auflegen, quittieren, stumm, stummSchalten, repName, aufTermin,
 }: {
   zustand: AnrufZustand;
   waehle: (nummer: string) => void;
@@ -32,6 +32,8 @@ export function Waehlleiste({
   stumm: boolean;
   stummSchalten: (an: boolean) => void;
   repName?: string | null;
+  /** Leon 13.08. Punkt 4: Termin direkt aus dem Gespraech heraus. */
+  aufTermin?: () => void;
 }) {
   const [eingabe, setEingabe] = useState("");
   const [jetzt, setJetzt] = useState(() => Date.now());
@@ -85,22 +87,40 @@ export function Waehlleiste({
             aria-label="Rufnummer"
             className="h-9 tabular"
           />
-          {laeuft ? (
+          <Button
+            className="h-9 shrink-0 gap-1.5"
+            onClick={() => waehle(eingabe)}
+            disabled={laeuft || !kannWaehlen(zustand) || !eingabe.trim()}
+          >
+            <Phone className="h-4 w-4" /> anrufen
+          </Button>
+          {/* 🔴 Leon, 13.08.: "anruf beenden button fehlt". Er WAR da, aber nur
+              waehrend eines Gespraechs — wer nicht telefonierte, sah ihn nie
+              und konnte nicht wissen, dass es ihn gibt. Jetzt steht er immer.
+              Das ist nicht nur Gewohnheit: bliebe der Zustandsautomat je
+              haengen, waere ein Knopf, den es nicht GIBT, schlimmer als einer,
+              der ausgegraut ist. */}
+          <Button
+            variant="destructive"
+            className="h-9 shrink-0 gap-1.5"
+            onClick={auflegen}
+            disabled={!laeuft || zustand.phase === "legt_auf"}
+            title={laeuft ? "Gespräch beenden" : "Es läuft gerade kein Gespräch"}
+          >
+            <PhoneOff className="h-4 w-4" /> auflegen
+          </Button>
+          {/* 🔴 Der Termin-Knopf steht IMMER, nicht nur im Gespraech: der
+              Kunde sagt "passt, Dienstag" oft in der Sekunde vor dem
+              Auflegen, und danach ist die Leitung tot, der Termin aber noch
+              nicht eingetragen. */}
+          {aufTermin && (
             <Button
-              variant="destructive"
+              variant="outline"
               className="h-9 shrink-0 gap-1.5"
-              onClick={auflegen}
-              disabled={zustand.phase === "legt_auf"}
+              onClick={aufTermin}
+              title="Termin aus diesem Gespräch"
             >
-              <PhoneOff className="h-4 w-4" /> auflegen
-            </Button>
-          ) : (
-            <Button
-              className="h-9 shrink-0 gap-1.5"
-              onClick={() => waehle(eingabe)}
-              disabled={!kannWaehlen(zustand) || !eingabe.trim()}
-            >
-              <Phone className="h-4 w-4" /> anrufen
+              <CalendarPlus className="h-4 w-4" /> Termin
             </Button>
           )}
           {zustand.phase === "verbunden" && (

@@ -19,7 +19,7 @@
 // -----------------------------------------------------------------------------
 import { useEffect, useMemo, useState } from "react";
 import { useRepConfig } from "@/hooks/use-api";
-import { standAusRepConfig, bereit } from "@/lib/telefon-stand";
+import { standAusRepConfig, bereit, skripteZurAuswahl, skriptFuerGespraech } from "@/lib/telefon-stand";
 import {
   LEERES_PANEL, geklickt, bestaetigt, satzGewechselt,
   karte, tastenBelegung, tasteAus, type PanelZustand,
@@ -29,13 +29,19 @@ import { useTelefon } from "@/hooks/use-telefon";
 import { useTranskript } from "@/hooks/use-transkript";
 import { Waehlleiste } from "@/components/vertrieb/Waehlleiste";
 import { TranskriptPanel } from "@/components/vertrieb/TranskriptPanel";
-import { imGespraech as istImGespraech } from "@/lib/anruf-zustand";
+import { imGespraech as istImGespraech, nummerLesbar } from "@/lib/anruf-zustand";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import TerminBlock from "@/components/TerminBlock";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
 import { SectionCard, EmptyState } from "@/components/ue/primitives";
 import { AlertTriangle, Check, Pin, Headphones, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** 🔴 Bewusst NICHT am Vertriebler haengend: es ist eine Arbeitsvorliebe
+    dieses Browsers, keine Zuweisung. */
+const SKRIPT_WAHL = "ue_vertrieb_skript";
 
 export function TelefonReiter({ clientId, repName }: { clientId: string | null; repName?: string | null }) {
   const q = useRepConfig(clientId);
@@ -57,6 +63,24 @@ export function TelefonReiter({ clientId, repName }: { clientId: string | null; 
   const imGespraech = istImGespraech(tel.zustand);
   const transkript = useTranskript(clientId, imGespraech, tel.gegenstelle);
 
+  // Leon 13.08. Punkt 3: welches Skript gilt fuer DIESES Gespraech.
+  // 🔴 Nur lokal. Die Zuweisung bleibt, wo sie ist — siehe telefon-stand.ts.
+  const [skriptWahl, setSkriptWahl] = useState<string | null>(() => {
+    try { return window.localStorage.getItem(SKRIPT_WAHL) ; } catch { return null; }
+  });
+  const waehleSkript = (id: string | null) => {
+    setSkriptWahl(id);
+    try {
+      if (id) window.localStorage.setItem(SKRIPT_WAHL, id);
+      else window.localStorage.removeItem(SKRIPT_WAHL);
+    } catch { /* privater Modus */ }
+  };
+
+  // Leon 13.08. Punkt 4: Termin aus dem Gespraech.
+  const [terminOffen, setTerminOffen] = useState(false);
+
+  const wahl = useMemo(() => skriptFuerGespraech(stand, skriptWahl), [stand, skriptWahl]);
+  const skript = wahl.skript;
   const satz = stand.satz;
   const belegung = useMemo(() => tastenBelegung(satz), [satz]);
 
@@ -64,11 +88,11 @@ export function TelefonReiter({ clientId, repName }: { clientId: string | null; 
   // die Regel aus dem v1.22-Umbau: der Pin ueberlebt, Chips ohne passenden
   // Schluessel nicht.
   const bindung = useMemo(
-    () => einwandSatzZumSkript(stand.zustand.einwaende, stand.skript),
-    [stand.zustand.einwaende, stand.skript],
+    () => einwandSatzZumSkript(stand.zustand.einwaende, skript),
+    [stand.zustand.einwaende, skript],
   );
   useEffect(() => { setPanel((p) => satzGewechselt(p, satz)); }, [satz]);
-  useEffect(() => { setPhase(0); }, [stand.skript?.id]);
+  useEffect(() => { setPhase(0); }, [skript?.id]);
 
   useEffect(() => {
     const auf = (ev: KeyboardEvent) => {
@@ -120,7 +144,7 @@ export function TelefonReiter({ clientId, repName }: { clientId: string | null; 
 
   const gepinnt = karte(satz, panel.gepinnt);
   const angezeigt = gepinnt ?? karte(satz, panel.erkannt);
-  const phasen = stand.skript?.phases ?? [];
+  const phasen = skript?.phases ?? [];
   const aktuellePhase = phasen[Math.min(phase, Math.max(phasen.length - 1, 0))] ?? null;
 
   return (
@@ -129,7 +153,24 @@ export function TelefonReiter({ clientId, repName }: { clientId: string | null; 
         zustand={tel.zustand} waehle={tel.waehle} auflegen={tel.auflegen}
         quittieren={tel.quittieren} stumm={tel.stumm} stummSchalten={tel.stummSchalten}
         repName={repName}
+        aufTermin={() => setTerminOffen(true)}
       />
+
+      {/* Leon 13.08. Punkt 4: der Termin entsteht im Gespraech, nicht danach
+          in einem anderen Reiter. Vorbelegt mit dem, was gerade laeuft. */}
+      <Dialog open={terminOffen} onOpenChange={setTerminOffen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Termin aus diesem Gespräch</DialogTitle>
+          </DialogHeader>
+          <TerminBlock
+            repId={clientId}
+            betreffVorschlag={
+              tel.zustand.nummer ? `Termin nach Telefonat ${nummerLesbar(tel.zustand.nummer)}` : undefined
+            }
+          />
+        </DialogContent>
+      </Dialog>
 
       {q.isError && (
         <QueryErrorNotice
@@ -160,25 +201,50 @@ export function TelefonReiter({ clientId, repName }: { clientId: string | null; 
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-[1.05fr_1fr_1fr]">
         {/* ── Skript ──────────────────────────────────────────────────────── */}
         <SectionCard
-          title={stand.skript ? stand.skript.name : "Skript"}
+          title={skript ? skript.name : "Skript"}
           subtitle={
-            stand.skript
+            skript
               ? `Phase ${Math.min(phase + 1, phasen.length)} von ${phasen.length}${repName ? ` · ${repName}` : ""}`
               : "Für diesen Vertriebler ist kein Skript hinterlegt."
           }
           action={
-            phasen.length > 1 ? (
+            phasen.length > 1 || skripteZurAuswahl(stand).length > 1 ? (
               <div className="flex items-center gap-1">
-                <Button variant="outline" size="sm" className="h-7" disabled={phase === 0}
-                  onClick={() => setPhase((p) => Math.max(0, p - 1))}>zurück</Button>
-                <Button variant="outline" size="sm" className="h-7" disabled={phase >= phasen.length - 1}
-                  onClick={() => setPhase((p) => Math.min(phasen.length - 1, p + 1))}>
-                  weiter <ChevronRight className="ml-1 h-3 w-3" />
-                </Button>
+                {/* Leon 13.08. Punkt 3. Nur fuer dieses Gespraech — die
+                    Zuweisung aendert sich dadurch nicht. */}
+                {skripteZurAuswahl(stand).length > 1 && (
+                  <select
+                    value={wahl.skript?.id ?? ""}
+                    onChange={(e) => waehleSkript(e.target.value || null)}
+                    aria-label="Skript für dieses Gespräch"
+                    className="mr-1 max-w-[11rem] rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px]"
+                  >
+                    {skripteZurAuswahl(stand).map((sk) => (
+                      <option key={sk.id} value={sk.id}>
+                        {sk.name}{wahl.zugewiesen?.id === sk.id ? " (zugewiesen)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {phasen.length > 1 && (
+                  <>
+                    <Button variant="outline" size="sm" className="h-7" disabled={phase === 0}
+                      onClick={() => setPhase((p) => Math.max(0, p - 1))}>zurück</Button>
+                    <Button variant="outline" size="sm" className="h-7" disabled={phase >= phasen.length - 1}
+                      onClick={() => setPhase((p) => Math.min(phasen.length - 1, p + 1))}>
+                      weiter <ChevronRight className="ml-1 h-3 w-3" />
+                    </Button>
+                  </>
+                )}
               </div>
             ) : null
           }
         >
+          {wahl.abweichend && (
+            <p className="mx-4 mt-4 rounded-md border border-amber/30 bg-amber/5 px-3 py-2 text-[11.5px] text-amber">
+              Nur für dieses Gespräch. Zugewiesen ist „{wahl.zugewiesen?.name}".
+            </p>
+          )}
           {phasen.length === 0 ? (
             <EmptyState
               title="Kein Skript geladen"
