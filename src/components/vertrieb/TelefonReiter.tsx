@@ -1,5 +1,12 @@
 // -----------------------------------------------------------------------------
-// TelefonReiter.tsx — Skript-Pane und Einwand-Buttons (Baustein 2, 12.08.2026).
+// TelefonReiter.tsx — die Arbeitsflaeche waehrend eines Anrufs.
+//
+//   Baustein 2 (12.08.)  Skript-Pane und Einwand-Buttons.
+//   Baustein 3 (13.08.)  Waehlleiste: anrufen, hoeren, auflegen.
+//   Baustein 4 (13.08.)  Transkript mit Sprechertrennung.
+//
+// Der Abnahmesatz des Briefings steht damit auf einem Bildschirm: waehlen,
+// hoeren, Transkript laufen sehen, Einwand-Buttons sehen.
 //
 // Was hier NICHT steht, ist Absicht:
 //   * Keine Praezedenz. Die steht in `uebernehmeBackend` und wird ueber
@@ -14,10 +21,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useRepConfig } from "@/hooks/use-api";
 import { standAusRepConfig, bereit } from "@/lib/telefon-stand";
 import {
-  LEERES_PANEL, erkannt as panelErkannt, geklickt, bestaetigt, satzGewechselt,
+  LEERES_PANEL, geklickt, bestaetigt, satzGewechselt,
   karte, tastenBelegung, tasteAus, type PanelZustand,
 } from "@/lib/einwand-panel";
 import { einwandSatzZumSkript } from "@/lib/copilot-config";
+import { useTelefon } from "@/hooks/use-telefon";
+import { useTranskript } from "@/hooks/use-transkript";
+import { Waehlleiste } from "@/components/vertrieb/Waehlleiste";
+import { TranskriptPanel } from "@/components/vertrieb/TranskriptPanel";
+import { imGespraech as istImGespraech } from "@/lib/anruf-zustand";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
@@ -38,6 +50,12 @@ export function TelefonReiter({ clientId, repName }: { clientId: string | null; 
 
   const [phase, setPhase] = useState(0);
   const [panel, setPanel] = useState<PanelZustand>(LEERES_PANEL);
+
+  // Baustein 3: das Telefon. Baustein 4: das Transkript, das am Gespraech
+  // haengt — nicht am Reiter. Wer auflegt, beendet auch den Mitschnitt.
+  const tel = useTelefon(clientId);
+  const imGespraech = istImGespraech(tel.zustand);
+  const transkript = useTranskript(clientId, imGespraech, tel.gegenstelle);
 
   const satz = stand.satz;
   const belegung = useMemo(() => tastenBelegung(satz), [satz]);
@@ -71,9 +89,19 @@ export function TelefonReiter({ clientId, repName }: { clientId: string | null; 
 
   if (q.isLoading) {
     return (
-      <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
-        <Skeleton className="h-72 w-full" />
-        <Skeleton className="h-72 w-full" />
+      <div className="space-y-4">
+        {/* 🔴 Die Waehlleiste wartet NICHT auf das Skript. Telefonieren muss
+            gehen, auch wenn die Skript-Route hakt. */}
+        <Waehlleiste
+          zustand={tel.zustand} waehle={tel.waehle} auflegen={tel.auflegen}
+          quittieren={tel.quittieren} stumm={tel.stumm} stummSchalten={tel.stummSchalten}
+          repName={repName}
+        />
+        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-[1.05fr_1fr_1fr]">
+          <Skeleton className="h-72 w-full" />
+          <Skeleton className="h-72 w-full" />
+          <Skeleton className="hidden h-72 w-full xl:block" />
+        </div>
       </div>
     );
   }
@@ -97,6 +125,12 @@ export function TelefonReiter({ clientId, repName }: { clientId: string | null; 
 
   return (
     <div className="space-y-4">
+      <Waehlleiste
+        zustand={tel.zustand} waehle={tel.waehle} auflegen={tel.auflegen}
+        quittieren={tel.quittieren} stumm={tel.stumm} stummSchalten={tel.stummSchalten}
+        repName={repName}
+      />
+
       {q.isError && (
         <QueryErrorNotice
           label="Skript und Einwände konnten nicht geladen werden."
@@ -123,7 +157,7 @@ export function TelefonReiter({ clientId, repName }: { clientId: string | null; 
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-[1.05fr_1fr_1fr]">
         {/* ── Skript ──────────────────────────────────────────────────────── */}
         <SectionCard
           title={stand.skript ? stand.skript.name : "Skript"}
@@ -189,6 +223,9 @@ export function TelefonReiter({ clientId, repName }: { clientId: string | null; 
             </div>
           )}
         </SectionCard>
+
+        {/* ── Transkript ──────────────────────────────────────────────────── */}
+        <TranskriptPanel t={transkript} repName={repName} imGespraech={imGespraech} />
 
         {/* ── Einwände ────────────────────────────────────────────────────── */}
         <SectionCard

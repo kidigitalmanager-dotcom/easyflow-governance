@@ -3434,6 +3434,24 @@ export const fetchRepConfig = (clientId: string) =>
  * in "Skript 1" umbenennen. Gepflegt wird deshalb weiterhin ueber die
  * Zuweisung unter System, Voice & Co-Pilot, Skripte & Einwaende.
  */
+/**
+ * Twilio-Access-Token fuer die Konsole (leads-sync v1.27.0).
+ *
+ * 🔴 Gemessen 13.08.: `POST /v1/voice/token` verlangt `x-auth-token` =
+ * vertriebler_token, ein Mandanten-Geheimnis. Es darf nicht ins Bundle.
+ * leads-sync vermittelt deshalb: Konsolen-Login rein, Twilio-Token raus.
+ */
+export const holeVoiceToken = (clientId: string) =>
+  scriptsFetch<{ ok: boolean; token: string; identity: string; expires_in: number }>(
+    `/rep/${encodeURIComponent(clientId)}/voice-token`, { method: "POST", body: {} },
+  );
+
+/** Deepgram-Grant, TTL 300 s. Derselbe Vermittlungsweg. */
+export const holeDgToken = (clientId: string) =>
+  scriptsFetch<{ ok: boolean; access_token: string; expires_in: number }>(
+    `/rep/${encodeURIComponent(clientId)}/dg-token`, { method: "POST", body: {} },
+  );
+
 export const saveRepConfig = (
   clientId: string,
   body: { scripts?: unknown; objections?: unknown; script?: unknown; updated_by?: string },
