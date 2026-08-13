@@ -133,7 +133,7 @@ export default function Vertrieb() {
       </nav>
 
       <div className="animate-fade-up space-y-4">
-        {tab === "telefon" && <TelefonReiter clientId={rep.rep?.client_id ?? null} repName={rep.name} />}
+        {tab === "telefon" && <TelefonReiter clientId={rep.rep?.client_id ?? null} repName={rep.name} repId={rep.repId} />}
         {tab === "leads" && <MeineLeadListen repId={rep.repId} repName={rep.name} />}
         {/* Das Backend erzwingt bei den Faellen ohnehin die eigene Sicht —
             deshalb hier bewusst ohne zusaetzlichen Filter. */}

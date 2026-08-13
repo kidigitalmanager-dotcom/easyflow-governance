@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchBillingSummary, startBillingCheckout, openBillingPortal } from "@/lib/api-client";
+import { fetchOffeneLeads } from "@/lib/api-client";
 import { listDocuments, scanSentForAr, generateDunning, submitDocumentVerdict, markArPaid, addManualAr, importArXlsx } from "@/lib/api-client";
 import { fetchAiTransparencySummary, fetchAiTransparencyCalls } from "@/lib/api-client";
 import { listAbsences, createAbsence, decideAbsence, acknowledgeAbsence, cancelAbsence, fetchVacationAccount, setVacationAccount } from "@/lib/api-client";
@@ -1963,5 +1964,22 @@ export function useRepConfig(clientId: string | null) {
     queryFn: () => fetchRepConfig(clientId as string),
     enabled: !!session && !!clientId,
     retry: false,
+  });
+}
+
+/**
+ * Die offenen Leads fuer den Telefon-Modus.
+ *
+ * 🔴 `staleTime` bewusst kurz, aber nicht null: waehrend eines Gespraechs
+ * soll die Liste nicht unter den Fingern neu sortieren. Ein Neuladen kostet
+ * einen Klick und ist ehrlicher als eine Liste, die von selbst springt.
+ */
+export function useOffeneLeads(repId: string | null, aktiv = true) {
+  return useQuery({
+    queryKey: ["offene-leads", repId],
+    queryFn: () => fetchOffeneLeads(repId),
+    enabled: aktiv && !!repId,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }

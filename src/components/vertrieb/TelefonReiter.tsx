@@ -32,6 +32,8 @@ import { TranskriptPanel } from "@/components/vertrieb/TranskriptPanel";
 import { imGespraech as istImGespraech, nummerLesbar } from "@/lib/anruf-zustand";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import TerminBlock from "@/components/TerminBlock";
+import { LeadWahl } from "@/components/vertrieb/LeadWahl";
+import { nummerFuer, type Lead } from "@/lib/lead-wahl";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
@@ -43,7 +45,12 @@ import { cn } from "@/lib/utils";
     dieses Browsers, keine Zuweisung. */
 const SKRIPT_WAHL = "ue_vertrieb_skript";
 
-export function TelefonReiter({ clientId, repName }: { clientId: string | null; repName?: string | null }) {
+export function TelefonReiter({ clientId, repName, repId }: {
+  clientId: string | null;
+  repName?: string | null;
+  /** Fuer die Lead-Listen: die sind an den rep_id gebunden, nicht an client_id. */
+  repId?: string | null;
+}) {
   const q = useRepConfig(clientId);
 
   // 🔴 `null` heisst fuer `uebernehmeBackend` ausdruecklich "der Abruf ist
@@ -78,6 +85,11 @@ export function TelefonReiter({ clientId, repName }: { clientId: string | null; 
 
   // Leon 13.08. Punkt 4: Termin aus dem Gespraech.
   const [terminOffen, setTerminOffen] = useState(false);
+
+  // Leon 13.08. Punkt 1 und 2: der Lead, mit dem gerade telefoniert wird.
+  // 🔴 Er wird beim Auflegen NICHT geleert. Nach dem Gespraech kommt die
+  // Notiz und der Termin, und beides braucht den Lead noch.
+  const [lead, setLead] = useState<Lead | null>(null);
 
   const wahl = useMemo(() => skriptFuerGespraech(stand, skriptWahl), [stand, skriptWahl]);
   const skript = wahl.skript;
@@ -154,6 +166,17 @@ export function TelefonReiter({ clientId, repName }: { clientId: string | null; 
         quittieren={tel.quittieren} stumm={tel.stumm} stummSchalten={tel.stummSchalten}
         repName={repName}
         aufTermin={() => setTerminOffen(true)}
+        vorgabe={lead ? nummerFuer(lead).e164 : null}
+      />
+
+      {/* 🔴 Die Lead-Karte steht ZWISCHEN Waehlleiste und Arbeitsflaeche und
+          bleibt waehrend des Gespraechs stehen. Genau das fehlte. */}
+      <LeadWahl
+        repId={repId ?? null}
+        gewaehlt={lead}
+        aufWaehlen={setLead}
+        aufAnrufen={(l, e164) => { setLead(l); tel.waehle(e164, { leadId: l.id, leadName: l.name ?? null }); }}
+        laeuft={tel.zustand.phase !== "bereit" && tel.zustand.phase !== "aus" && tel.zustand.phase !== "fehler"}
       />
 
       {/* Leon 13.08. Punkt 4: der Termin entsteht im Gespraech, nicht danach
@@ -165,8 +188,13 @@ export function TelefonReiter({ clientId, repName }: { clientId: string | null; 
           </DialogHeader>
           <TerminBlock
             repId={clientId}
+            leadId={lead?.id ?? null}
+            kontaktName={lead?.entscheider || lead?.name || null}
+            kontaktEmail={lead?.email || null}
             betreffVorschlag={
-              tel.zustand.nummer ? `Termin nach Telefonat ${nummerLesbar(tel.zustand.nummer)}` : undefined
+              lead?.name
+                ? `Termin ${lead.name}`
+                : tel.zustand.nummer ? `Termin nach Telefonat ${nummerLesbar(tel.zustand.nummer)}` : undefined
             }
           />
         </DialogContent>

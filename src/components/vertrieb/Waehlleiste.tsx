@@ -23,7 +23,7 @@ import { Phone, PhoneOff, Mic, MicOff, X, CalendarPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Waehlleiste({
-  zustand, waehle, auflegen, quittieren, stumm, stummSchalten, repName, aufTermin,
+  zustand, waehle, auflegen, quittieren, stumm, stummSchalten, repName, aufTermin, vorgabe,
 }: {
   zustand: AnrufZustand;
   waehle: (nummer: string) => void;
@@ -34,8 +34,20 @@ export function Waehlleiste({
   repName?: string | null;
   /** Leon 13.08. Punkt 4: Termin direkt aus dem Gespraech heraus. */
   aufTermin?: () => void;
+  /** Die Nummer des gewaehlten Leads. Fuellt das Feld, ersetzt es aber nicht:
+      wer selbst tippt, behaelt das letzte Wort. */
+  vorgabe?: string | null;
 }) {
   const [eingabe, setEingabe] = useState("");
+  const [selbstGetippt, setSelbstGetippt] = useState(false);
+
+  // 🔴 Die Vorgabe fuellt das Feld nur, solange niemand selbst getippt hat.
+  // Andernfalls wuerde ein Lead-Wechsel die von Hand eingegebene Nummer
+  // ueberschreiben — und zwar genau in dem Moment, in dem jemand sie braucht.
+  useEffect(() => {
+    if (selbstGetippt) return;
+    setEingabe(vorgabe ?? "");
+  }, [vorgabe, selbstGetippt]);
   const [jetzt, setJetzt] = useState(() => Date.now());
 
   // Die Uhr laeuft nur, solange sie gebraucht wird. 🔴 Sie haengt an der DAUER,
@@ -73,7 +85,7 @@ export function Waehlleiste({
         <div className="flex min-w-[15rem] flex-1 items-center gap-2">
           <Input
             value={eingabe}
-            onChange={(e) => setEingabe(e.target.value)}
+            onChange={(e) => { setEingabe(e.target.value); setSelbstGetippt(true); }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && kannWaehlen(zustand) && eingabe.trim()) {
                 e.preventDefault();

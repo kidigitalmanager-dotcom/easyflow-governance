@@ -1919,6 +1919,42 @@ export interface LeadUploadResponse {
 
 export const fetchLeadLists = () => apiFetch<LeadListsResponse>("/leads/lists");
 
+/**
+ * Die noch nicht angerufenen Leads eines Vertrieblers (api-router v4.205.0).
+ *
+ * 🔴 Bis dahin kannte die Konsole nur Listen-UEBERSICHTEN — Namen und
+ * Anzahlen. Im Telefon-Modus musste deshalb jede Nummer abgetippt werden.
+ * Der Weg dahinter ist der vorhandene interne Op `leads_lookup`, Modus
+ * `unberuehrt`: derselbe Lesepfad, aus dem sich schon die Faelle ihre
+ * Stammdaten holen. Der Mandant kommt serverseitig aus der Sitzung.
+ *
+ * "unberuehrt" heisst: es gibt noch keinen einzigen Statuseintrag. Das ist
+ * dieselbe Quelle, aus der auch der Co-Pilot seinen Status liest.
+ */
+export interface OffeneLeadsResponse {
+  ok: boolean;
+  status?: number;
+  modus?: string;
+  /** Wie viele es insgesamt sind — nicht wie viele auf dieser Seite stehen. */
+  gesamt?: number;
+  limit?: number;
+  offset?: number;
+  leads?: Array<{
+    id: string;
+    name?: string; entscheider?: string; branche?: string; stadt?: string;
+    telefon?: string; telefon_zentrale?: string; email?: string; website?: string;
+    notizen?: string; hubspot_contact_id?: string;
+    list_id?: string; list_name?: string; lfd_nr?: number | null;
+  }>;
+  error?: string;
+}
+
+export const fetchOffeneLeads = (repId: string | null, limit = 100, offset = 0) => {
+  const p = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (repId) p.set("rep_id", repId);
+  return apiFetch<OffeneLeadsResponse>(`/leads/offen?${p.toString()}`);
+};
+
 export const uploadLeads = (payload: {
   list_name: string;
   leads: Record<string, unknown>[];
