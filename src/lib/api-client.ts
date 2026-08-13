@@ -3488,6 +3488,47 @@ export const holeDgToken = (clientId: string) =>
     `/rep/${encodeURIComponent(clientId)}/dg-token`, { method: "POST", body: {} },
   );
 
+/**
+ * Der Coach (leads-sync v1.28.0).
+ *
+ * 🔴 Gemessen 13.08.: die Prompts LAGEN in sales_packs.mjs, sie GEHOERTEN nie
+ * dorthin. Die beiden Pakete tragen zwei objection_classifier-Prompts, die
+ * sich in einem Halbsatz unterscheiden — Paket 2 lautet bereits "…fuer ein
+ * Verkaufsgespraech." ohne jede Branche. Die Keys kamen immer aus den
+ * Einwaenden des Vertrieblers.
+ *
+ * Deshalb schickt die Konsole die bereits aufgeloesten Inhalte MIT: die
+ * Praezedenz (welches Skript, welcher Satz) steht in copilot-config.ts an
+ * genau einer Stelle und darf nicht serverseitig noch einmal entstehen.
+ * leads-sync baut nur den Rahmen und vermittelt zum AI-Proxy, dessen Token
+ * ein Mandanten-Geheimnis ist.
+ */
+export interface CoachAntwort {
+  ok: boolean;
+  /** Der erkannte Einwand-Schluessel, oder null. Nie ein erfundener. */
+  key?: string | null;
+  /** Der Satzvorschlag, oder null. */
+  satz?: string | null;
+  grund?: string;
+  error?: string;
+}
+
+export const holeCoachEinwand = (
+  clientId: string,
+  fenster: string,
+  einwaende: Array<{ key: string; label: string }>,
+) => scriptsFetch<CoachAntwort>(`/rep/${encodeURIComponent(clientId)}/coach`, {
+  method: "POST", body: { modus: "einwand", fenster, einwaende },
+});
+
+export const holeCoachSatz = (
+  clientId: string,
+  fenster: string,
+  phase: { label: string; text: string; goal?: string },
+) => scriptsFetch<CoachAntwort>(`/rep/${encodeURIComponent(clientId)}/coach`, {
+  method: "POST", body: { modus: "satz", fenster, phase },
+});
+
 export const saveRepConfig = (
   clientId: string,
   body: { scripts?: unknown; objections?: unknown; script?: unknown; updated_by?: string },

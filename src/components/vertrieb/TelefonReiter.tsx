@@ -21,7 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRepConfig } from "@/hooks/use-api";
 import { standAusRepConfig, bereit, skripteZurAuswahl, skriptFuerGespraech } from "@/lib/telefon-stand";
 import {
-  LEERES_PANEL, geklickt, bestaetigt, satzGewechselt,
+  LEERES_PANEL, erkannt as panelErkannt, geklickt, bestaetigt, satzGewechselt,
   karte, tastenBelegung, tasteAus, type PanelZustand,
 } from "@/lib/einwand-panel";
 import { einwandSatzZumSkript } from "@/lib/copilot-config";
@@ -34,6 +34,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import TerminBlock from "@/components/TerminBlock";
 import { LeadWahl } from "@/components/vertrieb/LeadWahl";
 import { nummerFuer, type Lead } from "@/lib/lead-wahl";
+import { useCoach } from "@/hooks/use-coach";
+import { fensterText } from "@/lib/dg-transkript";
+import { Lightbulb } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { QueryErrorNotice } from "@/components/QueryErrorNotice";
@@ -153,6 +156,26 @@ export function TelefonReiter({ clientId, repName, repId }: {
       </SectionCard>
     );
   }
+
+  // ── Baustein 5: der Coach ────────────────────────────────────────────────
+  // 🔴 Er bekommt AUSSCHLIESSLICH das Fenster, die Einwaende des aktiven
+  // Satzes und den Wortlaut der aktuellen Phase. Kein Paket, keine Branche.
+  const phasenJetzt = skript?.phases ?? [];
+  const phaseJetzt = phasenJetzt[Math.min(phase, Math.max(phasenJetzt.length - 1, 0))] ?? null;
+  const coach = useCoach({
+    clientId,
+    fenster: fensterText(transkript.fenster),
+    einwaende: satz?.objections ?? [],
+    phase: phaseJetzt,
+    aktiv: imGespraech,
+  });
+
+  // Erkanntes wandert in den geprueften Reducer — der entscheidet ueber
+  // Dedupe, Chips und ob der Pin stehen bleibt. 🔴 Nicht hier.
+  useEffect(() => {
+    if (!coach.erkannterKey) return;
+    setPanel((p) => panelErkannt(p, coach.erkannterKey!, Date.now()));
+  }, [coach.erkannterKey]);
 
   const gepinnt = karte(satz, panel.gepinnt);
   const angezeigt = gepinnt ?? karte(satz, panel.erkannt);
@@ -318,8 +341,29 @@ export function TelefonReiter({ clientId, repName, repId }: {
           )}
         </SectionCard>
 
-        {/* ── Transkript ──────────────────────────────────────────────────── */}
-        <TranskriptPanel t={transkript} repName={repName} imGespraech={imGespraech} />
+        {/* ── Transkript und Coach ────────────────────────────────────────── */}
+        <div className="space-y-4">
+          <TranskriptPanel t={transkript} repName={repName} imGespraech={imGespraech} />
+
+          {/* 🔴 Der Vorschlag hat KEINEN Timer. Er bleibt stehen, bis ein
+              neuer kommt. Ein Satz, der verschwindet, waehrend man ihn
+              liest, war E3. */}
+          {imGespraech && (coach.satz || coach.laeuft || coach.fehler) && (
+            <SectionCard title="Vorschlag" live={coach.laeuft}
+              subtitle={`Aus „${phaseJetzt?.label || "der aktuellen Phase"}" — nichts dazuerfunden.`}>
+              {coach.fehler ? (
+                <p className="text-[12.5px] text-amber">{coach.fehler}</p>
+              ) : coach.satz ? (
+                <div className="flex items-start gap-2">
+                  <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <p className="text-[13.5px] leading-relaxed text-foreground">{coach.satz}</p>
+                </div>
+              ) : (
+                <p className="text-[12.5px] text-muted-foreground">Hört zu …</p>
+              )}
+            </SectionCard>
+          )}
+        </div>
 
         {/* ── Einwände ────────────────────────────────────────────────────── */}
         <SectionCard
